@@ -1,0 +1,1 @@
+../skills/delegate/scripts/model-policy-effective.sh

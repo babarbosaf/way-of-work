@@ -1,0 +1,168 @@
+{
+  "$comment": "SPEC-2026-002. Hierarquia tarefa→worker como DADO. delegate.sh lê daqui; nunca hardcode em script. Validação: jq . model-policy.json. Regra D-01: cost=free antes de cost=session; Claude Code (session) nunca aparece como backend — é o fallback implícito quando a cascata esgota (exit 2). Atualização: via proposta do /refresh-model-rankings aprovada (histórico em model-policy-history/).",
+  "version": 1,
+  "updated": "2026-07-08",
+  "backends": {
+    "codex": {
+      "enabled": true,
+      "cost": "free",
+      "modes": [
+        "oneshot",
+        "worktree"
+      ],
+      "invoke": "codex exec --skip-git-repo-check -",
+      "worktree_invoke": "codex exec --sandbox workspace-write --full-auto -",
+      "prompt_via": "stdin",
+      "default_model": "gpt-5.4",
+      "notes": "modelo configurado em ~/.codex/config.toml; forte em lógica/debug"
+    },
+    "agy": {
+      "enabled": true,
+      "cost": "free",
+      "modes": [
+        "oneshot",
+        "worktree"
+      ],
+      "invoke": "agy -p",
+      "worktree_invoke": "agy -p --sandbox --dangerously-skip-permissions",
+      "prompt_via": "arg",
+      "model_flag": "--model",
+      "models": [
+        "Gemini 3.5 Flash (Low)",
+        "Gemini 3.5 Flash (Medium)",
+        "Gemini 3.5 Flash (High)",
+        "Gemini 3.1 Pro (Low)",
+        "Gemini 3.1 Pro (High)",
+        "Claude Sonnet 4.6 (Thinking)",
+        "Claude Opus 4.6 (Thinking)",
+        "GPT-OSS 120B (Medium)"
+      ],
+      "notes": "multi-provider; Sonnet/Opus de graça saem daqui, nunca da sessão Claude (D-01)",
+      "pools": {
+        "gemini": [
+          "Gemini 3.5 Flash (Low)",
+          "Gemini 3.5 Flash (Medium)",
+          "Gemini 3.5 Flash (High)",
+          "Gemini 3.1 Pro (Low)",
+          "Gemini 3.1 Pro (High)"
+        ],
+        "claude_gpt": [
+          "Claude Sonnet 4.6 (Thinking)",
+          "Claude Opus 4.6 (Thinking)",
+          "GPT-OSS 120B (Medium)"
+        ]
+      }
+    },
+    "gemini": {
+      "enabled": false,
+      "cost": "free",
+      "modes": [
+        "oneshot"
+      ],
+      "invoke": "gemini -p",
+      "prompt_via": "arg",
+      "notes": "CLI morto pro free tier individual (IneligibleTierError, 2026-07-05). Remover após 2 ciclos de refresh confirmando."
+    },
+    "claude_api": {
+      "enabled": true,
+      "cost": "paid",
+      "bin": "claude",
+      "prompt_via": "stdin",
+      "invoke": "claude -p --model claude-sonnet-5",
+      "scope_pattern": "<your-paid-scope>",
+      "env_file": "$HOME/.config/your-project/.env",
+      "env_var": "DELEGATE_ANTHROPIC_API_KEY"
+    }
+  },
+  "tasks": {
+    "review": [
+      {
+        "backend": "codex"
+      },
+      {
+        "backend": "agy",
+        "model": "Gemini 3.1 Pro (High)"
+      }
+    ],
+    "second-opinion": [
+      {
+        "backend": "codex"
+      },
+      {
+        "backend": "agy",
+        "model": "Claude Opus 4.6 (Thinking)"
+      }
+    ],
+    "scan": [
+      {
+        "backend": "agy",
+        "model": "Gemini 3.5 Flash (High)"
+      },
+      {
+        "backend": "agy",
+        "model": "GPT-OSS 120B (Medium)"
+      },
+      {
+        "backend": "codex"
+      }
+    ],
+    "boilerplate": [
+      {
+        "backend": "agy",
+        "model": "GPT-OSS 120B (Medium)"
+      },
+      {
+        "backend": "codex"
+      }
+    ],
+    "implement": [
+      {
+        "backend": "codex"
+      },
+      {
+        "backend": "agy",
+        "model": "Claude Sonnet 4.6 (Thinking)"
+      }
+    ]
+  },
+  "timeouts": {
+    "scan": 600,
+    "implement": 600,
+    "boilerplate": 300,
+    "review": 180,
+    "second-opinion": 180
+  },
+  "finding_routing": {
+    "$comment": "Finding/bug -> destino. Consumido por triage.md. Um finding vira issue no tracker do repo_alvo, com delega derivando executor da cascata tasks.<delega>. severity vem do ship-review §4 (Critical->P0, Important->P1, Suggestion->P2).",
+    "rules": [
+      {
+        "match": "parser|upload|ingest|etl",
+        "repo_alvo": "<external-data-repo>",
+        "reason": "findings de camada de dados vão pro repo externo dedicado do projeto"
+      },
+      {
+        "match": "bug-runtime|regressao",
+        "repo_alvo": "same",
+        "delega": "implement",
+        "state": "ready-for-agent"
+      },
+      {
+        "match": "boilerplate|teste-mecanico",
+        "repo_alvo": "same",
+        "delega": "boilerplate",
+        "state": "ready-for-agent"
+      },
+      {
+        "match": "arquitetura|decisao|contrato",
+        "repo_alvo": "same",
+        "delega": null,
+        "state": "ready-for-human"
+      }
+    ],
+    "default": {
+      "repo_alvo": "same",
+      "delega": null,
+      "state": "needs-triage"
+    }
+  }
+}

@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Eval Set Review - Skill Creator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 28px;
+            margin-bottom: 10px;
+        }
+
+        .skill-info {
+            background: #f9f9f9;
+            padding: 12px;
+            border-left: 4px solid #007acc;
+            margin-top: 15px;
+            font-size: 14px;
+            font-family: 'Monaco', 'Menlo', monospace;
+        }
+
+        .skill-description {
+            margin-top: 10px;
+            padding: 10px;
+            background: #f0f7ff;
+            border-radius: 4px;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            padding: 10px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-weight: 500;
+        }
+
+        .btn-primary {
+            background: #007acc;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #005a9e;
+        }
+
+        .btn-secondary {
+            background: #e0e0e0;
+            color: #333;
+        }
+
+        .btn-secondary:hover {
+            background: #d0d0d0;
+        }
+
+        .btn-danger {
+            background: #d13438;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #b12622;
+        }
+
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin: 20px 0;
+            border-bottom: 2px solid #e0e0e0;
+        }
+
+        .tab-btn {
+            padding: 10px 16px;
+            border: none;
+            background: transparent;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 3px solid transparent;
+            color: #666;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            color: #007acc;
+            border-bottom-color: #007acc;
+        }
+
+        .tab-btn:hover {
+            color: #333;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        .eval-list {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .eval-item {
+            padding: 16px;
+            border-bottom: 1px solid #e0e0e0;
+            transition: background 0.2s;
+        }
+
+        .eval-item:hover {
+            background: #fafafa;
+        }
+
+        .eval-item:last-child {
+            border-bottom: none;
+        }
+
+        .eval-item.should-trigger {
+            border-left: 4px solid #2ecc71;
+        }
+
+        .eval-item.should-not-trigger {
+            border-left: 4px solid #e74c3c;
+        }
+
+        .eval-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .eval-label {
+            font-weight: 600;
+            font-size: 14px;
+            padding: 2px 8px;
+            border-radius: 4px;
+        }
+
+        .label-trigger {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .label-no-trigger {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .eval-query {
+            width: 100%;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            font-family: 'Monaco', 'Menlo', monospace;
+            margin-bottom: 8px;
+            resize: vertical;
+            min-height: 60px;
+        }
+
+        .eval-query:focus {
+            outline: none;
+            border-color: #007acc;
+            box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.1);
+        }
+
+        .eval-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .eval-actions button {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+
+        .checkbox-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .stats {
+            padding: 12px;
+            background: #f0f7ff;
+            border-radius: 4px;
+            font-size: 13px;
+            margin-bottom: 16px;
+        }
+
+        .stats strong {
+            color: #007acc;
+        }
+
+        footer {
+            text-align: center;
+            padding: 20px;
+            color: #999;
+            font-size: 12px;
+        }
+
+        .error {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            color: #721c24;
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .eval-header {
+                flex-direction: column;
+            }
+
+            .controls {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Eval Set Review</h1>
+            <div class="skill-info">
+                <strong>Skill:</strong> <span id="skillName">__SKILL_NAME_PLACEHOLDER__</span>
+            </div>
+            <div class="skill-description">
+                <strong>Description:</strong> <span id="skillDescription">__SKILL_DESCRIPTION_PLACEHOLDER__</span>
+            </div>
+        </header>
+
+        <div class="controls">
+            <button class="btn-primary" onclick="exportEvalSet()">📥 Export Eval Set</button>
+            <button class="btn-secondary" onclick="resetForm()">↺ Reset Changes</button>
+            <button class="btn-secondary" onclick="addNewEval()">+ Add New Eval</button>
+        </div>
+
+        <div class="stats">
+            <strong>Summary:</strong>
+            <span id="statTrigger">0</span> should-trigger,
+            <span id="statNoTrigger">0</span> should-not-trigger
+        </div>
+
+        <div id="errorMsg" class="error" style="display: none;"></div>
+
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('trigger')">
+                Should Trigger 📍
+            </button>
+            <button class="tab-btn" onclick="switchTab('no-trigger')">
+                Should NOT Trigger 🚫
+            </button>
+        </div>
+
+        <div id="trigger" class="tab-content active">
+            <div class="eval-list" id="triggerList">
+                <!-- Generated by JavaScript -->
+            </div>
+        </div>
+
+        <div id="no-trigger" class="tab-content">
+            <div class="eval-list" id="noTriggerList">
+                <!-- Generated by JavaScript -->
+            </div>
+        </div>
+
+        <div class="controls" style="margin-top: 20px;">
+            <button class="btn-primary" onclick="exportEvalSet()">📥 Export Eval Set</button>
+        </div>
+
+        <footer>
+            <p>💡 Edit queries, toggle should-trigger, add/remove evals, then export to continue optimization.</p>
+        </footer>
+    </div>
+
+    <script>
+        // Parse eval data from placeholder (inserted by Python script)
+        const evalData = __EVAL_DATA_PLACEHOLDER__;
+        const skillName = "__SKILL_NAME_PLACEHOLDER__";
+        const skillDescription = "__SKILL_DESCRIPTION_PLACEHOLDER__";
+
+        // State management
+        let evals = [...evalData];
+        let currentTab = 'trigger';
+
+        function init() {
+            document.getElementById('skillName').textContent = skillName;
+            document.getElementById('skillDescription').textContent = skillDescription;
+            renderEvals();
+            updateStats();
+        }
+
+        function renderEvals() {
+            const triggerList = document.getElementById('triggerList');
+            const noTriggerList = document.getElementById('noTriggerList');
+
+            triggerList.innerHTML = '';
+            noTriggerList.innerHTML = '';
+
+            evals.forEach((eval, index) => {
+                const evalEl = createEvalElement(eval, index);
+                if (eval.should_trigger) {
+                    triggerList.appendChild(evalEl);
+                } else {
+                    noTriggerList.appendChild(evalEl);
+                }
+            });
+        }
+
+        function createEvalElement(eval, index) {
+            const div = document.createElement('div');
+            div.className = `eval-item ${eval.should_trigger ? 'should-trigger' : 'should-not-trigger'}`;
+            div.dataset.index = index;
+
+            const label = eval.should_trigger ? 'Should Trigger ✓' : 'Should NOT Trigger ✗';
+            const labelClass = eval.should_trigger ? 'label-trigger' : 'label-no-trigger';
+
+            div.innerHTML = `
+                <div class="eval-header">
+                    <div>
+                        <span class="eval-label ${labelClass}">${label}</span>
+                    </div>
+                    <span style="font-size: 12px; color: #999;">#${index + 1}</span>
+                </div>
+
+                <textarea class="eval-query" placeholder="Enter user query...">${eval.query}</textarea>
+
+                <div class="checkbox-row">
+                    <input type="checkbox" id="trigger-${index}"
+                           ${eval.should_trigger ? 'checked' : ''}
+                           onchange="toggleTrigger(${index})">
+                    <label for="trigger-${index}" style="cursor: pointer; margin: 0;">Should trigger this skill</label>
+                </div>
+
+                <div class="eval-actions">
+                    <button class="btn-secondary" onclick="removeEval(${index})">Delete</button>
+                    <button class="btn-secondary" onclick="moveEval(${index}, -1)">↑ Move Up</button>
+                    <button class="btn-secondary" onclick="moveEval(${index}, 1)">↓ Move Down</button>
+                </div>
+            `;
+
+            // Update query on text change
+            const textarea = div.querySelector('.eval-query');
+            textarea.addEventListener('change', (e) => {
+                evals[index].query = e.target.value;
+            });
+
+            return div;
+        }
+
+        function toggleTrigger(index) {
+            evals[index].should_trigger = !evals[index].should_trigger;
+            renderEvals();
+            updateStats();
+        }
+
+        function removeEval(index) {
+            if (confirm(`Remove eval #${index + 1}?`)) {
+                evals.splice(index, 1);
+                renderEvals();
+                updateStats();
+            }
+        }
+
+        function moveEval(index, direction) {
+            const newIndex = index + direction;
+            if (newIndex >= 0 && newIndex < evals.length) {
+                [evals[index], evals[newIndex]] = [evals[newIndex], evals[index]];
+                renderEvals();
+            }
+        }
+
+        function addNewEval() {
+            evals.push({
+                query: '',
+                should_trigger: true
+            });
+            renderEvals();
+            updateStats();
+            // Scroll to the new eval
+            setTimeout(() => {
+                const newEval = document.querySelector(`[data-index="${evals.length - 1}"]`);
+                if (newEval) newEval.scrollIntoView({ behavior: 'smooth' });
+            }, 100);
+        }
+
+        function updateStats() {
+            const triggerCount = evals.filter(e => e.should_trigger).length;
+            const noTriggerCount = evals.filter(e => !e.should_trigger).length;
+            document.getElementById('statTrigger').textContent = triggerCount;
+            document.getElementById('statNoTrigger').textContent = noTriggerCount;
+        }
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+
+            // Update tab buttons
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Update tab content
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName).classList.add('active');
+        }
+
+        function exportEvalSet() {
+            // Validate: at least one eval
+            if (evals.length === 0) {
+                showError('Please add at least one eval before exporting');
+                return;
+            }
+
+            // Validate: all queries filled
+            const emptyQueries = evals.filter(e => !e.query.trim());
+            if (emptyQueries.length > 0) {
+                showError(`${emptyQueries.length} eval(s) have empty queries. Please fill all queries before exporting.`);
+                return;
+            }
+
+            // Create JSON
+            const evalSet = {
+                skill_name: skillName,
+                eval_queries: evals,
+                exported_at: new Date().toISOString(),
+                total_evals: evals.length,
+                trigger_evals: evals.filter(e => e.should_trigger).length,
+                no_trigger_evals: evals.filter(e => !e.should_trigger).length
+            };
+
+            // Download as JSON
+            const dataStr = JSON.stringify(evalSet, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `eval_set_${skillName.replace(/\s+/g, '_').toLowerCase()}.json`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
+        }
+
+        function resetForm() {
+            if (confirm('Reset all changes? This cannot be undone.')) {
+                evals = [...evalData];
+                renderEvals();
+                updateStats();
+                hideError();
+            }
+        }
+
+        function showError(msg) {
+            const errorEl = document.getElementById('errorMsg');
+            errorEl.textContent = msg;
+            errorEl.style.display = 'block';
+        }
+
+        function hideError() {
+            document.getElementById('errorMsg').style.display = 'none';
+        }
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>

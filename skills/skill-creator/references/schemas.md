@@ -1,0 +1,430 @@
+# Skill Creator JSON Schemas
+
+This document defines the JSON schemas used throughout the skill-creator eval and benchmark workflow.
+
+## Table of Contents
+
+- [evals.json](#evalsjson) - Test case definitions
+- [eval_metadata.json](#eval_metadatajson) - Per-eval metadata
+- [grading.json](#gradingjson) - Grading results
+- [benchmark.json](#benchmarkjson) - Aggregated benchmark results
+- [feedback.json](#feedbackjson) - User feedback from eval viewer
+
+---
+
+## evals.json
+
+Test case definitions. Saved at `<skill-path>/evals/evals.json` or `<workspace>/evals.json`.
+
+### Schema
+
+```json
+{
+  "skill_name": "string",
+  "evals": [
+    {
+      "id": "number (0-indexed)",
+      "prompt": "string (user's task prompt)",
+      "expected_output": "string (description of expected result)",
+      "files": ["array of file paths to provide as context"],
+      "assertions": [
+        {
+          "name": "string (assertion identifier)",
+          "description": "string (what this assertion checks)",
+          "type": "deterministic | llm | manual"
+        }
+      ]
+    }
+  ]
+}
+```
+
+### Example
+
+```json
+{
+  "skill_name": "json-validator",
+  "evals": [
+    {
+      "id": 0,
+      "prompt": "Validate that this JSON file conforms to our schema and report any errors",
+      "expected_output": "Valid JSON with no schema violations",
+      "files": ["./test-data.json"],
+      "assertions": [
+        {
+          "name": "json_parseable",
+          "description": "Output parses as valid JSON",
+          "type": "deterministic"
+        },
+        {
+          "name": "schema_valid",
+          "description": "All required fields present",
+          "type": "deterministic"
+        }
+      ]
+    },
+    {
+      "id": 1,
+      "prompt": "Find any missing or invalid fields in this JSON",
+      "expected_output": "List of field names with errors",
+      "files": ["./bad-data.json"],
+      "assertions": [
+        {
+          "name": "found_errors",
+          "description": "Correctly identified at least 2 errors",
+          "type": "deterministic"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## eval_metadata.json
+
+Per-eval metadata. Saved at `<workspace>/iteration-N/eval-ID/eval_metadata.json` after running test cases.
+
+### Schema
+
+```json
+{
+  "eval_id": "number",
+  "eval_name": "string (descriptive name)",
+  "prompt": "string (the task prompt)",
+  "assertions": [
+    {
+      "name": "string",
+      "description": "string",
+      "type": "deterministic | llm | manual"
+    }
+  ]
+}
+```
+
+### Example
+
+```json
+{
+  "eval_id": 0,
+  "eval_name": "parser-multiversion-2025-utf8",
+  "prompt": "Parse this CSV file in UTF-8 encoding and extract header row",
+  "assertions": [
+    {
+      "name": "csv_parseable",
+      "description": "File parsed without encoding errors",
+      "type": "deterministic"
+    },
+    {
+      "name": "header_extracted",
+      "description": "First row matches expected column names",
+      "type": "deterministic"
+    }
+  ]
+}
+```
+
+---
+
+## grading.json
+
+Grading results for a single run. Saved at `<workspace>/iteration-N/eval-ID/{with_skill|without_skill}/run-1/grading.json`.
+
+### Schema
+
+```json
+{
+  "eval_id": "number",
+  "eval_name": "string",
+  "configuration": "string (e.g., 'with_skill' or 'without_skill')",
+  "run_number": "number (1-indexed run within this config)",
+  "summary": {
+    "pass_rate": "float (0.0-1.0, percentage of assertions passed)",
+    "passed": "number (count of passed assertions)",
+    "failed": "number (count of failed assertions)",
+    "total": "number (total assertions)"
+  },
+  "timing": {
+    "total_duration_seconds": "float"
+  },
+  "execution_metrics": {
+    "total_tool_calls": "number (optional)",
+    "output_chars": "number (optional)",
+    "errors_encountered": "number (optional)"
+  },
+  "expectations": [
+    {
+      "text": "string (assertion name/description)",
+      "passed": "boolean",
+      "evidence": "string (why it passed/failed)"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": ["array of strings"],
+    "needs_review": ["array of strings"],
+    "workarounds": ["array of strings"]
+  }
+}
+```
+
+### Example
+
+```json
+{
+  "eval_id": 0,
+  "eval_name": "parser-multiversion-2025-utf8",
+  "configuration": "with_skill",
+  "run_number": 1,
+  "summary": {
+    "pass_rate": 1.0,
+    "passed": 2,
+    "failed": 0,
+    "total": 2
+  },
+  "timing": {
+    "total_duration_seconds": 4.2
+  },
+  "execution_metrics": {
+    "total_tool_calls": 3,
+    "output_chars": 420,
+    "errors_encountered": 0
+  },
+  "expectations": [
+    {
+      "text": "csv_parseable",
+      "passed": true,
+      "evidence": "Parser read file without encoding errors, UTF-8 detected correctly"
+    },
+    {
+      "text": "header_extracted",
+      "passed": true,
+      "evidence": "Header row: ['id', 'name', 'date'] matches expected columns"
+    }
+  ],
+  "user_notes_summary": {
+    "uncertainties": [],
+    "needs_review": [],
+    "workarounds": []
+  }
+}
+```
+
+---
+
+## benchmark.json
+
+Aggregated statistics across multiple runs. Generated by `aggregate_benchmark.py`, saved at `<workspace>/iteration-N/benchmark.json`.
+
+### Schema
+
+```json
+{
+  "metadata": {
+    "skill_name": "string",
+    "skill_path": "string",
+    "executor_model": "string (Claude model used for execution)",
+    "analyzer_model": "string (Claude model used for analysis)",
+    "timestamp": "ISO 8601 datetime",
+    "evals_run": ["array of eval IDs"],
+    "runs_per_configuration": "number (typically 3)"
+  },
+  "runs": [
+    {
+      "eval_id": "number",
+      "configuration": "string (e.g., 'with_skill' or 'without_skill')",
+      "run_number": "number",
+      "result": {
+        "pass_rate": "float",
+        "passed": "number",
+        "failed": "number",
+        "total": "number",
+        "time_seconds": "float",
+        "tokens": "number",
+        "tool_calls": "number",
+        "errors": "number"
+      },
+      "expectations": ["array of expectation objects (from grading.json)"],
+      "notes": ["array of note strings"]
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": "float",
+        "stddev": "float",
+        "min": "float",
+        "max": "float"
+      },
+      "time_seconds": {
+        "mean": "float",
+        "stddev": "float",
+        "min": "float",
+        "max": "float"
+      },
+      "tokens": {
+        "mean": "number",
+        "stddev": "number",
+        "min": "number",
+        "max": "number"
+      }
+    },
+    "without_skill": {
+      "pass_rate": { "mean": "...", "stddev": "...", "min": "...", "max": "..." },
+      "time_seconds": { "mean": "...", "stddev": "...", "min": "...", "max": "..." },
+      "tokens": { "mean": "...", "stddev": "...", "min": "...", "max": "..." }
+    },
+    "delta": {
+      "pass_rate": "string ('+0.15' or '-0.05')",
+      "time_seconds": "string ('+2.3' or '-0.5')",
+      "tokens": "string ('+120' or '-50')"
+    }
+  },
+  "notes": ["array of analyst notes"]
+}
+```
+
+### Example
+
+```json
+{
+  "metadata": {
+    "skill_name": "parser-skill",
+    "skill_path": "/Users/user/.claude/skills/parser-skill",
+    "executor_model": "claude-opus-4-6",
+    "analyzer_model": "claude-opus-4-6",
+    "timestamp": "2026-04-03T14:30:00Z",
+    "evals_run": [0, 1, 2],
+    "runs_per_configuration": 3
+  },
+  "runs": [
+    {
+      "eval_id": 0,
+      "configuration": "with_skill",
+      "run_number": 1,
+      "result": {
+        "pass_rate": 1.0,
+        "passed": 2,
+        "failed": 0,
+        "total": 2,
+        "time_seconds": 4.2,
+        "tokens": 850,
+        "tool_calls": 3,
+        "errors": 0
+      },
+      "expectations": [
+        {
+          "text": "csv_parseable",
+          "passed": true,
+          "evidence": "UTF-8 encoding detected, parsed successfully"
+        }
+      ],
+      "notes": []
+    }
+  ],
+  "run_summary": {
+    "with_skill": {
+      "pass_rate": {
+        "mean": 0.98,
+        "stddev": 0.02,
+        "min": 0.95,
+        "max": 1.0
+      },
+      "time_seconds": {
+        "mean": 4.1,
+        "stddev": 0.3,
+        "min": 3.8,
+        "max": 4.5
+      },
+      "tokens": {
+        "mean": 862,
+        "stddev": 45,
+        "min": 810,
+        "max": 920
+      }
+    },
+    "without_skill": {
+      "pass_rate": {
+        "mean": 0.85,
+        "stddev": 0.08,
+        "min": 0.75,
+        "max": 0.92
+      },
+      "time_seconds": {
+        "mean": 5.2,
+        "stddev": 0.5,
+        "min": 4.7,
+        "max": 5.8
+      },
+      "tokens": {
+        "mean": 1240,
+        "stddev": 120,
+        "min": 1100,
+        "max": 1380
+      }
+    },
+    "delta": {
+      "pass_rate": "+0.13",
+      "time_seconds": "-1.1",
+      "tokens": "-378"
+    }
+  },
+  "notes": []
+}
+```
+
+---
+
+## feedback.json
+
+User feedback from the eval viewer. Saved by the viewer when user clicks "Submit All Reviews", at `<workspace>/iteration-N/feedback.json`.
+
+### Schema
+
+```json
+{
+  "reviews": [
+    {
+      "run_id": "string (e.g., 'eval-0-with_skill')",
+      "feedback": "string (user's textual feedback, or empty if no feedback)",
+      "timestamp": "ISO 8601 datetime"
+    }
+  ],
+  "status": "string ('complete', 'in_progress')"
+}
+```
+
+### Example
+
+```json
+{
+  "reviews": [
+    {
+      "run_id": "eval-0-with_skill",
+      "feedback": "Output looks good, formatting is correct",
+      "timestamp": "2026-04-03T14:35:22Z"
+    },
+    {
+      "run_id": "eval-0-without_skill",
+      "feedback": "Missing required fields, needs improvement",
+      "timestamp": "2026-04-03T14:35:45Z"
+    },
+    {
+      "run_id": "eval-1-with_skill",
+      "feedback": "",
+      "timestamp": "2026-04-03T14:36:00Z"
+    }
+  ],
+  "status": "complete"
+}
+```
+
+---
+
+## Notes
+
+- **IDs**: eval_id is 0-indexed, run_number is 1-indexed.
+- **Pass Rate**: Stored as float (0.0-1.0) in grading.json, but often displayed as percentage in markdown.
+- **Expectations**: The `expectations` array is the most important for grading — Claude reads this to understand what passed/failed.
+- **Timing**: Two sources: `grading.json` can include timing in `timing` field, or `timing.json` as a sibling file. aggregate_benchmark.py checks both.
+- **Fields**: Required fields have no defaults. Optional fields (like `tool_calls`, `errors`) default to 0 or empty.

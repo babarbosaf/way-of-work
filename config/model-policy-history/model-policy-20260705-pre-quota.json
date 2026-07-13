@@ -1,0 +1,67 @@
+{
+  "$comment": "SPEC-2026-002. Hierarquia tarefa→worker como DADO. delegate.sh lê daqui; nunca hardcode em script. Validação: jq . model-policy.json. Regra D-01: cost=free antes de cost=session; Claude Code (session) nunca aparece como backend — é o fallback implícito quando a cascata esgota (exit 2). Atualização: via proposta do /refresh-model-rankings aprovada (histórico em model-policy-history/).",
+  "version": 1,
+  "updated": "2026-07-05",
+  "backends": {
+    "codex": {
+      "enabled": true,
+      "cost": "free",
+      "modes": ["oneshot", "worktree"],
+      "invoke": "codex exec --skip-git-repo-check -",
+      "worktree_invoke": "codex exec --sandbox workspace-write --full-auto -",
+      "prompt_via": "stdin",
+      "default_model": "gpt-5.4",
+      "notes": "modelo configurado em ~/.codex/config.toml; forte em lógica/debug"
+    },
+    "agy": {
+      "enabled": true,
+      "cost": "free",
+      "modes": ["oneshot", "worktree"],
+      "invoke": "agy -p",
+      "worktree_invoke": "agy -p --sandbox --dangerously-skip-permissions",
+      "prompt_via": "arg",
+      "model_flag": "--model",
+      "models": [
+        "Gemini 3.5 Flash (Low)",
+        "Gemini 3.5 Flash (Medium)",
+        "Gemini 3.5 Flash (High)",
+        "Gemini 3.1 Pro (Low)",
+        "Gemini 3.1 Pro (High)",
+        "Claude Sonnet 4.6 (Thinking)",
+        "Claude Opus 4.6 (Thinking)",
+        "GPT-OSS 120B (Medium)"
+      ],
+      "notes": "multi-provider; Sonnet/Opus de graça saem daqui, nunca da sessão Claude (D-01)"
+    },
+    "gemini": {
+      "enabled": false,
+      "cost": "free",
+      "modes": ["oneshot"],
+      "invoke": "gemini -p",
+      "prompt_via": "arg",
+      "notes": "CLI morto pro free tier individual (IneligibleTierError, 2026-07-05). Remover após 2 ciclos de refresh confirmando."
+    }
+  },
+  "tasks": {
+    "review": [
+      { "backend": "codex" },
+      { "backend": "agy", "model": "Gemini 3.1 Pro (High)" }
+    ],
+    "second-opinion": [
+      { "backend": "codex" },
+      { "backend": "agy", "model": "Claude Opus 4.6 (Thinking)" }
+    ],
+    "scan": [
+      { "backend": "agy", "model": "Gemini 3.5 Flash (High)" },
+      { "backend": "codex" }
+    ],
+    "boilerplate": [
+      { "backend": "agy", "model": "Gemini 3.5 Flash (Medium)" },
+      { "backend": "codex" }
+    ],
+    "implement": [
+      { "backend": "codex" },
+      { "backend": "agy", "model": "Claude Sonnet 4.6 (Thinking)" }
+    ]
+  }
+}

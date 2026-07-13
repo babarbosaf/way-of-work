@@ -1,0 +1,51 @@
+# Whitelist: só instrução viva e tooling são versionados.
+# Tudo mais (estado volátil, sessões, caches, credenciais) fica fora.
+*
+
+# --- versionado ---
+!.gitignore
+!AGENTS.md
+!CLAUDE.md
+!CONTEXT.md
+!CHANGELOG.md
+!README.md
+!LICENSE
+!RUNBOOK.md
+!CONTRIBUTING.md
+!settings.json
+
+!config/
+!config/**
+!scripts/
+!scripts/**
+!hooks/
+!hooks/**
+!skills/
+!skills/**
+!templates/
+!templates/**
+!docs/
+!docs/**
+!specs/
+!specs/**
+!tests/
+!tests/**
+!project-template/
+!project-template/**
+
+# --- exceções dentro do versionado ---
+# overrides project-specific (privados, merge em runtime) — nunca versionar
+config/*.local.json
+# hook com topologia de repo de negócio: fica no disco, fora do template público
+hooks/emit_trace_guard.py
+skills/_archive/
+docs/_archive/
+hooks/__pycache__/
+**/__pycache__/
+**/*.log
+**/.DS_Store
+*.bak*
+**/*.bak*
+
+# transient handoffs / scratch (doutrina _tmp)
+_tmp/
