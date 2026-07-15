@@ -71,6 +71,7 @@ Antes de escolher o formato, detecta o modelo do repo:
 
 **Deltas do modelo-v2** (só quando os marcadores existem):
 
+0. **PRD fiel antes de abrir spec.** Confirma que `docs/prd/<sistema>.md` já descreve o estado-alvo pós-implementação esperado. Não descreve → ajusta o PRD primeiro (ou registra a divergência e para pra debater com o usuário); spec não abre sobre PRD desatualizado.
 1. **Escopo vem do PRD.** O Contexto (§1) linka a seção do `docs/prd/<sistema>.md` que a mudança altera, em 1 linha.
 2. **Formato = `_TEMPLATE-spec/` do projeto.** Seções: §1 Contrato (contexto+link PRD · aceite SIM/NÃO · fora de escopo) · §2 Design técnico (contratos externos · security · rollback · testes) · §3 Slices · §4 Ao fechar · §5 Gate. **Sem `## Plano de Implementação` granular** — a §3 é o handoff.
 3. **Fase 2 = slices na §3 da spec.md.** Slices ficam na própria spec (não em `TODOS.md`); o build da Fase 3 consome slice a slice em ordem. TDD por slice na Fase 3 (igual).
@@ -78,7 +79,7 @@ Antes de escolher o formato, detecta o modelo do repo:
 
 A mecânica das 3 fases abaixo (desambiguação, gates, TDD, red flags) é a mesma. Onde o texto disser "Zona 1 / Zona 2 / `## Plano de Implementação` / `TODOS.md`", no modelo-v2 leia "§1 Contrato / §2 Design + §3 Slices / §3 Slices / Acionáveis". A checklist final (Verification) mapeia igual.
 
-**Vocabulário público em modelo-v2:** ao escrever a spec e ao falar com o usuário, **use `§1`, `§2`, ..., `§5`** (ou os nomes do template: "Contrato", "Design técnico", "Slices", etc.). **Não diga "Zona 1/Zona 2"** — esse é vocabulário de revisão interna, não do doc. Vazar "Zona 1" pra conversa quando o repo é modelo-v2 é red flag.
+**Vocabulário público em modelo-v2:** ver Regra de ouro 5 abaixo (§1-§5, nunca "Zona 1/Zona 2", pra falar com o usuário ou escrever a spec).
 
 ---
 
