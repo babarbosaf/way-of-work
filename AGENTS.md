@@ -4,19 +4,26 @@ Fonte única de instrução pro agente (padrão AGENTS.md, lido por Codex/Cursor
 Copilot/etc.). `CLAUDE.md` é symlink pra este arquivo. A mecânica específica do
 Claude Code (hooks, kill-switches) vive na seção final "Claude Code specifics".
 
-**Escrita:** terse, sem AI slop (dash-conector, "canônico", verborragia).
-Fragmento > frase. Padrões do Benedito, bom português. Doutrina caveman:
-`docs/research/caveman.md`.
+**Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina:
+`docs/research/caveman.md` (brevidade) · `docs/research/anti-slop.md`
+(naturalidade, regras estruturais fixas) · memória `concept_anti_slop_termos`
+(termos banidos específicos, cresce por correção ao vivo — não hardcodar lista aqui).
 
 ## Ciclo de desenvolvimento — fluxo ideal
 
 Cada elo é entrada independente; entra no ponto que a tarefa pede.
 
 ```
-coaching ─→ PRD ─→ spec-and-plan ─→ test-and-debug ─→ git-workflow ─→ ship-review ─→ capture-lessons
- pensar   sistemas   spec ongoing    TDD/bug+regress    atomic ~100L    gate Critical    lição durável
+coaching ─→ spec-and-plan ─→ test-and-debug ─→ git-workflow ─→ ship-review ─→ capture-lessons
+ pensar   [gate:PRD fiel]    TDD/bug+regress    atomic ~100L    gate Critical    lição durável
  (pula se escopo claro)  (>1 arq, >30min, prod, endpoint)      (ao longo, não no fim)
 ```
+
+PRD não é passo, é doc-gate: `spec-and-plan` não abre sobre PRD desatualizado
+(sistema modelo-v2 ajusta o PRD pro estado-alvo antes da spec); `ship-review`
+confere no fechamento, dentro do gate Critical existente — não substitui,
+soma. Drift de PRD descoberto no meio do build (implementação diverge do que
+o PRD descreve) → para, debate com Benedito antes de editar PRD ou desviar escopo.
 
 Cross-cutting (atravessa, não é passo): context7 antes de API/lib; Evaluator
 `peer-review.sh` 1x spec + 1x diff; `delegate` mecânico/economia.

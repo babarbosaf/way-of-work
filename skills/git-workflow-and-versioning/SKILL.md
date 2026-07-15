@@ -129,7 +129,7 @@ Sessões paralelas com worktree (1 sessão = 1 worktree = 1 branch) e comandos d
 **Self-review do próprio PR (não vira teatro se for checklist):**
 - [ ] Ler diff de cima a baixo no GitHub (não no editor local — viés diferente)
 - [ ] Cada hunk casa com a spec ou descrição? (se não, sobrou refactor não relacionado — mover pra commit/PR separado)
-- [ ] Rodar `ship-review` skill como gate (5 eixos + checklist segurança)
+- [ ] Rodar `ship-review` skill como gate (6 eixos + checklist segurança)
 - [ ] Codex Gate se diff M+ (>~150 linhas) ou área crítica — usar Evaluator Status Block
 - [ ] CI verde no PR
 
