@@ -104,6 +104,17 @@ Revisão pesada e ciclos de ajuste acontecem **local, antes do push** — nunca 
 - Feature flags para código incompleto que vai ao main antes de estar pronto
 - Branches de longa duração → sinal de feature mal dimensionada
 
+**Branch por tarefa (branch-per-ask), condicional ao mesmo gate do `spec-and-plan`:**
+Tarefa que bate o critério de PR (§ Estratégia de PR — >1 arquivo, >30min, prod,
+endpoint/handler/cron/pipeline) abre branch isolada dedicada a ela, mesmo em
+sessão solo com agente. Tarefa trivial (fix 1 linha, config, doc sem risco de
+prod) vai direto no trunk — branch nesse caso é atrito sem ganho de proteção.
+Custo de isolamento é proporcional ao blast radius da tarefa, não constante.
+
+Merge dessa branch é sempre **squash merge** (histórico limpo, 1 commit por
+tarefa em `main`) seguido de **delete da branch** — nunca deixar branch órfã
+pós-merge.
+
 ---
 
 Sessões paralelas com worktree (1 sessão = 1 worktree = 1 branch) e comandos de referência (switch/restore/clone): `references/worktree-and-commands.md`.
