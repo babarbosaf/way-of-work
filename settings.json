@@ -14,7 +14,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "claude-fable-5[1m]",
+  "model": "sonnet",
   "skillOverrides": {
     "find-skills": "off",
     "supabase": "off",
@@ -66,6 +66,10 @@
           {
             "type": "command",
             "command": "python3 $HOME/.claude/hooks/noop_flush_guard.py"
+          },
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/rtk-hook-wrapper.sh"
           },
           {
             "type": "command",

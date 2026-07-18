@@ -84,6 +84,10 @@ Antes de escolher API/assinatura/versão de lib, consultar doc atualizada via co
 
 Antes de artefato de fidelidade (baseline, equivalência, snapshot de prod): reconhecimento completo do ambiente primeiro — versão real do servidor, enumeração dinâmica de objetos, tipos invisíveis a `information_schema`. Não usar CI/prod como sonda de descoberta.
 
+## RTK (economia de tokens)
+
+Proxy sempre-ligado; analytics: `rtk gain`. Detalhes: `docs/rtk.md`.
+
 ---
 
 ## Claude Code specifics
@@ -94,7 +98,7 @@ hook ensina na hora. Outros harnesses ignoram esta seção.
 **Hooks ativos.** Grep-first em Read >200 linhas; no-op flush bloqueado; lembrete
 context7 em import novo/manifesto de dependência (Edit/Write/MultiEdit, não bloqueia);
 memória exige append em `memory/log.md` antes de criar/editar. Auto-compact
-forçado em 400k via env.
+forçado em 400k via env; RTK roda via hook proxy.
 
 **Kill-switches.** `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,
 `CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`.
