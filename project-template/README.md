@@ -18,7 +18,6 @@
 |-----|-------|
 | [`STRATEGY.md`](STRATEGY.md) | Por que este projeto existe — o norte. |
 | [`PRD.md`](PRD.md) | O quê — requisitos por sistema (índice em `docs/prd/`). |
-| [`DESIGN.md`](DESIGN.md) | O que o usuário vê — UI/UX (decisões em `docs/design/`). |
 | [`CONVENTIONS.md`](CONVENTIONS.md) | Como — padrões de código e trabalho. |
 | [`RESEARCH.md`](RESEARCH.md) | Insumo de pesquisa (índice de `docs/research/`). |
 | [`RUNBOOK.md`](RUNBOOK.md) | Operação com humano no loop. |

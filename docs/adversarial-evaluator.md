@@ -48,7 +48,7 @@ Limpo no primeiro sucesso. Manual: `rm ~/.claude/gate/cooldown.codex` ou `PEER_C
 
 1. **Probe barato:** o script checa `command -v <reviewer>` antes de invocar; ausente → `rc=4`, desce na cascata sem latência.
 2. **Workspace não-git é caso NORMAL pra review de spec.** Specs vivem no parent não-git por design (ex. `~/Projects/<seu-projeto>`); código vai pro subdir git. Codex sempre invocado com `--skip-git-repo-check`. Pra diff, o script roda `git diff` então precisa de git no cwd.
-3. **`rc≠0` com output truncado** (efeito de wrapper de proxy/`set -e` no pipe) = "**não rodou**", nunca "ok". Tratar como indisponível.
+3. **`rc≠0` com output truncado** (efeito de RTK/`set -e` no pipe) = "**não rodou**", nunca "ok". Tratar como indisponível.
 4. **Integridade do Block:** `reviewer:` reflete **quem realmente produziu output verificável**. Nunca preencher findings como se um reviewer indisponível tivesse rodado.
 
 ## Fallback quando todos os reviewers externos indisponíveis

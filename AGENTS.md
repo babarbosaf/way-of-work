@@ -4,26 +4,19 @@ Fonte única de instrução pro agente (padrão AGENTS.md, lido por Codex/Cursor
 Copilot/etc.). `CLAUDE.md` é symlink pra este arquivo. A mecânica específica do
 Claude Code (hooks, kill-switches) vive na seção final "Claude Code specifics".
 
-**Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina:
-`docs/research/caveman.md` (brevidade) · `docs/research/anti-slop.md`
-(naturalidade, regras estruturais fixas) · memória `concept_anti_slop_termos`
-(termos banidos específicos, cresce por correção ao vivo — não hardcodar lista aqui).
+**Escrita:** terse, sem AI slop (dash-conector, "canônico", verborragia).
+Fragmento > frase. Padrões do Benedito, bom português. Doutrina caveman:
+`docs/research/caveman.md`.
 
 ## Ciclo de desenvolvimento — fluxo ideal
 
 Cada elo é entrada independente; entra no ponto que a tarefa pede.
 
 ```
-coaching ─→ spec-and-plan ─→ test-and-debug ─→ git-workflow ─→ ship-review ─→ capture-lessons
- pensar   [gate:PRD fiel]    TDD/bug+regress    atomic ~100L    gate Critical    lição durável
+coaching ─→ PRD ─→ spec-and-plan ─→ test-and-debug ─→ git-workflow ─→ ship-review ─→ capture-lessons
+ pensar   sistemas   spec ongoing    TDD/bug+regress    atomic ~100L    gate Critical    lição durável
  (pula se escopo claro)  (>1 arq, >30min, prod, endpoint)      (ao longo, não no fim)
 ```
-
-PRD não é passo, é doc-gate: `spec-and-plan` não abre sobre PRD desatualizado
-(sistema modelo-v2 ajusta o PRD pro estado-alvo antes da spec); `ship-review`
-confere no fechamento, dentro do gate Critical existente — não substitui,
-soma. Drift de PRD descoberto no meio do build (implementação diverge do que
-o PRD descreve) → para, debate com Benedito antes de editar PRD ou desviar escopo.
 
 Cross-cutting (atravessa, não é passo): context7 antes de API/lib; Evaluator
 `peer-review.sh` 1x spec + 1x diff; `delegate` mecânico/economia.
@@ -80,6 +73,16 @@ Antes de escolher API/assinatura/versão de lib, consultar doc atualizada via co
 3. **Teto do índice.** `MEMORY.md` ≤ ~40 linhas / hubs-only. Estourou = compactar (dobrar órfãs em hub), não relaxar.
 4. Precedência: AGENTS.md > memory; memória conflitante corrigida/arquivada na hora.
 
+## LLM Wiki — contexto cross-projeto
+
+Tarefa envolve pessoa/outro projeto/decisão arquitetural → `git -C ~/Projects/llm-wiki pull && grep -r "<termo>" ~/Projects/llm-wiki/wiki/`. Identidade cross-projeto → wiki (protocolo em `~/Projects/llm-wiki/AGENTS.md`); memory é comportamento do agente.
+
+## RTK (economia de tokens)
+
+Proxy sempre-ligado; analytics: `rtk gain`. **Não reintroduzir wrapper de API
+global** (`--1m` no shell mata o auto-compact e estoura o session limit); detalhes
+e postmortem: `docs/rtk.md`.
+
 ## Infra / migração de schema
 
 Antes de artefato de fidelidade (baseline, equivalência, snapshot de prod): reconhecimento completo do ambiente primeiro — versão real do servidor, enumeração dinâmica de objetos, tipos invisíveis a `information_schema`. Não usar CI/prod como sonda de descoberta.
@@ -93,8 +96,8 @@ hook ensina na hora. Outros harnesses ignoram esta seção.
 
 **Hooks ativos.** Grep-first em Read >200 linhas; no-op flush bloqueado; lembrete
 context7 em import novo/manifesto de dependência (Edit/Write/MultiEdit, não bloqueia);
-memória exige append em `memory/log.md` antes de criar/editar. Auto-compact
-forçado em 400k via env.
+memória exige append em `memory/log.md` antes de criar/editar. Auto-compact forçado
+em 400k via env; RTK roda via hook proxy.
 
 **Kill-switches.** `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,
 `CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`.

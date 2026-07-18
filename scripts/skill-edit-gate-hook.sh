@@ -17,7 +17,7 @@ path=$(jq -r '.tool_input.file_path // empty' <<<"$payload" 2>/dev/null)
 [[ -z "$path" ]] && exit 0
 
 case "$path" in
-    *"/.claude/skills/"*"/SKILL.md")
+    "$HOME/.claude/skills/"*"/SKILL.md")
         skill_name=$(basename "$(dirname "$path")")
         printf '🔒 Skill gate: %s/SKILL.md alterada. Antes de fechar a sessão, rode skill-creator pra validar frontmatter pushy + trigger explícito + alinhamento descrição↔conteúdo (Regra 10 do CLAUDE.md).\n' "$skill_name" >&2
         ;;

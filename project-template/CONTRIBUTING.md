@@ -17,7 +17,6 @@ quê. Sem credencial no diff. Formato: `tipo(escopo): resumo imperativo`.
 ## Checklist do PR
 
 - [ ] Testes verdes (`verify_cmd` do project.yaml)
-- [ ] Gate de review passou ([CONVENTIONS.md](CONVENTIONS.md) §Review)
 - [ ] Diff só do escopo da task
 - [ ] Doc de instrução viva atualizado se o comportamento mudou
 - [ ] Sem segredo/credencial no diff

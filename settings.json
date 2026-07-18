@@ -48,6 +48,15 @@
             "command": "bash $HOME/.claude/scripts/skill-edit-gate-hook.sh"
           }
         ]
+      },
+      {
+        "matcher": "Bash|SlashCommand",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 $HOME/.claude/hooks/emit_trace_guard.py"
+          }
+        ]
       }
     ],
     "PreToolUse": [
@@ -66,6 +75,10 @@
           {
             "type": "command",
             "command": "python3 $HOME/.claude/hooks/noop_flush_guard.py"
+          },
+          {
+            "type": "command",
+            "command": "bash $HOME/.claude/scripts/rtk-hook-wrapper.sh"
           },
           {
             "type": "command",
