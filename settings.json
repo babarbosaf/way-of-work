@@ -95,6 +95,10 @@
           {
             "type": "command",
             "command": "python3 $HOME/.claude/hooks/context7_reminder.py"
+          },
+          {
+            "type": "command",
+            "command": "python3 $HOME/.claude/hooks/design_skill_reminder.py"
           }
         ]
       }
