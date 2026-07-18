@@ -58,6 +58,16 @@ Decisão aceita é **imutável** — não se edita um ADR aceito; cria-se um nov
 **substitui** (`superseded by adr-NNNN`). O histórico da decisão é a cadeia de
 supersessão, não um diff.
 
+**Loop de design verificável (se o projeto mantém DESIGN.md):** regra de design
+se separa em camada que código checa (lint/CI) e camada que exige julgamento.
+Julgamento roda via plugin `impeccable@impeccable` (`/plugin marketplace add
+pbakaus/impeccable`, auto-update) — `critique` com rubric P0-P3. Instalação
+entra no bootstrap do projeto (`project-template/scripts/bootstrap-design-skill.sh`),
+não fica só documentada; um hook (`design_skill_reminder.py`) lembra de rodar a
+skill ao editar arquivo de UI. `ship-review` consome P0/P1 como gate Critical;
+achado de craft vira entrada em `docs/design/exemplars.md`, não só memória. Sem
+`DESIGN.md`, nada disso se aplica.
+
 ## 5. Runbook vs recipe — quem é o executor default
 
 ```
