@@ -14,11 +14,12 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "sonnet",
+  "model": "opus[1m]",
   "skillOverrides": {
     "find-skills": "off",
     "supabase": "off",
-    "supabase-postgres-best-practices": "off"
+    "supabase-postgres-best-practices": "off",
+    "refresh-model-rankings": "off"
   },
   "hooks": {
     "PostToolUse": [
@@ -104,6 +105,10 @@
       }
     ]
   },
+  "statusLine": {
+    "type": "command",
+    "command": "bash \"$HOME/.claude/scripts/statusline.sh\""
+  },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,
     "caveman@caveman": true
@@ -114,10 +119,16 @@
         "source": "github",
         "repo": "JuliusBrussee/caveman"
       }
+    },
+    "impeccable": {
+      "source": {
+        "source": "github",
+        "repo": "pbakaus/impeccable"
+      }
     }
   },
   "language": "PT-BR",
-  "effortLevel": "medium",
+  "effortLevel": "high",
   "autoUpdatesChannel": "latest",
   "tui": "fullscreen",
   "voice": {
