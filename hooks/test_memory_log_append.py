@@ -137,6 +137,22 @@ def scenario_6_path_outside_scope() -> bool:
         return proc.returncode == 0
 
 
+def scenario_7_alt_config_dir() -> bool:
+    """Perfil multi-conta (CLAUDE_CONFIG_DIR=~/.claude-trabalho) → enforcement segue ativo."""
+    with tempfile.TemporaryDirectory() as tmp:
+        cfg = Path(tmp) / ".claude-trabalho"
+        mem = cfg / "projects" / "-Users-test-project" / "memory"
+        mem.mkdir(parents=True)
+        write_log_with_entry(mem / "log.md", entry_target=None)
+        target = mem / "feedback_x.md"
+        target.write_text("# x")
+        proc = run_hook(
+            make_payload(str(target)),
+            env_extra={"HOME": tmp, "CLAUDE_CONFIG_DIR": str(cfg)},
+        )
+        return proc.returncode == 2
+
+
 def main() -> int:
     scenarios = [
         ("1. edit sem append → exit 2", scenario_1_edit_without_append),
@@ -145,6 +161,7 @@ def main() -> int:
         ("4. edit MEMORY.md → exit 0", scenario_4_edit_memory_md),
         ("5. kill switch → exit 0 + log", scenario_5_kill_switch),
         ("6. path fora do escopo → exit 0", scenario_6_path_outside_scope),
+        ("7. perfil alt (CLAUDE_CONFIG_DIR) → exit 2", scenario_7_alt_config_dir),
     ]
     failures = 0
     for name, fn in scenarios:

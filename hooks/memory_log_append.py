@@ -5,7 +5,7 @@ Spec: SPEC-2026-021 (memory-as-wiki).
 Reads PostToolUse JSON from stdin. Returns exit 0 (allow) or exit 2 (block).
 
 Kill switch: env var MEMORY_HOOK_DISABLED=1 → bypass with log entry in
-~/.claude/memory_kill_switch.log (mode 0600).
+<config-dir>/memory_kill_switch.log (mode 0600).
 """
 
 import json
@@ -26,15 +26,21 @@ def home() -> Path:
     return Path(os.environ.get("HOME", os.path.expanduser("~")))
 
 
+def config_dir() -> Path:
+    """Active config dir: CLAUDE_CONFIG_DIR (perfis multi-conta) ou ~/.claude."""
+    cfg = os.environ.get("CLAUDE_CONFIG_DIR")
+    return Path(cfg) if cfg else home() / ".claude"
+
+
 def is_under_memory_dir(file_path: Path) -> bool:
-    """Validate path is under ~/.claude/projects/*/memory/ (security boundary)."""
+    """Validate path is under <config-dir>/projects/*/memory/ (security boundary)."""
     try:
         resolved = file_path.resolve()
     except (OSError, RuntimeError):
         return False
     parts = resolved.parts
     try:
-        idx = parts.index(".claude")
+        idx = parts.index(config_dir().name)
     except ValueError:
         return False
     # Expect: .../.claude/projects/<project>/memory/<file>
@@ -46,8 +52,8 @@ def is_under_memory_dir(file_path: Path) -> bool:
 
 
 def write_kill_switch_log(file_path: Path, session_id: str, cwd: str) -> None:
-    """Append bypass record to ~/.claude/memory_kill_switch.log (mode 0600)."""
-    kill_log = home() / ".claude" / "memory_kill_switch.log"
+    """Append bypass record to <config-dir>/memory_kill_switch.log (mode 0600)."""
+    kill_log = config_dir() / "memory_kill_switch.log"
     kill_log.parent.mkdir(parents=True, exist_ok=True)
     ts = datetime.now(timezone.utc).isoformat()
     line = f"{ts} | session={session_id} | file={file_path} | cwd={cwd}\n"
