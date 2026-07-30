@@ -54,7 +54,7 @@ de reverter.>
 
 ### Security / risco   <!-- governança: apague se rigor < governança -->
 
-<modelo de ameaça: vetor × defesa × risco residual. ship-review verifica
+<modelo de ameaça: vetor × defesa × risco residual. o gate de ship verifica
 contra este modelo, não o redefine.>
 
 ### Rollback            <!-- governança: apague se rigor < governança -->
@@ -65,7 +65,7 @@ runbook linkado.>
 ### Estratégia de testes
 
 - **Unit/contract:** <funções e estruturas de output>
-- **User journeys:** um por ramo do COMO FICA (mecânica em test-and-debug).
+- **User journeys:** um por ramo do COMO FICA (derivam dos ramos do COMO FICA).
 - **Scenario (computer-use):** valida como o usuário faria, via `verify` —
   obrigatório se muda superfície user-facing dirigível.
 - **Smoke pós-deploy:** script com asserts (não "usuário roda na mão").

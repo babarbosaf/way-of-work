@@ -5,7 +5,7 @@ description: >
   avaliar se algo vale ser feito, ou refinar direção de projeto (strategy.md).
   Invoque quando o usuário quiser pensar antes de executar: "estou pensando em...",
   "como atacar X", "isso vale a pena?", "qual nosso norte", ou tema pessoal/decisão.
-  Não invoque para: escopo já claro pronto pra spec (spec-and-plan), bug (test-and-debug).
+  Não invoque para: escopo já claro pronto pra spec (spec-and-plan), bug com linha localizada (vai direto pro código).
   Aceita tema como argumento (ex: /coaching fechamento financeiro).
 ---
 

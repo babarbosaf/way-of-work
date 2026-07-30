@@ -29,7 +29,7 @@ ajuda. Visão macro e estrutura vivem aqui — não há `docs/architecture/` sep
 ## Review
 
 Checklist de gate deste repo: o que **reprova** merge, binário, não conselho.
-Destinada ao gate de ship (`ship-review`) como checklist Critical do repo. Corta o
+Destinada ao gate de ship (`git-workflow-and-versioning`) como checklist Critical do repo. Corta o
 que o CI/lint já pega. Vazio até existir gate real — não encher de aspiração.
 
 - **Severidade:** <o que é Critical *aqui*. Default mira prod; recalibre pra

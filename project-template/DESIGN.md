@@ -21,7 +21,7 @@
 > **Loop de design (opcional, escale conforme o projeto):** regra de design tem
 > duas camadas — a que **código verifica** (contraste, off-scale, z-index cru,
 > vira lint/CI) e a que **exige julgamento** (hierarquia, tom, craft, vira
-> `critique` do impeccable + P0-P3 gate no `ship-review`). Craft notável (bom
+> `critique` do impeccable + P0-P3 no gate de ship). Craft notável (bom
 > ou ruim) vira entrada em `docs/design/exemplars.md`, não só memória.
 
 <!-- Esqueleto — descomente e preencha se mantiver:

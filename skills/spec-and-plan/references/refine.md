@@ -1,6 +1,6 @@
 # refine — item magro → executável
 
-**Fronteira MECE:** refine **enriquece o corpo** até dar pra executar sem contexto. Não roteia (triage), não escreve o template de tracker (to-tickets), não classifica severidade (ship-review). É a **ação** que avança o state `needs-info → ready-for-agent` da máquina de estados do `triage.md`.
+**Fronteira MECE:** refine **enriquece o corpo** até dar pra executar sem contexto. Não roteia (triage), não escreve o template de tracker (to-tickets), não classifica severidade (gate de ship). É a **ação** que avança o state `needs-info → ready-for-agent` da máquina de estados do `triage.md`.
 
 ## Alvo: executabilidade, NÃO spec-linkage
 

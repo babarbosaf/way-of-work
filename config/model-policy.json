@@ -1,5 +1,5 @@
 {
-  "$comment": "SPEC-2026-002. Hierarquia tarefa→worker como DADO. delegate.sh lê daqui; nunca hardcode em script. Validação: jq . model-policy.json. Regra D-01: cost=free antes de cost=session; Claude Code (session) nunca aparece como backend — é o fallback implícito quando a cascata esgota (exit 2). Atualização: via proposta do /refresh-model-rankings aprovada (histórico em model-policy-history/).",
+  "$comment": "SPEC-2026-002. Hierarquia tarefa→worker como DADO. delegate.sh lê daqui; nunca hardcode em script. Validação: jq . model-policy.json. Regra D-01: cost=free antes de cost=session; Claude Code (session) nunca aparece como backend — é o fallback implícito quando a cascata esgota (exit 2). Atualização: editar direto; git é o histórico.",
   "version": 1,
   "updated": "2026-07-08",
   "backends": {
@@ -133,7 +133,7 @@
     "second-opinion": 180
   },
   "finding_routing": {
-    "$comment": "Finding/bug -> destino. Consumido por triage.md. Um finding vira issue no tracker do repo_alvo, com delega derivando executor da cascata tasks.<delega>. severity vem do ship-review §4 (Critical->P0, Important->P1, Suggestion->P2).",
+    "$comment": "Finding/bug -> destino. Consumido por triage.md. Um finding vira issue no tracker do repo_alvo, com delega derivando executor da cascata tasks.<delega>. severity vem do gate de ship (Critical->P0, Important->P1, Suggestion->P2).",
     "rules": [
       {
         "match": "parser|upload|ingest|etl",

@@ -25,15 +25,6 @@
             "command": "python3 $HOME/.claude/hooks/memory_log_append.py"
           }
         ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash $HOME/.claude/scripts/skill-edit-gate-hook.sh"
-          }
-        ]
       }
     ],
     "PreToolUse": [
