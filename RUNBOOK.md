@@ -4,7 +4,7 @@ Hub de procedimentos operacionais. Cada linha aponta pra um runbook específico;
 
 ## Adoção e setup
 
-- [Adotar o way-of-work](docs/runbooks/adopt-way-of-work.md) — os 3 modos de consumo (user-level, cloud multi-source, submodule), setup do override privado, verificação pós-instalação.
+- Ver [`README.md`](README.md) § Como usar — os 3 modos de consumo (user-level, cloud multi-source, submodule), override privado e verificação pós-instalação.
 
 ## Operação
 

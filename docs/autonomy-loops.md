@@ -18,8 +18,8 @@ Subir de degrau só quando o de baixo provou confiável no mesmo tipo de tarefa.
 ## Stop-condition é máquina, não juízo do agente
 
 Exit de loop = sinal runnable que **já existe** no setup, não "achei que ficou bom":
-- **`verify_cmd`** / `## Verify` do slice — fallback chain do `spec-and-plan` (roda o aceite do slice; exit 0 = pronto).
-- **suite-verde** — `test-and-debug`, handoff observável `suite=green`.
+- **`verify_cmd`** / `## Verify` do slice — roda o aceite do slice; exit 0 = pronto.
+- **suite-verde** — suite completa do projeto retorna 0.
 - **`smoke_cmd`** — `.claude/project.yaml`, obrigatório verde quando o diff toca `pipeline_paths`.
 
 Sem comando runnable de aceite, **não abre loop** — volta pra turn-based. Critério subjetivo (SIM/NÃO comportamental na spec) é pro humano assinar; o loop precisa do comando que checa aquele critério.
@@ -33,11 +33,7 @@ Sem comando runnable de aceite, **não abre loop** — volta pra turn-based. Cri
 
 ## Gate de saída = mecanismo existente, não paralelo
 
-Antes de ship unattended, o segundo-par-de-olhos já é do `ship-review`:
-- **Evaluator** (`peer-review.sh {spec|diff}`) — contexto fresco, menos viés. Teto 1 round spec + 1 diff.
-- **`simplify`** sobre o diff — eixo obrigatório, captura abstração prematura.
-
-**Não spawnar reviewer novo** (ex. `cavecrew-reviewer`) como gate — duplica o Evaluator. Evoluir>criar.
+Antes de ship unattended: Evaluator (`peer-review.sh diff`) + `/simplify` sobre o diff — mecânica em `docs/adversarial-evaluator.md`. **Não spawnar reviewer novo** como gate; duplica o Evaluator. Evoluir>criar.
 
 ## Custo: corpo mecânico vs julgamento
 
@@ -45,9 +41,3 @@ Modelo + effort são o **maior lever** de custo de loop.
 - **Corpo do loop** (iteração, scan, boilerplate, implement mecânico) → `delegate` (free tier: codex/agy/Gemini/GPT-OSS, D-01 do `model-policy`), effort baixo.
 - **Julgamento** (design de spec, veredito de ship, decisão de arquitetura) → fica na sessão Claude, effort alto.
 - Script determinístico > raciocinar passo repetitivo. Encode o check, não re-derive.
-
-**Gap de config aberto (rotear via `/refresh-model-rankings`, não hand-edit):** `model-policy.json` ainda não expressa dimensão `effort` por task nem um tier nomeado "loop-body". Propor via governança do arquivo (proposta aprovada + histórico), não editar direto.
-
-## Piloto proativo sugerido
-
-`refresh-model-rankings` — já nasceu pra cadência quinzenal, é read-only + proposal-only (risco ~zero unattended), trigger externo (lançamento de modelo), done binário (propôs diff / nada mudou). Primeiro candidato a virar `/schedule` + `/goal` quando a doutrina acima provar valor.

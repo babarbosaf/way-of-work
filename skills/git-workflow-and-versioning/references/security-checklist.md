@@ -1,4 +1,4 @@
-# Checklist de segurança — ship-review
+# Checklist de segurança — gate de ship
 
 ## Checklist de segurança (aplicar sempre antes do ship)
 

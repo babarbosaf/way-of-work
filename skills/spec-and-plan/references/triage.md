@@ -1,10 +1,10 @@
 # triage — finding/bug → destino + state
 
-**Fronteira MECE:** triage **roteia e seta o state**; não escreve template (isso é `to-tickets.md`), não enriquece corpo (isso é `refine.md`), não recria severidade (isso é ship-review §4 — triage **consome**). Task→worker é `delega:`.
+**Fronteira MECE:** triage **roteia e seta o state**; não escreve template (isso é `to-tickets.md`), não enriquece corpo (isso é `refine.md`), não recria severidade (isso é o gate de ship — triage **consome**). Task→worker é `delega:`.
 
 ## Quando roda
 
-- Finding do ship-review / findings/pass-N.md que precisa virar trabalho endereçado.
+- Finding do gate de ship / findings/pass-N.md que precisa virar trabalho endereçado.
 - Bug/pedido que chega solto (sem spec). Issue pode viver sem spec — não force vínculo.
 
 ## State machine (1 category + 1 state por issue — invariante)
@@ -42,4 +42,4 @@ Regra: finding não morre em arquivo local. `findings/pass-N.md` é handoff de c
 
 ## Consome severidade, não recria
 
-ship-review §4 já classifica **Critical/Important/Suggestion** (block ou não). triage lê essa severidade → vira `priority` (Critical→P0, Important→P1, Suggestion→P2) e decide state. Não reescrever a tabela de severidade.
+O gate de ship já classifica **Critical/Important/Suggestion** (block ou não). triage lê essa severidade → vira `priority` (Critical→P0, Important→P1, Suggestion→P2) e decide state. Não reescrever a tabela de severidade.

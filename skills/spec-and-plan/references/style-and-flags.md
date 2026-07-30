@@ -28,7 +28,7 @@ Spec aprovada é um documento que vai sobreviver à conversa que a gerou e que o
 - 🚩 Contexto reescreve o PRD em vez de linkar → duplicação; linka.
 - 🚩 `D-NN` sem task correspondente na Zona 2 → decisão órfã.
 - 🚩 Critérios vagos ("funcionar corretamente") → reescrever em SIM/NÃO comportamental.
-- 🚩 User journey descrita na spec **e** no test-and-debug → spec só nomeia (ramos do Como fica); mecânica vive no test-and-debug.
+- 🚩 User journey descrita na spec em detalhe → spec só nomeia os ramos do Como fica; cada ramo vira um teste de journey no build.
 - 🚩 Spec sem "Fora de escopo" → escopo não fechado.
 - 🚩 Spec escrita durante/depois da implementação → invalida o processo.
 - 🚩 Apresentar pra aprovação sem Evaluator Status Block no corpo → invalida o processo.

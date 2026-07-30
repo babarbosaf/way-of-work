@@ -6,7 +6,7 @@
 
 # Tracker canônico de execução (a fonte da verdade das tasks; TODOS.md é só
 # a fila local curta). Lido por: spec-and-plan (desdobra slices em issues),
-# ship-review (confere issue fechada).
+# gate de ship (confere issue fechada).
 tracker:
   backend: none            # github | notion | linear | none
   database: "<board-ou-db-id>"     # placeholder — id real fica fora do público
@@ -22,12 +22,12 @@ repo:
   branch_prefix: feature
 
 # Comando que roda o aceite de um slice. Lido por: spec-and-plan (Gate 2),
-# test-and-debug, e loops autônomos como stop-condition de máquina.
+# o build TDD, e loops autônomos como stop-condition de máquina.
 verify_cmd: "<comando de teste, ex.: pytest -q>"
 
 # --- opcionais (descomente se o projeto tiver pipeline/deploy) ---
-# Smoke E2E pós-deploy. Lido por: ship-review, quando o diff toca pipeline_paths.
+# Smoke E2E pós-deploy. Lido por: gate de ship, quando o diff toca pipeline_paths.
 # smoke_cmd: "<comando de smoke E2E>"
 #
-# Diretórios cujo diff exige rodar smoke_cmd antes do ship. Lido por: ship-review.
+# Diretórios cujo diff exige rodar smoke_cmd antes do ship. Lido por: gate de ship.
 # pipeline_paths: ["pipelines/", "handlers/"]

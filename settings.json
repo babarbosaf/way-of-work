@@ -14,13 +14,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
-  "skillOverrides": {
-    "find-skills": "off",
-    "supabase": "off",
-    "supabase-postgres-best-practices": "off",
-    "refresh-model-rankings": "off"
-  },
+  "model": "claude-fable-5[1m]",
   "hooks": {
     "PostToolUse": [
       {
@@ -28,25 +22,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash $HOME/.claude/scripts/peer-gate-hook.sh"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
             "command": "python3 $HOME/.claude/hooks/memory_log_append.py"
-          }
-        ]
-      },
-      {
-        "matcher": "Edit|Write|MultiEdit",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash $HOME/.claude/scripts/skill-edit-gate-hook.sh"
           }
         ]
       }
@@ -71,18 +47,6 @@
           {
             "type": "command",
             "command": "bash $HOME/.claude/scripts/rtk-hook-wrapper.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash $HOME/.claude/scripts/peer-gate-hook.sh commit"
-          },
-          {
-            "type": "command",
-            "command": "bash $HOME/.claude/scripts/precommit-hygiene-warn.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash $HOME/.claude/scripts/branch-age-warn.sh"
           }
         ]
       },
@@ -96,10 +60,6 @@
           {
             "type": "command",
             "command": "python3 $HOME/.claude/hooks/context7_reminder.py"
-          },
-          {
-            "type": "command",
-            "command": "python3 $HOME/.claude/hooks/design_skill_reminder.py"
           }
         ]
       }
@@ -111,7 +71,8 @@
   },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,
-    "caveman@caveman": true
+    "caveman@caveman": true,
+    "slack@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "caveman": {

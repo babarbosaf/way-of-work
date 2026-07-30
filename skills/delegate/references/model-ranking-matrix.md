@@ -29,7 +29,7 @@ Notas de operação:
 - codex default é gpt-5.4 (`~/.codex/config.toml`); 5.5/5.3 são override
   pontual de config.
 - A cascata automática por task-type continua em `model-policy.json`; esta
-  matriz não a substitui — alimenta escolhas manuais e o
-  `/refresh-model-rankings`, único caminho pra promover mudança daqui pra
-  policy. Atividades sem task-type na policy (docs, infra mecânica) roteiam
-  por esta matriz diretamente.
+  matriz não a substitui — alimenta escolhas manuais. Promover mudança daqui
+  pra policy = editar `model-policy.json` direto (git é o histórico).
+  Atividades sem task-type na policy (docs, infra mecânica) roteiam por esta
+  matriz diretamente.

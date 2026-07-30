@@ -15,22 +15,24 @@ Não é um plugin nem um framework. É um conjunto vivo de **skills**, **docs de
 | `AGENTS.md` | Padrão de instrução viva (agnóstico, lido por Codex/Cursor/etc.); `CLAUDE.md` é symlink. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica; override privado via `*.local.json` gitignored). |
 
-Fatos estruturais do repo (layout, peças, convenções) em [`CONTEXT.md`](CONTEXT.md); histórico de release em [`CHANGELOG.md`](CHANGELOG.md).
+Histórico de release em [`CHANGELOG.md`](CHANGELOG.md).
+
+Convenções estruturais:
+- **`AGENTS.md` é a fonte, `CLAUDE.md` symlink.** Editar sempre o `AGENTS.md`.
+- **`.gitignore` é allowlist:** ignora tudo (`*`), libera com `!`. O que é pessoal (scope pago, paths, roteamento) vive em `config/*.local.json`, gitignored, deep-merge em runtime.
+- **Memória (`memory/`) não é versionada** — comportamento do agente, específico da máquina.
+- **Instrução viva, não changelog.** Docs de start-up não guardam histórico (→ `CHANGELOG.md`, ADR, memória).
 
 ### Skills — taxonomia
 
 | Skill | Invocação |
 |-------|-----------|
 | [`spec-and-plan`](skills/spec-and-plan) | model-invoked |
-| [`test-and-debug`](skills/test-and-debug) | model-invoked |
-| [`ship-review`](skills/ship-review) | model-invoked |
-| [`git-workflow-and-versioning`](skills/git-workflow-and-versioning) | model-invoked |
+| [`git-workflow-and-versioning`](skills/git-workflow-and-versioning) | model-invoked (inclui o gate de ship) |
 | [`delegate`](skills/delegate) | model-invoked |
 | [`coaching`](skills/coaching) | user-invoked |
 | [`handoff`](skills/handoff) | user-invoked |
 | [`capture-lessons`](skills/capture-lessons) | user-invoked |
-| [`skill-creator`](skills/skill-creator) | user-invoked |
-| [`refresh-model-rankings`](skills/refresh-model-rankings) | user-invoked |
 
 **model-invoked** dispara sozinha quando o fluxo bate o gatilho (fase do ciclo, gate pré-ship). **user-invoked** você aciona por `/comando` num momento deliberado.
 
@@ -45,7 +47,7 @@ Fatos estruturais do repo (layout, peças, convenções) em [`CONTEXT.md`](CONTE
 
 ## Como usar
 
-Três modos de consumo — do mais simples ao mais isolado. Detalhe operacional em [`docs/runbooks/adopt-way-of-work.md`](docs/runbooks/adopt-way-of-work.md).
+Três modos de consumo — do mais simples ao mais isolado.
 
 ### 1. User-level (fonte única)
 
@@ -56,6 +58,14 @@ git clone https://github.com/babarbosaf/way-of-work ~/.claude
 ```
 
 O que é privado (scope pago, paths locais, roteamento de findings pra repos de negócio) vive em `config/*.local.json` — **gitignored, nunca versionado** — e faz merge sobre a base pública em runtime. Copie `config/model-policy.json` pra `config/model-policy.local.json` e preencha com seus valores.
+
+Verificação pós-instalação:
+
+```bash
+ls ~/.claude/skills                                            # skills presentes
+git -C ~/.claude check-ignore config/model-policy.local.json   # override é ignorado
+scripts/model-policy-effective.sh config/model-policy.json | jq .backends
+```
 
 ### 2. Cloud multi-source
 

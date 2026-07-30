@@ -1,8 +1,8 @@
 ---
 name: git-workflow-and-versioning
 description: |
-  Disciplina de versionamento: atomic commits (~100 linhas, máx 300), trunk-based, mensagens que explicam o porquê, sem credenciais no diff.
-  Invoque SEMPRE que o usuário pedir para "commitar"/"dar push"/"abrir PR", fechar incremento do BUILD, mencionar branch nova ou merge, ou antes de `git commit` não-trivial.
+  Disciplina de versionamento + gate de ship: atomic commits (~100 linhas, máx 300), trunk-based, mensagens que explicam o porquê, checklist pré-ship (segurança, simplify, Evaluator) — Critical aberto bloqueia.
+  Invoque SEMPRE que o usuário pedir para "commitar"/"dar push"/"abrir PR"/"dar ship"/"fazer deploy"/"fechar essa feature", fechar incremento do BUILD, mencionar branch nova ou merge, ou antes de `git commit` não-trivial.
   Não invoque para: commits triviais de docs/config sem proteção de branch, operações de leitura sem intenção de commit.
 ---
 
@@ -52,6 +52,30 @@ Revisão pesada e ciclos de ajuste acontecem **local, antes do push** — nunca 
 
 **Não use quando:**
 - Ainda no meio do BUILD → commita quando o incremento estiver verde
+
+---
+
+## Gate de ship (antes de commit não-trivial / deploy / fechar feature)
+
+Um checklist, uma passada. **Critical aberto bloqueia o ship.**
+
+- [ ] **Intenção:** o diff faz o que a spec/pedido descreve? Hunk que não casa = refactor não-relacionado → commit separado.
+- [ ] **Testes:** suite completa verde; comportamento novo tem teste; bug corrigido tem teste de regressão. AC "rodar manualmente" é anti-padrão → reescrever como script com assert.
+- [ ] **`/simplify` sobre o diff** — passo obrigatório, não opcional. Caça: regra de 3 violada (helper na 1ª duplicação), abstração sem 2º consumidor real, indireção que serve só ao caso atual, código morto "por garantia". Anti-purismo: abstração com 2+ consumidores reais não é prematura; duplicação com semântica diferente não vira DRY forçado.
+- [ ] **Segurança:** `references/security-checklist.md` — inputs validados, sem credenciais no diff, logs sem dado sensível, erros genéricos pro usuário.
+- [ ] **Evaluator Status Block** em estado `ok`/`pulado` (mecânica e formato: `~/.claude/docs/adversarial-evaluator.md`). Diff M+ ou área crítica sem review = rodar `peer-review.sh diff` antes.
+- [ ] **(modelo-v2)** Comportamento de sistema mudou → `docs/prd/<sistema>.md` atualizado + linha no `CHANGELOG.md`; decisão estrutural nova → ADR.
+- [ ] **Runbook:** o ship criou ritual operacional recorrente (cron, token/permissão manual, passo que repete)? → `docs/runbooks/<nome>.md` apontando pra spec. Senão, skip.
+
+**Severidade:** Critical = segurança, perda de dado, funcionalidade quebrada, débito irreversível ("me força a aceitar o design errado por meses") — bloqueia. Important = resolver antes do ship ou virar issue rastreada. Suggestion = opcional.
+
+**Report de fechamento (4 linhas, sem prosa):**
+```
+feito: <o que mudou, observável>
+como: <abordagem em 1 frase>
+verify: <comando/prova que rodou + resultado>
+findings: <N> (issues #...)
+```
 
 ---
 
@@ -140,8 +164,8 @@ Sessões paralelas com worktree (1 sessão = 1 worktree = 1 branch) e comandos d
 **Self-review do próprio PR (não vira teatro se for checklist):**
 - [ ] Ler diff de cima a baixo no GitHub (não no editor local — viés diferente)
 - [ ] Cada hunk casa com a spec ou descrição? (se não, sobrou refactor não relacionado — mover pra commit/PR separado)
-- [ ] Rodar `ship-review` skill como gate (6 eixos + checklist segurança)
-- [ ] Codex Gate se diff M+ (>~150 linhas) ou área crítica — usar Evaluator Status Block
+- [ ] Gate de ship (seção acima) rodou — checklist completo, sem Critical aberto
+- [ ] Evaluator se diff M+ (>~150 linhas) ou área crítica — usar Evaluator Status Block
 - [ ] CI verde no PR
 
 **Quando delegar review humano:**

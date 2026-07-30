@@ -5,7 +5,7 @@
 - **triage** (`references/triage.md`): finding/bug → destino + state. Não cria template, roteia.
 - **refine** (`references/refine.md`): item magro → executável. Enriquece, não roteia.
 - **`delega:`** (skill `delegate` + `model-policy.json`): task → worker. to-tickets **reusa** o marcador, não redefine.
-- **ship-review §4**: severidade (block/não). to-tickets/triage **consomem**, não recriam.
+- **gate de ship**: severidade (block/não). to-tickets/triage **consomem**, não recriam.
 
 ## Quando roda
 
