@@ -62,7 +62,7 @@ Script retorna `exit 2` (`unavailable`). A skill chamadora então:
 - Cada nível classifica nos mesmos 3 baldes (Critical/Important/Suggestion). `critical_aberto` do fallback bloqueia igual aos externos.
 - Mesmo teto de 2 rounds.
 - Níveis 3 e 4 são **piso**, não substituto. Quando codex/gemini voltam, eles são preferidos.
-- `ship-review` aceita `reviewer: claude-adversarial` (ou `claude-inline`) + `Gate 2: ok` como validação degradada (não rejeita por "indisponível" se um fallback rodou e passou).
+- O gate de ship aceita `reviewer: claude-adversarial` (ou `claude-inline`) + `Gate 2: ok` como validação degradada (não rejeita por "indisponível" se um fallback rodou e passou).
 
 ## Findings: stdout por default; sidecar opcional em folder
 
@@ -109,13 +109,13 @@ Sem teto diário. Observabilidade ad-hoc via `~/.claude/gate/usage.log` (JSONL).
 
 ## Evaluator Status Block — fonte canônica
 
-Artefato emitido por skills do ciclo pra desambiguar estado do gate. Skills downstream (`ship-review`) consomem, não re-inferem.
+Artefato emitido pra desambiguar estado do gate. O gate de ship (`git-workflow-and-versioning`) consome, não re-infere.
 
-**Ownership por contexto (nunca duas skills escrevem o mesmo Block):**
+**Ownership por contexto (nunca dois writers pro mesmo Block):**
 - `spec-and-plan` Fase 1 → único writer com `phase: fase-1` (Gate 1)
 - `spec-and-plan` Fase 3 → único writer com `phase: fase-3` (Gate 2) em fluxo normal
-- `test-and-debug` → único writer com `phase: standalone` em fluxo sem spec ativa
-- `ship-review` → **nunca escreve.** Leitor puro. Rejeita ship se estado != `ok`/`pulado`.
+- Fluxo sem spec ativa (bug fix, mudança standalone) → a sessão que roda `peer-review.sh diff` escreve o Block com `phase: standalone`
+- Gate de ship (`git-workflow-and-versioning`) → **nunca escreve.** Leitor puro. Rejeita ship se estado != `ok`/`pulado`.
 
 **Formato exato (todos campos obrigatórios):**
 ```
@@ -123,7 +123,7 @@ Artefato emitido por skills do ciclo pra desambiguar estado do gate. Skills down
 Evaluator Status Block
   spec_path: <path absoluto OU "standalone">
   phase: <"fase-1" | "fase-3" | "standalone">
-  emitted_by: <"spec-and-plan" | "test-and-debug">
+  emitted_by: <"spec-and-plan" | "standalone">
   reviewer: <"codex" | "gemini" | "claude-adversarial" | "claude-inline">
   git_rev: <SHA curto OU "no-git">
   session_id: <UUID>
@@ -157,15 +157,6 @@ Evaluator Status Block
 3. Claude nunca apresenta spec pra aprovação / propõe commit sem Block no output
 4. Consumidor localiza "Block corrente" pelo par `spec_path`+`phase` com `timestamp` maior no output da sessão ativa
 
-## Hook automático de nudge
-
-Registrado em `~/.claude/settings.json` (`peer-gate-hook.sh`). Emite lembrete (não bloqueia) em:
-- Edit/Write em `**/docs/specs/ongoing/*.md` → sugere `peer-review.sh spec`
-- Edit/Write em `**/agent/*.py` → sugere `peer-review.sh diff HEAD`
-- Bash de `git commit`/`git push` com arquivos dessas áreas staged → sugere review antes
-
-Silencioso em projetos sem essas pastas ou sem git.
-
 ## Quando o gate pula mas deveria rodar
 
 Spec pode estar com layout diferente do canônico. Opções:
@@ -181,8 +172,7 @@ Registro durável:
 
 ## Referências
 
-- `~/.claude/skills/ship-review/SKILL.md` — invoca o gate pré-SHIP
+- `~/.claude/skills/git-workflow-and-versioning/SKILL.md` — consome o gate pré-SHIP
 - `~/.claude/scripts/peer-review.sh` — implementação
-- `~/.claude/scripts/peer-gate-hook.sh` — hook de nudge
 - `~/.claude/gate/usage.log` — JSONL de uso (metadados, sem conteúdo)
 - Memórias por-projeto: `feedback_gate_*` / `feedback_codex_*` (renomes pendentes) em `~/.claude/projects/*/memory/`

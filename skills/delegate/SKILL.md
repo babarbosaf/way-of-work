@@ -26,9 +26,7 @@ description: >-
 
 A hierarquia vive em `~/.claude/config/model-policy.json` — **nunca escolha
 modelo por conta própria nem cite modelos literais**: passe o `--task` e deixe
-a policy rotear. Fica fora da pasta da skill de propósito: é dado
-compartilhado entre esta skill (leitura) e `refresh-model-rankings`
-(escrita/propõe diff) — não é recurso privado de uma skill só. Task-types:
+a policy rotear. Task-types:
 
 | task-type | quando usar |
 |---|---|
@@ -185,5 +183,5 @@ cai pra fallback interno mais barato (nunca opus/fable sem pedido explícito).
   arma/limpa os cooldowns reais que o dispatcher usa (roda antes de uma
   sessão que vai delegar pesado, pra não descobrir pool morto no meio de uma
   task). `delegate.test.sh` é todo mockado — não pega isso.
-- Atualização da hierarquia: só via proposta do `/refresh-model-rankings`
-  aprovada — nunca editar a policy no meio de uma delegação.
+- Atualização da hierarquia: editar `model-policy.json` direto (git é o
+  histórico) — mas nunca no meio de uma delegação em curso.
