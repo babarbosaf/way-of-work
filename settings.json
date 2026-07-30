@@ -14,7 +14,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "opus[1m]",
+  "model": "claude-fable-5[1m]",
   "skillOverrides": {
     "find-skills": "off",
     "supabase": "off",
@@ -111,7 +111,8 @@
   },
   "enabledPlugins": {
     "pyright-lsp@claude-plugins-official": true,
-    "caveman@caveman": true
+    "caveman@caveman": true,
+    "slack@claude-plugins-official": true
   },
   "extraKnownMarketplaces": {
     "caveman": {
