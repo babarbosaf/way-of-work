@@ -5,41 +5,56 @@ Copilot/etc.). `CLAUDE.md` é symlink pra este arquivo. A mecânica específica 
 Claude Code (hooks, kill-switches) vive na seção final "Claude Code specifics".
 
 **Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina:
-`docs/research/caveman.md` (brevidade) · `docs/research/anti-slop.md`
-(naturalidade, regras estruturais fixas) · memória `concept_anti_slop_termos`
-(termos banidos específicos, cresce por correção ao vivo — não hardcodar lista aqui).
+`docs/research/escrita.md` (brevidade + naturalidade) · memória
+`concept_anti_slop_termos` (termos banidos específicos, cresce por correção ao
+vivo — não hardcodar lista aqui).
 
-## Ciclo de desenvolvimento — fluxo ideal
-
-Cada elo é entrada independente; entra no ponto que a tarefa pede.
+## Ciclo de desenvolvimento
 
 ```
-coaching ─→ spec-and-plan ─→ test-and-debug ─→ git-workflow ─→ ship-review ─→ capture-lessons
- pensar   [gate:PRD fiel]    TDD/bug+regress    atomic ~100L    gate Critical    lição durável
- (pula se escopo claro)  (>1 arq, >30min, prod, endpoint)      (ao longo, não no fim)
+coaching ─→ spec-and-plan ─→ build TDD ─→ ship ─→ capture-lessons
+ pensar     só feature M/L   /simplify    gate único   lição durável
+ (pula se escopo claro)      no REFACTOR  (git-workflow)
 ```
 
-PRD não é passo, é doc-gate: `spec-and-plan` não abre sobre PRD desatualizado
-(sistema modelo-v2 ajusta o PRD pro estado-alvo antes da spec); `ship-review`
-confere no fechamento, dentro do gate Critical existente — não substitui,
-soma. Drift de PRD descoberto no meio do build (implementação diverge do que
-o PRD descreve) → para, debate com Benedito antes de editar PRD ou desviar escopo.
+Cada elo é entrada independente; entra no ponto que a tarefa pede. Spec só pra
+feature M/L (>1 arquivo, >30 min, prod, endpoint/handler/cron/pipeline);
+mudança pequena vai direto pro código. Gate de ship = checklist único na skill
+`git-workflow-and-versioning` (segurança, `/simplify`, Evaluator Block
+`ok`/`pulado`; Critical bloqueia). PRD é doc-gate: spec não abre sobre PRD
+desatualizado; drift descoberto no build → para, debate com Benedito antes de
+editar PRD ou desviar escopo.
 
-Cross-cutting (atravessa, não é passo): context7 antes de API/lib; Evaluator
-`peer-review.sh` 1x spec + 1x diff; `delegate` mecânico/economia.
+Cross-cutting: context7 antes de API/lib; Evaluator `peer-review.sh` 1x spec +
+1x diff; `delegate` mecânico/economia.
 
 **Handoff proativo:** sessão longa com trabalho aberto → gerar `/handoff` ANTES
-de compactar (compact manual ou autocompact). Não esperar o corte; contexto rico
-se perde na compaction. Transiente (retomar), não durável (→ capture-lessons).
+de compactar (compact manual ou autocompact); contexto rico se perde na
+compaction. Transiente (retomar), não durável (→ capture-lessons).
 
-Atalhos (sem cadeia): bug com linha → `test-and-debug` direto. Refactor puro /
-script one-shot / config → nenhuma skill.
+**Autonomia/loops:** escada turn→`/goal`→`/loop`→`/schedule` (subir por degrau),
+stop-condition de máquina (`verify_cmd`/suite-verde, nunca juízo do agente),
+turn cap. Doutrina: `docs/autonomy-loops.md`.
 
-**Autonomia/loops:** escada turn→`/goal`→`/loop`→`/schedule` (subir por degrau).
-Loop exige stop-condition de máquina (`verify_cmd`/suite-verde, nunca juízo do
-agente), turn cap, exit quantitativo, piloto em 1 slice. Gate = Evaluator+
-`simplify` (não spawnar reviewer paralelo). Corpo mecânico → `delegate` free tier.
-Doutrina: `docs/autonomy-loops.md`.
+## Testes — 3 regras
+
+1. Comportamento novo nasce com teste: RED antes do código, GREEN mínimo,
+   REFACTOR = `/simplify` mantendo verde.
+2. Todo bug ganha teste de regressão ANTES da correção; debug para na causa
+   raiz, não no sintoma ("deduplicar no resultado" é sintoma; "query errada" é causa).
+3. Suite verde é pré-condição de commit. "Parece certo" não é done; AC "rodar
+   manualmente" vira script com assert.
+
+## Código simples — YAGNI extremo
+
+- Abstração só na 3ª repetição (rule of three). Helper extraído na 1ª duplicação = corte.
+- Zero feature especulativa: com agente, adicionar depois é trivial; remover
+  depois que espalhou não é.
+- Antes de escrever helper, procurar função existente (stdlib, lib do projeto, codebase).
+- Diff pequeno > diff completo. Deletar código conta como progresso.
+- Evoluir > criar: estender artefato existente antes de criar paralelo; cobre
+  ~80% → estender; "`_v2` e migro depois" nunca migra. Doutrina:
+  `docs/evolve-over-create.md` (ler antes de criar model/módulo/flag/abstração paralela).
 
 ## Higiene de docs de start-up (instrução do agente: AGENTS.md/CLAUDE.md, README.md)
 
@@ -61,17 +76,16 @@ Regra dura: nunca deixar achado solto na conversa. 3+ na mesma tarefa = parar e 
 
 Todo arquivo cai num slot (doc-raiz + `docs/<área>/`, ou `src/`/`tests/`); o resto vai pra `_tmp/` (gitignored) → tombar, evoluir (registrando o porquê) ou morrer. Antes de mover, grep nos refs: doc vivo e referenciado fica.
 
-## Evoluir > criar (anti-duplicação)
-
-Estender artefato existente antes de criar paralelo. Cobre ~80%? → estender. "Mais limpo" sem consumidor pedindo = evoluir; "`_v2` e migro depois" = nunca migra. Doutrina: `docs/evolve-over-create.md` (ler antes de criar model/módulo/flag/abstração paralela e em ship-review).
-
 ## Coding practices atualizadas (context7)
 
-Antes de escolher API/assinatura/versão de lib, consultar doc atualizada via context7 MCP (`use context7`). Amarrado em `spec-and-plan`/`test-and-debug`. Ref: `docs/research/context7.md`.
+Antes de escolher API/assinatura/versão de lib, consultar doc atualizada via context7 MCP (`use context7`). Ref: `docs/research/context7.md`.
 
 ## Adversarial Evaluator (2a opinião)
 
-`scripts/peer-review.sh {spec|diff} <arg>`. Teto: 1 round spec + 1 diff por feature; round 2 exige aprovação. Status Block obrigatório em `spec-and-plan`/`test-and-debug`; ausente ou ≠ `ok`/`pulado` bloqueia `ship-review`. Mecânica: `docs/adversarial-evaluator.md`.
+`scripts/peer-review.sh {spec|diff} <arg>`. Teto: 1 round spec + 1 diff por
+feature; round 2 exige aprovação expressa. Status Block obrigatório antes de
+apresentar spec ou propor commit; o gate de ship rejeita estado ≠ `ok`/`pulado`.
+Mecânica: `docs/adversarial-evaluator.md`.
 
 ## Auto-memória — regras
 
@@ -96,11 +110,11 @@ Mecânica de enforcement específica do Claude Code — a mensagem de bloqueio d
 hook ensina na hora. Outros harnesses ignoram esta seção.
 
 **Hooks ativos.** Grep-first em Read >200 linhas; no-op flush bloqueado; lembrete
-context7 em import novo/manifesto de dependência (Edit/Write/MultiEdit, não bloqueia);
-memória exige append em `memory/log.md` antes de criar/editar. Auto-compact
-forçado em 400k via env; RTK roda via hook proxy.
+context7 em import novo/manifesto de dependência (não bloqueia); memória exige
+append em `memory/log.md` antes de criar/editar; guard de tamanho do CLAUDE.md;
+gate de edição de skill. Auto-compact forçado em 400k via env; RTK roda via hook proxy.
 
 **Kill-switches.** `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,
 `CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`.
 
-**Skills / templates.** Skill dispatch por `/`; templates de hook em `hooks/templates/`.
+**Skills.** Dispatch por `/`.
