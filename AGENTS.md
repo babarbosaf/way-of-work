@@ -26,7 +26,9 @@ desatualizado; drift descoberto no build → para, debate com Benedito antes de
 editar PRD ou desviar escopo.
 
 Cross-cutting: context7 antes de API/lib; Evaluator `peer-review.sh` 1x spec +
-1x diff; `delegate` mecânico/economia.
+1x diff; `delegate` mecânico/economia; `design-workflow` antes de componente/tela
+visual novo ou redesenho (busca na base Claude Design antes de codar — ver
+DESIGN.md do projeto).
 
 **Handoff proativo:** sessão longa com trabalho aberto → gerar `/handoff` ANTES
 de compactar (compact manual ou autocompact); contexto rico se perde na
@@ -111,8 +113,8 @@ hook ensina na hora. Outros harnesses ignoram esta seção.
 
 **Hooks ativos.** Grep-first em Read >200 linhas; no-op flush bloqueado; lembrete
 context7 em import novo/manifesto de dependência (não bloqueia); memória exige
-append em `memory/log.md` antes de criar/editar; guard de tamanho do CLAUDE.md;
-gate de edição de skill. Auto-compact forçado em 400k via env; RTK roda via hook proxy.
+append em `memory/log.md` antes de criar/editar; guard de tamanho do CLAUDE.md.
+Auto-compact forçado em 400k via env; RTK roda via hook proxy.
 
 **Kill-switches.** `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,
 `CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`.
