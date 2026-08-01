@@ -26,7 +26,9 @@ desatualizado; drift descoberto no build → para, debate com Benedito antes de
 editar PRD ou desviar escopo.
 
 Cross-cutting: context7 antes de API/lib; Evaluator `peer-review.sh` 1x spec +
-1x diff; `delegate` mecânico/economia.
+1x diff; `delegate` mecânico/economia; `design-workflow` antes de componente/tela
+visual novo ou redesenho (busca na base Claude Design antes de codar — ver
+DESIGN.md do projeto).
 
 **Handoff proativo:** sessão longa com trabalho aberto → gerar `/handoff` ANTES
 de compactar (compact manual ou autocompact); contexto rico se perde na
