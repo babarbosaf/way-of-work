@@ -14,7 +14,7 @@
     ],
     "defaultMode": "auto"
   },
-  "model": "claude-fable-5[1m]",
+  "model": "sonnet",
   "hooks": {
     "PostToolUse": [
       {
@@ -89,7 +89,7 @@
     }
   },
   "language": "PT-BR",
-  "effortLevel": "high",
+  "effortLevel": "medium",
   "autoUpdatesChannel": "latest",
   "tui": "fullscreen",
   "voice": {
