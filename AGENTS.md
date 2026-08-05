@@ -9,34 +9,33 @@ Claude Code (hooks, kill-switches) vive na seção final "Claude Code specifics"
 `concept_anti_slop_termos` (termos banidos específicos, cresce por correção ao
 vivo — não hardcodar lista aqui).
 
-## Ciclo de desenvolvimento
+## Modelo de trabalho — 3 modos
 
 ```
-coaching ─→ spec-and-plan ─→ build TDD ─→ ship ─→ capture-lessons
- pensar     só feature M/L   /simplify    gate único   lição durável
- (pula se escopo claro)      no REFACTOR  (git-workflow)
+projeto novo    →  /kickoff-project (entrevista → PRD·ROUTES·DESIGN·CONVENTIONS·AGENTS·FEEDBACK)
+feature grande  →  spec curta em docs/specs/<slug>.md (contrato+plano) → TDD → ship
+todo o resto    →  direto no código com TDD → ship
 ```
 
-Cada elo é entrada independente; entra no ponto que a tarefa pede. Spec só pra
-feature M/L (>1 arquivo, >30 min, prod, endpoint/handler/cron/pipeline);
-mudança pequena vai direto pro código. Gate de ship = checklist único na skill
-`git-workflow-and-versioning` (segurança, `/simplify`, Evaluator Block
-`ok`/`pulado`; Critical bloqueia). PRD é doc-gate: spec não abre sobre PRD
-desatualizado; drift descoberto no build → para, debate com Benedito antes de
-editar PRD ou desviar escopo.
+Feature grande = várias sessões, muitos arquivos, toca contrato ou prod. Na
+dúvida, vai direto e promove pra spec se crescer. A spec é descartável: ao
+shippar, a verdade funcional vai pro PRD (skill `spec-and-plan`).
 
-Cross-cutting: context7 antes de API/lib; Evaluator `peer-review.sh` 1x spec +
-1x diff; `delegate` mecânico/economia; `design-workflow` antes de componente/tela
-visual novo ou redesenho (busca na base Claude Design antes de codar — ver
-DESIGN.md do projeto).
+**Docs vivos** (política por projeto, no AGENTS.md dele): decisão de produto
+edita PRD; fluxo novo, ROUTES; padrão visual, DESIGN; padrão técnico,
+CONVENTIONS. Decisão técnica cara de reverter vira ADR em `docs/adrs/`.
+Correção/lição do projeto: append no `FEEDBACK.md` (teto ~30; entrada que virou
+norma é promovida ao doc permanente e apagada). Lição cross-projeto: memória
+(skill `capture-lessons` roteia). Achado colateral: resolve agora ou vira linha
+no `TODOS.md` com contexto — nunca solto na conversa.
 
-**Handoff proativo:** sessão longa com trabalho aberto → gerar `/handoff` ANTES
-de compactar (compact manual ou autocompact); contexto rico se perde na
-compaction. Transiente (retomar), não durável (→ capture-lessons).
-
-**Autonomia/loops:** escada turn→`/goal`→`/loop`→`/schedule` (subir por degrau),
-stop-condition de máquina (`verify_cmd`/suite-verde, nunca juízo do agente),
-turn cap. Doutrina: `docs/autonomy-loops.md`.
+Cross-cutting: context7 antes de API/lib; `delegate` mecânico/economia;
+`design-workflow` antes de componente/tela visual novo ou redesenho; `/handoff`
+antes de compactar com trabalho aberto. Segunda opinião adversarial
+(`scripts/peer-review.sh {spec|diff}`) é opcional, sob demanda — recomendada em
+diff que toca prod ou é caro de reverter (`docs/adversarial-evaluator.md`).
+Autonomia/loops: escada turn→`/goal`→`/loop`→`/schedule`, stop-condition de
+máquina (`docs/autonomy-loops.md`).
 
 ## Testes — 3 regras
 
@@ -54,40 +53,21 @@ turn cap. Doutrina: `docs/autonomy-loops.md`.
   depois que espalhou não é.
 - Antes de escrever helper, procurar função existente (stdlib, lib do projeto, codebase).
 - Diff pequeno > diff completo. Deletar código conta como progresso.
-- Evoluir > criar: estender artefato existente antes de criar paralelo; cobre
-  ~80% → estender; "`_v2` e migro depois" nunca migra. Doutrina:
-  `docs/evolve-over-create.md` (ler antes de criar model/módulo/flag/abstração paralela).
+- Evoluir > criar: estender artefato existente antes de criar paralelo
+  (`docs/evolve-over-create.md`).
 
-## Higiene de docs de start-up (instrução do agente: AGENTS.md/CLAUDE.md, README.md)
+## Higiene de docs de raiz (AGENTS.md/CLAUDE.md, README.md, PRD…)
 
-Carregam toda sessão; instrução viva, não changelog. Sem histórico (→ ADR/runbook/
-spec/memória), sem status volátil (→ tracker). Child AGENTS.md/CLAUDE.md só escreve
-override próprio. Teste linha-a-linha: "cortar isso faria o agente errar?" Não →
-cortar.
-
-## Inbox e achados colaterais — não largar contexto na mesa
-
-Vale pra `inbox.md` e achado no meio de outra tarefa:
-0. Baseline limpa antes de spec: `git status`; >5 arquivos `M`/`D` sem relação = parar e processar.
-1. Resolve agora (spec-and-plan ou item em TODOS.md/inbox: `[effort] descrição — owner` + critério). Achado que afeta spec ongoing atualiza spec+task no mesmo turno.
-2. Difere com contexto (arquivo+linha, sintoma, hipótese, critério, owner).
-
-Regra dura: nunca deixar achado solto na conversa. 3+ na mesma tarefa = parar e processar todos (fila, não pilha).
-
-## Tombamento — nada fora do formato
-
-Todo arquivo cai num slot (doc-raiz + `docs/<área>/`, ou `src/`/`tests/`); o resto vai pra `_tmp/` (gitignored) → tombar, evoluir (registrando o porquê) ou morrer. Antes de mover, grep nos refs: doc vivo e referenciado fica.
+Carregam toda sessão; instrução viva, não changelog. Sem histórico (→ ADR/spec/
+FEEDBACK/memória), sem status volátil (→ TODOS/tracker). Child AGENTS.md só
+escreve override próprio. Teste linha-a-linha: "cortar isso faria o agente
+errar?" Não → cortar. Raiz em CAIXA-ALTA = doc único e estável; instância
+(`spec-<slug>`, `adr-NNNN`) em lowercase. Transiente vai pra `_tmp/` (gitignored).
 
 ## Coding practices atualizadas (context7)
 
-Antes de escolher API/assinatura/versão de lib, consultar doc atualizada via context7 MCP (`use context7`). Ref: `docs/research/context7.md`.
-
-## Adversarial Evaluator (2a opinião)
-
-`scripts/peer-review.sh {spec|diff} <arg>`. Teto: 1 round spec + 1 diff por
-feature; round 2 exige aprovação expressa. Status Block obrigatório antes de
-apresentar spec ou propor commit; o gate de ship rejeita estado ≠ `ok`/`pulado`.
-Mecânica: `docs/adversarial-evaluator.md`.
+Antes de escolher API/assinatura/versão de lib, consultar doc atualizada via
+context7 MCP (`use context7`). Ref: `docs/research/context7.md`.
 
 ## Auto-memória — regras
 

@@ -1,7 +1,7 @@
 ---
 name: git-workflow-and-versioning
 description: |
-  Disciplina de versionamento + gate de ship: atomic commits (~100 linhas, máx 300), trunk-based, mensagens que explicam o porquê, checklist pré-ship (segurança, simplify, Evaluator) — Critical aberto bloqueia.
+  Disciplina de versionamento + gate de ship: atomic commits (~100 linhas, máx 300), trunk-based, mensagens que explicam o porquê, checklist pré-ship (testes, segurança, docs vivos).
   Invoque SEMPRE que o usuário pedir para "commitar"/"dar push"/"abrir PR"/"dar ship"/"fazer deploy"/"fechar essa feature", fechar incremento do BUILD, mencionar branch nova ou merge, ou antes de `git commit` não-trivial.
   Não invoque para: commits triviais de docs/config sem proteção de branch, operações de leitura sem intenção de commit.
 ---
@@ -35,11 +35,11 @@ As disciplinas abaixo (atomic, diff revisado, sem secrets, mensagem com *porquê
 
 Revisão pesada e ciclos de ajuste acontecem **local, antes do push** — nunca "push → revisa → corrige → re-push" (isso fura o gate e polui o PR). O PR é registro permanente; o CI é a rede pós-push.
 
-1. **Revisão de código (local, antes do commit):** subagent reviewer em contexto fresco (`/code-review`) + **Adversarial Evaluator** (`peer-review.sh diff main`) se diff M+ ou área crítica. Quem revisa nunca é quem implementou.
+1. **Revisão de código (local, antes do commit):** subagent reviewer em contexto fresco (`/code-review`). Segunda opinião adversarial (`peer-review.sh diff main`) é opcional — recomendada se o diff toca prod ou é caro de reverter. Quem revisa nunca é quem implementou.
 2. **Testes do produto (local + CI):** suíte completa verde local é pré-condição pro push; o CI re-roda em ambiente limpo após o push.
 3. **CI no PR (pós-push, automático):** full suite + lint em ambiente limpo. Merge em `main` **só com CI verde**.
 
-**Documentação do feedback:** PR-first. Findings + Evaluator Status Block vão pro **comentário da PR** (co-localizado com o diff, resolvível). O sidecar `.gate-findings/` é buffer efêmero do loop (gitignored); só vira artefato commitado em repo sem remote/PR. Ver `~/.claude/docs/adversarial-evaluator.md`.
+**Documentação do feedback:** PR-first. Findings vão pro **comentário da PR** (co-localizado com o diff, resolvível).
 
 ---
 
@@ -61,11 +61,10 @@ Um checklist, uma passada. **Critical aberto bloqueia o ship.**
 
 - [ ] **Intenção:** o diff faz o que a spec/pedido descreve? Hunk que não casa = refactor não-relacionado → commit separado.
 - [ ] **Testes:** suite completa verde; comportamento novo tem teste; bug corrigido tem teste de regressão. AC "rodar manualmente" é anti-padrão → reescrever como script com assert.
-- [ ] **`/simplify` sobre o diff** — passo obrigatório, não opcional. Caça: regra de 3 violada (helper na 1ª duplicação), abstração sem 2º consumidor real, indireção que serve só ao caso atual, código morto "por garantia". Anti-purismo: abstração com 2+ consumidores reais não é prematura; duplicação com semântica diferente não vira DRY forçado.
+- [ ] **`/simplify` sobre o diff** — recomendado, não bloqueante. Caça: regra de 3 violada (helper na 1ª duplicação), abstração sem 2º consumidor real, indireção que serve só ao caso atual, código morto "por garantia". Anti-purismo: abstração com 2+ consumidores reais não é prematura; duplicação com semântica diferente não vira DRY forçado.
 - [ ] **Segurança:** `references/security-checklist.md` — inputs validados, sem credenciais no diff, logs sem dado sensível, erros genéricos pro usuário.
-- [ ] **Evaluator Status Block** em estado `ok`/`pulado` (mecânica e formato: `~/.claude/docs/adversarial-evaluator.md`). Diff M+ ou área crítica sem review = rodar `peer-review.sh diff` antes.
-- [ ] **(modelo-v2)** Comportamento de sistema mudou → `docs/prd/<sistema>.md` atualizado + linha no `CHANGELOG.md`; decisão estrutural nova → ADR.
-- [ ] **Runbook:** o ship criou ritual operacional recorrente (cron, token/permissão manual, passo que repete)? → `docs/runbooks/<nome>.md` apontando pra spec. Senão, skip.
+- [ ] **Docs vivos:** comportamento de produto mudou → `PRD.md` atualizado; fluxo → `ROUTES.md`; padrão visual → `DESIGN.md`; padrão técnico → `CONVENTIONS.md`; decisão cara de reverter → ADR em `docs/adrs/`.
+- [ ] **Segunda opinião (opcional):** diff que toca prod ou é caro de reverter → oferecer `peer-review.sh diff` antes do commit. O dono decide.
 
 **Severidade:** Critical = segurança, perda de dado, funcionalidade quebrada, débito irreversível ("me força a aceitar o design errado por meses") — bloqueia. Important = resolver antes do ship ou virar issue rastreada. Suggestion = opcional.
 
@@ -128,7 +127,7 @@ findings: <N> (issues #...)
 - Feature flags para código incompleto que vai ao main antes de estar pronto
 - Branches de longa duração → sinal de feature mal dimensionada
 
-**Branch por tarefa (branch-per-ask), condicional ao mesmo gate do `spec-and-plan`:**
+**Branch por tarefa (branch-per-ask):**
 Tarefa que bate o critério de PR (§ Estratégia de PR — >1 arquivo, >30min, prod,
 endpoint/handler/cron/pipeline) abre branch isolada dedicada a ela, mesmo em
 sessão solo com agente. Tarefa trivial (fix 1 linha, config, doc sem risco de
@@ -165,7 +164,6 @@ Sessões paralelas com worktree (1 sessão = 1 worktree = 1 branch) e comandos d
 - [ ] Ler diff de cima a baixo no GitHub (não no editor local — viés diferente)
 - [ ] Cada hunk casa com a spec ou descrição? (se não, sobrou refactor não relacionado — mover pra commit/PR separado)
 - [ ] Gate de ship (seção acima) rodou — checklist completo, sem Critical aberto
-- [ ] Evaluator se diff M+ (>~150 linhas) ou área crítica — usar Evaluator Status Block
 - [ ] CI verde no PR
 
 **Quando delegar review humano:**

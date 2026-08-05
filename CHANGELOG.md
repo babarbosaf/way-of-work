@@ -5,7 +5,37 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ## [Unreleased]
 
+### Added
+
+- **Skill `kickoff-project`** (fork de [iagodemacedo/kickoff-project](https://github.com/iagodemacedo/kickoff-project),
+  adaptado): fundação de projeto novo por entrevista dirigida → `PRD.md`,
+  `ROUTES.md`, `DESIGN.md`, `CONVENTIONS.md`, `CLAUDE.md`, `AGENTS.md`,
+  `FEEDBACK.md`, `TODOS.md`. Adaptações: fase CONVENTIONS na cascata (cisão
+  PRD × conventions com regra de fronteira "usuário percebe → PRD"),
+  `FEEDBACK.md` com teto (~30) e regra de promoção, seção Execução (TDD/YAGNI)
+  no AGENTS.md gerado, `STRATEGY.md` opt-in, herança de fundação de design,
+  stack default da casa (ADR-0001), exemplos Chutaí com `CONVENTIONS.md` novo
+  extraído do PRD.
+
 ### Changed
+
+- **Modelo de trabalho vira 3 modos** (substitui o ciclo de 5 elos): projeto
+  novo → `/kickoff-project`; feature grande → spec de 1 arquivo em
+  `docs/specs/<slug>.md`; resto → direto no código com TDD. Docs vivos como
+  fonte de verdade; lição roteada pra `FEEDBACK.md` (projeto) ou memória
+  (global).
+- **Adversarial Evaluator vira opcional** — sem Status Block obrigatório, teto
+  de rounds ou estado que bloqueia ship; recomendado quando o diff toca prod ou
+  é caro de reverter. `spec-and-plan` (spec 1 arquivo, sem folder/rubric/
+  ongoing-done), `git-workflow-and-versioning` (gate: testes + segurança +
+  docs vivos; `/simplify` recomendado) e `capture-lessons` (roteador de 2
+  destinos) reescritas de acordo.
+
+### Removed (→ `archive/`)
+
+- `docs/way-of-working.md` (7 cadeias), `project-template/` (24 arquivos) e
+  `docs/rubrics/` — substituídos pela fundação gerada pelo kickoff + docs
+  vivos. References de spec-folder e roteamento modelo-v2 das skills.
 
 - **Simplificação do modelo de trabalho** (~9k linhas cortadas). Ciclo enxuto:
   `coaching → spec-and-plan → build TDD → ship → capture-lessons`.

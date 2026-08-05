@@ -30,8 +30,8 @@
 !specs/**
 !tests/
 !tests/**
-!project-template/
-!project-template/**
+!archive/
+!archive/**
 
 # --- exceções dentro do versionado ---
 # overrides project-specific (privados, merge em runtime) — nunca versionar
