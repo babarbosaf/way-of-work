@@ -12,6 +12,6 @@ Hub de procedimentos operacionais. Cada linha aponta pra um runbook específico;
 
 ## Doutrina (não-runbook, referência)
 
-- [Adversarial Evaluator](docs/adversarial-evaluator.md) — mecânica do gate de segunda opinião.
+- [Adversarial Evaluator](docs/adversarial-evaluator.md) — segunda opinião opcional (spec/diff).
 - [Evoluir > criar](docs/evolve-over-create.md) — anti-duplicação.
 - [Autonomy loops](docs/autonomy-loops.md) — escada de autonomia (turn → goal → loop → schedule).

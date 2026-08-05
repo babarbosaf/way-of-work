@@ -2,16 +2,16 @@
 
 Configuração curada de [Claude Code](https://claude.com/claude-code) — o `~/.claude` de um dev, versionado e público, pra quem quer adotar o mesmo modelo de trabalho com agentes.
 
-Não é um plugin nem um framework. É um conjunto vivo de **skills**, **docs de doutrina**, **hooks de enforcement** e um **padrão de `AGENTS.md`** que enforça um ciclo de desenvolvimento disciplinado: spec antes de código, gate adversarial antes de merge, memória durável entre sessões.
+Não é um plugin nem um framework. É um conjunto vivo de **skills**, **docs de doutrina**, **hooks de enforcement** e um **padrão de `AGENTS.md`** que sustenta um modelo de trabalho simples: fundação de projeto por entrevista (kickoff), docs vivos como fonte de verdade, TDD sempre, spec só pra feature grande, memória durável entre sessões.
 
 ## O que tem dentro
 
 | Área | O que é |
 |------|---------|
 | `skills/` | Skills invocáveis — cada uma é uma fase do ciclo (ver taxonomia abaixo). |
-| `docs/` | Doutrina: [`way-of-working.md`](docs/way-of-working.md) (as cadeias que ligam os docs), `adversarial-evaluator.md`, `evolve-over-create.md`, `autonomy-loops.md`, `rubrics/` e runbooks em `docs/runbooks/`. |
+| `docs/` | Doutrina: `evolve-over-create.md`, `autonomy-loops.md`, `adversarial-evaluator.md` (segunda opinião opcional) e runbooks em `docs/runbooks/`. |
 | `hooks/` | Enforcement em tempo de execução (grep-first em reads grandes, guardas de no-op, lembrete de doc atualizada). A mensagem de bloqueio ensina na hora. |
-| `project-template/` | Scaffold clonável do doc-system pra um projeto novo (hub docs, `docs/<área>/`, `.claude/project.yaml`). |
+| `archive/` | Modelo anterior (way-of-working de 7 cadeias, `project-template/` de 24 arquivos, rubrics) — substituído pelo kickoff + docs vivos. |
 | `AGENTS.md` | Padrão de instrução viva (agnóstico, lido por Codex/Cursor/etc.); `CLAUDE.md` é symlink. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica; override privado via `*.local.json` gitignored). |
 
@@ -27,7 +27,8 @@ Convenções estruturais:
 
 | Skill | Invocação |
 |-------|-----------|
-| [`spec-and-plan`](skills/spec-and-plan) | model-invoked |
+| [`kickoff-project`](skills/kickoff-project) | user-invoked (fundação de projeto novo por entrevista) |
+| [`spec-and-plan`](skills/spec-and-plan) | model-invoked (só feature grande) |
 | [`git-workflow-and-versioning`](skills/git-workflow-and-versioning) | model-invoked (inclui o gate de ship) |
 | [`delegate`](skills/delegate) | model-invoked |
 | [`coaching`](skills/coaching) | user-invoked |
@@ -38,12 +39,13 @@ Convenções estruturais:
 
 ## Filosofia em uma tela
 
-- **Spec é a fonte de verdade.** Nenhuma linha de código antes do contrato aprovado. `/spec-and-plan` materializa spec como folder, decompõe em slices verificáveis.
-- **Segunda opinião não é opcional.** Um Adversarial Evaluator (`peer-review.sh`) roda sobre spec e diff, classifica achados Critical/Important/Suggestion. Critical bloqueia.
+- **Fundação por entrevista.** Projeto novo nasce pelo `/kickoff-project`: entrevista dirigida → PRD, ROUTES, DESIGN, CONVENTIONS, AGENTS.md e FEEDBACK.md. Nada de formulário em branco.
+- **Docs vivos são a fonte de verdade.** Decisão de produto edita o PRD; padrão técnico, o CONVENTIONS; correção vira entrada no FEEDBACK.md (buffer com teto e promoção). Spec só pra feature grande, em 1 arquivo descartável — ao shippar, a verdade migra pro PRD.
+- **TDD sempre.** Comportamento novo nasce com teste; bug ganha regressão antes do fix; suite verde é pré-condição de commit.
+- **Segunda opinião sob demanda.** O Adversarial Evaluator (`peer-review.sh`) é opcional — recomendado quando o diff toca prod ou é caro de reverter.
 - **Evoluir > criar.** Estender artefato existente antes de criar paralelo. `_v2` e "migro depois" nunca migra.
 - **Memória durável entre sessões.** Fatos que sobrevivem à sessão viram memória atômica indexada; o resto morre com o contexto.
 - **Escrita terse.** Fragmento > frase. Sem verborragia, sem AI slop.
-- **Doc-system transferível.** `project-template/` é o esqueleto de docs de um projeto; [`docs/way-of-working.md`](docs/way-of-working.md) ensina as cadeias que ligam pesquisa → decisão, spec → PRD → changelog, e a espinha STRATEGY → CONVENTIONS.
 
 ## Como usar
 

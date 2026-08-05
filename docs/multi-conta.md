@@ -32,7 +32,7 @@ printf '%s' "$HOME/.claude-trabalho" | shasum -a 256 | cut -c1-8   # hash do per
 ## O que é compartilhado
 
 Symlink pro `~/.claude` (edita num lugar, vale nos dois): `AGENTS.md`, `CLAUDE.md`,
-`skills/`, `hooks/`, `scripts/`, `config/`, `docs/`, `project-template/`, `plugins/`.
+`skills/`, `hooks/`, `scripts/`, `config/`, `docs/`, `plugins/`.
 
 Isolado por perfil: credencial, `projects/` (memória, histórico), `sessions/`,
 `.claude.json` (MCP), `settings.json`, caches.
