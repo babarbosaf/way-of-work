@@ -7,7 +7,7 @@ payload=$(cat)
 
 cfg="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 case "$(basename "$cfg")" in
-  .claude-maracaja)  profile="MARACAJA"; color=$'\033[38;5;39m' ;;
+  .claude-maracaja)  profile="MARACAJA"; color=$'\033[38;5;220m' ;;
   .claude-exitlag)   profile="EXITLAG" ; color=$'\033[38;5;196m' ;;
   *)                 profile="$(basename "$cfg")"; color=$'\033[38;5;245m' ;;
 esac

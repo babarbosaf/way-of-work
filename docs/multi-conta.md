@@ -12,7 +12,7 @@ claude-exitlag    # conta EXITLAG  (perfil ~/.claude-exitlag)
 `claude` é **função no `~/.zshrc`** (seta `CLAUDE_CONFIG_DIR` e chama `command claude`)
 — função, não wrapper, pra sobreviver a updates do binário em `~/.local/bin/claude`.
 `claude-exitlag` é wrapper em `~/.local/bin/`. Flags passam direto (`--resume`, `-p`, etc.).
-Statusline mostra `[MARACAJA]` (azul) / `[EXITLAG]` (vermelho) — `scripts/statusline.sh`.
+Statusline mostra `[MARACAJA]` (amarelo) / `[EXITLAG]` (vermelho) — `scripts/statusline.sh`.
 
 O perfil PESSOAL (dir default `~/.claude` como config) foi aposentado em 2026-08-05:
 o estado dele (projects/memórias) foi fundido no maracaja, e o que era de exitlag foi
