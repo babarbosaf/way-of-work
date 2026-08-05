@@ -15,10 +15,10 @@ Estado transiente de trabalho em curso, num arquivo só. Fronteira dura com `cap
 
 ## Destino (um só)
 
-1. **Spec ongoing em build?** → `docs/specs/ongoing/<spec>/handoff.md` (formato do `_TEMPLATE-spec/handoff.md` do projeto, se existir).
-2. **Senão** → `_tmp/handoff-sessao-YYYY-MM-DD-<tema>.md` (gitignored).
+`_tmp/handoff-sessao-YYYY-MM-DD-<tema>.md` (gitignored). Se o trabalho em curso é
+uma spec de `docs/specs/`, o handoff referencia a spec pelo path — não vira seção dela.
 
-**Substitui, não acumula** — regenerar reescreve o arquivo. Morre quando absorvido: handoff de spec morre quando a spec vai pra `done/`; handoff de `_tmp/` declara no cabeçalho a condição de morte ("apagar quando X absorver isto").
+**Substitui, não acumula** — regenerar reescreve o arquivo. Morre quando absorvido: o cabeçalho declara a condição de morte ("apagar quando X absorver isto").
 
 ## Formato
 

@@ -42,8 +42,8 @@ Seja direto. Desafie o raciocínio. Não concorde por concordar.
 Ao final, se a sessão gerou ações concretas:
 
 1. Listar as ações identificadas
-2. Perguntar: "Quer que eu adicione essas ações no inbox do projeto relevante?"
-3. Se sim: inserir no inbox correspondente no formato GTD:
+2. Perguntar: "Quer que eu adicione essas ações no TODOS.md do projeto relevante?"
+3. Se sim: inserir no TODOS.md correspondente no formato GTD:
    `- [ ] [ação específica] — contexto: [origem/motivo] — adicionado: YYYY-MM-DD`
 4. Se a ação ainda está vaga: "Essa ainda está vaga — quer refinar antes de registrar?"
 
@@ -51,6 +51,6 @@ Ao final, se a sessão gerou ações concretas:
 
 Além das ações, rotear o resultado pelo tipo de tema (só se a sessão mudou algo):
 
-- **Solução/sistema definido ou aprofundado** → registrar/atualizar em `docs/prd/<sistema>.md`. Pronto pra execução? Sugerir `/spec-and-plan`.
-- **Direção de projeto** → atualizar o `strategy.md` do projeto no fechamento ("isso muda o strategy.md? atualiza agora").
-- **Tema pessoal sem artefato** → só as ações no inbox; não criar doc.
+- **Solução/sistema definido ou aprofundado** → registrar/atualizar no `PRD.md` do projeto. Pronto pra execução? Feature grande sugere `/spec-and-plan`; o resto vai direto pro código.
+- **Direção de projeto** → atualizar o `STRATEGY.md` do projeto no fechamento ("isso muda o STRATEGY.md? atualiza agora").
+- **Tema pessoal sem artefato** → só as ações no `TODOS.md`; não criar doc.
