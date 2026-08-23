@@ -101,7 +101,8 @@ fonte de verdade:
 
 Entregue já no kickoff, como scaffold, para que o formato fique padronizado desde o
 primeiro registro e o import `@FEEDBACK.md` do AGENTS.md nunca aponte para arquivo
-inexistente. Conteúdo inicial:
+inexistente. O molde com entradas de exemplo é o `FEEDBACK.example.md` da raiz do
+way-of-work. Conteúdo inicial:
 
 ```
 # Feedbacks

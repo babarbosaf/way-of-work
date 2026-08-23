@@ -1,19 +1,22 @@
 ---
 name: kickoff-project
-description: Cria a fundação documental de um projeto novo de produto ou software por meio de uma entrevista dirigida, produzindo quatro documentos encadeados no padrão-ouro. PRD (especificação com features arquitetadas, regras em tabela, edge cases, pontos a definir e decisões estratégicas registradas), documento de rotas (mapa completo de telas e navegação condicional), design system (identidade, tokens exatos, patterns de componente e guarda-corpos anti-slop) e conventions (stack, padrões de arquitetura e de código, regras obrigatórias de implementação). Fecha com CLAUDE.md e AGENTS.md, que amarram os documentos às regras operacionais dos agentes: feedbacks registrados em FEEDBACK.md, PRD sempre atualizado a cada decisão de produto e restrições invioláveis. Usar quando o usuário quer começar ou estruturar um projeto novo, montar o PRD, as rotas, o design ou as convenções de um produto, ou pedir "kickoff", "blueprint", "fundação do projeto", "planta do projeto", "documentação base" ou "especificação de produto". Por padrão entrega os oito arquivos; pula algum só se for pedido.
+description: |
+  Cria a fundação documental de um projeto novo por entrevista dirigida, em cadeia: PRD, documento de rotas, design system, CONVENTIONS.md, CLAUDE.md, AGENTS.md, FEEDBACK.md e TODOS.md. Oito arquivos por default, cada um derivando do anterior; pula algum só se for pedido.
+  Invoque quando o usuário for começar ou estruturar um projeto novo, ou pedir "kickoff", "fundação do projeto", "planta do projeto", "documentação base", "blueprint", ou o PRD, as rotas, o design ou as convenções de um produto.
+  Não invoque para: feature dentro de projeto que já tem fundação (é `spec-and-plan`), doc avulso sem projeto novo por trás, ou ajuste em documento que já existe.
 ---
 
 # Kickoff de Projeto
 
 ## Visão geral
 
-Esta skill transforma uma ideia de produto na sua planta baixa: quatro documentos que
-fundam o projeto e evitam refação. Ela não escreve os documentos de cachaço. Ela primeiro
-entrevista o dono do projeto com perguntas dirigidas, extrai a profundidade necessária, e
-só então redige, em cadeia: o PRD nasce da entrevista, as rotas caem do PRD, o design se
+Esta skill transforma uma ideia de produto na sua planta baixa: os documentos que fundam o
+projeto e evitam refação. Nada é redigido antes da entrevista. Primeiro ela pergunta ao
+dono do projeto, dirigindo as perguntas até ter a profundidade necessária, e só então
+escreve, em cadeia: o PRD nasce da entrevista, as rotas caem do PRD, o design se
 apoia nas telas que as rotas definiram, e as conventions consolidam a camada técnica que a
 entrevista e o PRD revelaram. Por fim, fecha a camada operacional: um CLAUDE.md que aponta
-para o AGENTS.md, e um AGENTS.md que amarra os quatro documentos às regras de trabalho dos
+para o AGENTS.md, e um AGENTS.md que amarra os documentos às regras de trabalho dos
 agentes (restrições invioláveis, registro de feedbacks, documentos sempre atualizados).
 
 A régua de profundidade é o projeto Chutaí, cujos documentos completos vivem em
