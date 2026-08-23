@@ -21,8 +21,6 @@
 !hooks/**
 !skills/
 !skills/**
-!templates/
-!templates/**
 !docs/
 !docs/**
 !specs/

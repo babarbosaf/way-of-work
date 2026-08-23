@@ -4,11 +4,12 @@ Fonte única de instrução pro agente (padrão AGENTS.md, lido por Codex/Cursor
 Copilot/etc.). `CLAUDE.md` é symlink pra este arquivo. A mecânica específica do
 Claude Code (hooks, kill-switches) vive na seção final "Claude Code specifics".
 
-**Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina:
-`docs/research/escrita.md` (brevidade + naturalidade). A calibração de voz — banidos,
-registro, corpus de imitação se houver — vive num arquivo só, fora daqui: preencha
-`templates/VOZ.md` na sua base de conhecimento e aponte pra ele. Lista de banidos cresce
-por correção ao vivo; hardcodar aqui é garantir que ninguém atualiza.
+**Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina, catálogo
+anti-slop e linter na skill `writing`; rode `check-writing.py` no arquivo antes do commit.
+A calibração de voz (banidos, registro, corpus de imitação) vive num arquivo só, fora
+daqui: preencha `skills/writing/references/voz.md` na sua base de conhecimento e aponte
+pra ele. Lista de banidos cresce por correção ao vivo; hardcodar aqui é garantir que
+ninguém atualiza.
 
 ## Modelo de trabalho — 3 modos
 

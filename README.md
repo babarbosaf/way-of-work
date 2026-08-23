@@ -33,6 +33,7 @@ Convenções estruturais:
 | [`coaching`](skills/coaching) | user-invoked |
 | [`handoff`](skills/handoff) | user-invoked |
 | [`capture-lessons`](skills/capture-lessons) | user-invoked |
+| [`writing`](skills/writing) | model-invoked (doutrina de escrita, catálogo anti-slop e linter) |
 
 **model-invoked** dispara sozinha quando o fluxo bate o gatilho (fase do ciclo, gate pré-ship). **user-invoked** você aciona por `/comando` num momento deliberado.
 

@@ -7,6 +7,13 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Skill `writing`** (absorve `docs/research/escrita.md` e `templates/VOZ.md`): doutrina
+  de brevidade e naturalidade, catálogo de 31 padrões anti-slop com o substituto de cada
+  um (`references/padroes.md`), molde de calibração de voz (`references/voz.md`), pares
+  antes/depois reais (`fixtures/`) e um linter (`scripts/check-writing.py`) que ignora
+  bloco de código e aponta `arquivo:linha:regra`. Suíte própria em
+  `tests/writing.test.sh`. A regra de escopo que faltava está explícita: fragmento é pra
+  instrução densa, texto lido de ponta a ponta pede frase conectada.
 - **Skill `kickoff-project`** (fork de [iagodemacedo/kickoff-project](https://github.com/iagodemacedo/kickoff-project),
   adaptado): fundação de projeto novo por entrevista dirigida → `PRD.md`,
   `ROUTES.md`, `DESIGN.md`, `CONVENTIONS.md`, `CLAUDE.md`, `AGENTS.md`,
