@@ -4,10 +4,10 @@ Fonte única de instrução pro agente (padrão AGENTS.md, lido por Codex/Cursor
 Copilot/etc.). `CLAUDE.md` é symlink pra este arquivo. A mecânica específica do
 Claude Code (hooks, kill-switches) vive na seção final "Claude Code specifics".
 
-**Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina:
-`docs/research/escrita.md` (brevidade + naturalidade) · memória
-`concept_anti_slop_termos` (termos banidos específicos, cresce por correção ao
-vivo — não hardcodar lista aqui).
+**Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Fonte única:
+`llm-wiki` → `concept_voz_benedito` (banidos + brevidade + naturalidade +
+calibração de voz; cresce por correção ao vivo, não hardcodar lista aqui).
+Doutrina de origem: `docs/research/escrita.md`.
 
 ## Modelo de trabalho — 3 modos
 
@@ -24,10 +24,18 @@ shippar, a verdade funcional vai pro PRD (skill `spec-and-plan`).
 **Docs vivos** (política por projeto, no AGENTS.md dele): decisão de produto
 edita PRD; fluxo novo, ROUTES; padrão visual, DESIGN; padrão técnico,
 CONVENTIONS. Decisão técnica cara de reverter vira ADR em `docs/adrs/`.
-Correção/lição do projeto: append no `FEEDBACK.md` (teto ~30; entrada que virou
-norma é promovida ao doc permanente e apagada). Lição cross-projeto: memória
-(skill `capture-lessons` roteia). Achado colateral: resolve agora ou vira linha
+Correção/lição do projeto: append no `FEEDBACK.md`, **uma linha por entrada** com o
+gatilho embutido (teto 10; narrativa do incidente fica na decisão que o produziu, e
+entrada que virou norma é promovida ao doc permanente e apagada). Lição
+cross-projeto: memória (skill `capture-lessons` roteia). Achado colateral: resolve agora ou vira linha
 no `TODOS.md` com contexto — nunca solto na conversa.
+
+**Identidade de projeto vive na `llm-wiki`.** Mudança que altera o que um projeto
+**é** (o que faz, stack, canal, quem mantém, se morreu) atualiza a entidade dele
+em `wiki/entities/` na mesma rodada, com `updated:`; sistema desligado vira
+`status: superseded`. Quem sabe que mudou é quem mudou: cron que descobre depois
+sempre chega tarde, e foi assim que uma página descreveu por três meses um agente
+que não existia mais.
 
 Cross-cutting: context7 antes de API/lib; `delegate` mecânico/economia;
 `design-workflow` antes de componente/tela visual novo ou redesenho; `/handoff`

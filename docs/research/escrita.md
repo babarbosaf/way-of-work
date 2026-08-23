@@ -3,8 +3,9 @@
 Doutrina de escrita adotada nos arquivos user-level e no output do agente.
 Fontes: https://github.com/juliusbrussee/caveman (brevidade) ·
 https://github.com/jalaalrd/anti-ai-slop-writing (naturalidade).
-Termos banidos específicos não vivem aqui — crescem por correção em
-`concept_anti_slop_termos` (memória).
+Fonte única consolidada (2026-08-22): `llm-wiki` →
+`wiki/concepts/concept_voz_benedito.md`. É lá que a lista de banidos cresce por
+correção ao vivo, e é o único lugar que Kirara, Xanim e Claude Code alcançam.
 
 ## Brevidade (caveman)
 
