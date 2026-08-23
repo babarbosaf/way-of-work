@@ -5,9 +5,10 @@ Copilot/etc.). `CLAUDE.md` é symlink pra este arquivo. A mecânica específica 
 Claude Code (hooks, kill-switches) vive na seção final "Claude Code specifics".
 
 **Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina:
-`docs/research/escrita.md` (brevidade + naturalidade) · memória
-`concept_anti_slop_termos` (termos banidos específicos, cresce por correção ao
-vivo — não hardcodar lista aqui).
+`docs/research/escrita.md` (brevidade + naturalidade). A calibração de voz — banidos,
+registro, corpus de imitação se houver — vive num arquivo só, fora daqui: preencha
+`templates/VOZ.md` na sua base de conhecimento e aponte pra ele. Lista de banidos cresce
+por correção ao vivo; hardcodar aqui é garantir que ninguém atualiza.
 
 ## Modelo de trabalho — 3 modos
 
@@ -24,10 +25,17 @@ shippar, a verdade funcional vai pro PRD (skill `spec-and-plan`).
 **Docs vivos** (política por projeto, no AGENTS.md dele): decisão de produto
 edita PRD; fluxo novo, ROUTES; padrão visual, DESIGN; padrão técnico,
 CONVENTIONS. Decisão técnica cara de reverter vira ADR em `docs/adrs/`.
-Correção/lição do projeto: append no `FEEDBACK.md` (teto ~30; entrada que virou
-norma é promovida ao doc permanente e apagada). Lição cross-projeto: memória
-(skill `capture-lessons` roteia). Achado colateral: resolve agora ou vira linha
+Correção/lição do projeto: append no `FEEDBACK.md`, **uma linha por entrada** com o
+gatilho embutido (teto 10; a narrativa do incidente fica na decisão que o produziu, e
+entrada que virou norma é promovida ao doc permanente e apagada). Lição cross-projeto:
+memória (skill `capture-lessons` roteia). Achado colateral: resolve agora ou vira linha
 no `TODOS.md` com contexto — nunca solto na conversa.
+
+**Identidade de projeto tem dono.** Mudança que altera o que um projeto **é** (o que
+faz, stack, canal, quem mantém, se morreu) atualiza a página dele na sua base de
+conhecimento na mesma rodada. Quem sabe que mudou é quem mudou: varredura que descobre
+depois sempre chega tarde, e foi assim que uma página descreveu por três meses um agente
+que não existia mais.
 
 Cross-cutting: context7 antes de API/lib; `delegate` mecânico/economia;
 `design-workflow` antes de componente/tela visual novo ou redesenho; `/handoff`
@@ -56,6 +64,17 @@ máquina (`docs/autonomy-loops.md`).
 - Evoluir > criar: estender artefato existente antes de criar paralelo
   (`docs/evolve-over-create.md`).
 
+## Antes de propor
+
+**Repo que já existe: o inventário é o primeiro entregável.** O que tem, onde estão os
+buracos, o que sai. Bloco de escolhas antes do mapa faz o dono escolher no escuro.
+
+**Fonte acessível se mede, não se opina.** API, banco ou arquivo na mão: medir primeiro.
+Diagnóstico com número decide; com adjetivo, negocia.
+
+**Operação em lote sobre dado do usuário** (workspace, wiki, drive, prod) tem gate no
+**plano**, não só na execução: desenho do resultado e método na mesa, e espera o ok.
+
 ## Higiene de docs de raiz (AGENTS.md/CLAUDE.md, README.md, PRD…)
 
 Carregam toda sessão; instrução viva, não changelog. Sem histórico (→ ADR/spec/
@@ -63,6 +82,8 @@ FEEDBACK/memória), sem status volátil (→ TODOS/tracker). Child AGENTS.md só
 escreve override próprio. Teste linha-a-linha: "cortar isso faria o agente
 errar?" Não → cortar. Raiz em CAIXA-ALTA = doc único e estável; instância
 (`spec-<slug>`, `adr-NNNN`) em lowercase. Transiente vai pra `_tmp/` (gitignored).
+Escopo se declara pelo que o projeto **É**: nada de tabela de exclusão nem de "isto saiu
+daqui" — a negativa que importa vive na decisão que a produziu.
 
 ## Coding practices atualizadas (context7)
 

@@ -1,6 +1,6 @@
 # Stack default
 
-O padrão da casa (Maracajá Labs, ADR-0001 do umbrella). É o ponto de partida, não uma
+O padrão da casa. É o ponto de partida, não uma
 amarra. Confirmar na Fase 0 da entrevista se o projeto mantém ou troca. Se trocar,
 capturar a stack nova e adaptar as seções transversais do PRD, o CONVENTIONS.md e a seção
 de tooling do design, mantendo o mesmo nível de profundidade.
@@ -21,7 +21,7 @@ Cada tela busca o que precisa em poucas idas ao banco, protegidas por RLS.
   funções de banco (RPC) quando a tela pede mais de uma consulta. DDL e queries
   administrativas via Management API. Dados analíticos em camadas medalhão
   (`bronze` → `silver` → gold), com só a camada gold exposta pela API.
-- **Workers.** Python para coleta, ETL e jobs pesados, rodando no Proxmox da casa.
+- **Workers.** Python para coleta, ETL e jobs pesados, rodando na infra da casa.
   Agendamento leve (sync de cache, push) por `pg_cron` + edge functions no Supabase.
 - **Segredos.** Supabase Vault (ADR-0002). Nada de segredo versionado; `.env` é fallback
   de transição, não fonte.

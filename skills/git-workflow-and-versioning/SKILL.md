@@ -107,8 +107,8 @@ findings: <N> (issues #...)
   - Saída: mensagem de commit clara
 
 - [ ] **5. Commit + parar no push**
-  - **Modo autônomo (default):** o agente executa o `git commit` direto, após revisão verde (§ 3 camadas). Em seguida **para e pede autorização** antes de `git push` — esse é o gate humano. Nunca pushar sem OK explícito do Benedito
-  - **Modo human-driven:** apresentar o comando de commit pronto para o Benedito executar
+  - **Modo autônomo (default):** o agente executa o `git commit` direto, após revisão verde (§ 3 camadas). Em seguida **para e pede autorização** antes de `git push` — esse é o gate humano. Nunca pushar sem OK explícito do dono do repo
+  - **Modo human-driven:** apresentar o comando de commit pronto para o dono do repo executar
   - Atribuição: rodapé `Co-Authored-By` em ambos os modos
   - Saída: commit no histórico; push só após autorização
 
@@ -189,4 +189,4 @@ Red flags e rationalizations: `references/red-flags-and-rationalizations.md`.
 - [ ] `suite de testes do projeto` passando
 - [ ] Mensagem de commit descritiva com rodapé Co-Authored-By
 - [ ] Revisão verde (§ 3 camadas) antes do commit
-- [ ] `git push` só após autorização explícita do Benedito (gate)
+- [ ] `git push` só após autorização explícita do dono do repo (gate)

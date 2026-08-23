@@ -18,7 +18,7 @@ linha** — capacidade sobrando é desperdício de quota.
 
 Notas de operação:
 - **`claude_api` (`DELEGATE_ANTHROPIC_API_KEY`) está FORA do ranking**: pago
-  dedicado, só entra quando o Benedito declarar explicitamente na conversa
+  dedicado, só entra quando o usuário declarar explicitamente na conversa
   ("usa a key", "pode usar claude_api"). Nunca como fallback automático.
 - **Fallback sessão** (subagente Claude do plano) só quando a task exige o
   harness Claude (tools/MCP/skills) ou a cascata externa esgotou — nunca como
