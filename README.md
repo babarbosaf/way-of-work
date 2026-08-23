@@ -61,6 +61,23 @@ git clone https://github.com/babarbosaf/way-of-work ~/.claude
 
 O que é privado (scope pago, paths locais, roteamento de findings pra repos de negócio) vive em `config/*.local.json` — **gitignored, nunca versionado** — e faz merge sobre a base pública em runtime. Copie `config/model-policy.json` pra `config/model-policy.local.json` e preencha com seus valores.
 
+#### `settings.json` é mínimo de propósito
+
+O `settings.json` versionado carrega só o que faz o repo funcionar: os hooks de
+enforcement, o statusline e o teto de auto-compact. Preferência pessoal não entra, e
+nada que suprima confirmação entra também. Quem clona não herda modelo, idioma, plugin
+habilitado nem prompt de permissão desligado.
+
+O `settings.example.json` lista as chaves de preferência mais comuns com valores
+neutros. Copie pro seu `settings.json` o que fizer sentido, ou rode com o mínimo.
+
+Plugin é opt-in de quem adota, então nenhum marketplace vem habilitado:
+
+```bash
+claude plugin marketplace add <owner>/<repo>
+claude plugin install <plugin>@<marketplace>
+```
+
 Verificação pós-instalação:
 
 ```bash

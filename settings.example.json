@@ -1,0 +1,12 @@
+{
+  "model": "claude-sonnet-5",
+  "effortLevel": "high",
+  "language": "PT-BR",
+  "tui": "fullscreen",
+  "autoUpdatesChannel": "latest",
+  "showThinkingSummaries": true,
+  "voice": {
+    "enabled": false,
+    "mode": "hold"
+  }
+}
