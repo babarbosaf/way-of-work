@@ -10,6 +10,7 @@ O julgamento fica em references/padroes.md; aqui só entra regra sem falso posit
 import re
 import sys
 
+HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
 FENCE = re.compile(r"^\s*(```|~~~)")
 INLINE_CODE = re.compile(r"`[^`\n]*`")
 LINK_TARGET = re.compile(r"\]\([^)\s]+\)")
@@ -85,7 +86,9 @@ def strip_code(lines):
 
 def check(path):
     try:
-        raw = open(path, encoding="utf-8").read().splitlines()
+        text = open(path, encoding="utf-8").read()
+        text = HTML_COMMENT.sub(lambda m: re.sub(r"[^\n]", " ", m.group()), text)
+        raw = text.splitlines()
     except OSError as e:
         print(f"{path}: não deu pra ler: {e}", file=sys.stderr)
         return [("0", "io", str(e))]

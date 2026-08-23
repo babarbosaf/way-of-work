@@ -39,7 +39,7 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `docs/specs/<slug>.md`; resto → direto no código com TDD. Docs vivos como
   fonte de verdade; lição roteada pra `FEEDBACK.md` (projeto) ou memória
   (global).
-- **Adversarial Evaluator vira opcional** — sem Status Block obrigatório, teto
+- **Adversarial Evaluator vira opcional.** Sem Status Block obrigatório, teto
   de rounds ou estado que bloqueia ship; recomendado quando o diff toca prod ou
   é caro de reverter. `spec-and-plan` (spec 1 arquivo, sem folder/rubric/
   ongoing-done), `git-workflow-and-versioning` (gate: testes + segurança +
@@ -49,7 +49,7 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 ### Removed
 
 - `docs/way-of-working.md` (7 cadeias), `project-template/` (24 arquivos) e
-  `docs/rubrics/` — substituídos pela fundação gerada pelo kickoff + docs
+  `docs/rubrics/`, substituídos pela fundação gerada pelo kickoff + docs
   vivos. References de spec-folder e roteamento modelo-v2 das skills.
 - **Simplificação do modelo de trabalho** (~9k linhas cortadas). Ciclo enxuto:
   `coaching → spec-and-plan → build TDD → ship → capture-lessons`.

@@ -1,13 +1,13 @@
-# context7 — doc de lib atualizada no contexto
+# context7, doc de lib atualizada no contexto
 
 **Fonte:** https://github.com/upstash/context7 · https://context7.com
 **Capturado:** 2026-07-07 · **Status:** MCP instalado; gatilho amarrado em skills de código + hook PreToolUse (2026-07-08).
 
 ## O que é
 
-MCP server (`https://mcp.context7.com/mcp`) que injeta doc atualizada e **version-specific** de libs no contexto — mata API alucinada e training data desatualizado. Gatilho no prompt: `use context7`, opcionalmente com lib id (`use library /supabase/supabase`).
+MCP server (`https://mcp.context7.com/mcp`) que injeta doc atualizada e **version-specific** de libs no contexto, mata API alucinada e training data desatualizado. Gatilho no prompt: `use context7`, opcionalmente com lib id (`use library /supabase/supabase`).
 
-## Instalação (rodar no terminal — não edito .claude.json)
+## Instalação (rodar no terminal, não editar `.claude.json` na mão)
 
 API key grátis em context7.com/dashboard (rate limit maior).
 

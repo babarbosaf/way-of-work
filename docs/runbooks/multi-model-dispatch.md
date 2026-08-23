@@ -1,4 +1,4 @@
-# Runbook — workflow multi-modelo (delegate)
+# Runbook do workflow multi-modelo (delegate)
 
 Spec: SPEC-2026-002 (`specs/done/spec-2026-002-multi-model-dispatch/`)
 
@@ -14,7 +14,7 @@ Spec: SPEC-2026-002 (`specs/done/spec-2026-002-multi-model-dispatch/`)
 
 - Delegar: `~/.claude/scripts/delegate.sh --task <type> - < prompt` (a skill
   `delegate` orquestra; types e hierarquia em `config/model-policy.json`).
-- Ajustar hierarquia: editar `config/model-policy.json` direto — git é o histórico.
+- Ajustar hierarquia: editar `config/model-policy.json` direto. Git é o histórico.
 - Worktree órfã: `delegate.sh --gc <repo-dir>`.
 - Log de uso: `gate/delegate.log`.
 
@@ -24,7 +24,7 @@ Spec: SPEC-2026-002 (`specs/done/spec-2026-002-multi-model-dispatch/`)
 - **Sangria de quota**: quota costuma ser proporcional a tokens; a defesa real é
   fatiar prompts grandes (um scan por subsistema), não contar despachos.
 - **Tudo caindo em exit 2 ("Claude assume")**: checar cooldowns
-  (`ls gate/cooldown.*` — apagar pra resetar), login/quota dos CLIs, e se
+  (`ls gate/cooldown.*`, apagar pra resetar), login/quota dos CLIs, e se
   `DELEGATE_DISABLED` está setado.
 - **"policy inválida" no stderr**: `jq . config/model-policy.json` e corrigir.
 - **Desligar tudo**: `export DELEGATE_DISABLED=1` (peer-review cai no fallback

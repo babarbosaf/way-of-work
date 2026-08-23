@@ -56,6 +56,12 @@ assert_ignora "termo banido em inline"      'O catálogo bane `crucial` e `utili
 assert_ignora "URL com termo banido"        'Fonte: https://exemplo.com/utilizar-crucial'
 assert_ignora "alvo de link markdown"       'Ver [doutrina](docs/utilizar-crucial.md).'
 assert_ignora "texto limpo"                 'O hook valida a query antes do deploy.'
+assert_ignora "comentário HTML"             '<!-- apague se rigor < governança -->
+Texto de verdade aqui.'
+assert_ignora "comentário HTML multilinha"  '<!--
+exemplo ruim — com travessão
+-->
+Texto de verdade aqui.'
 
 echo "== linha e regra saem na saída =="
 printf 'linha limpa\ntexto com travessão — aqui\n' > "$TMP/n.md"
