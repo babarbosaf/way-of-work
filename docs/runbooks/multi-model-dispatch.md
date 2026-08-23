@@ -22,7 +22,7 @@
 - **Timestamps do `delegate.log` são UTC** (−3h vs São Paulo).
 - **Sangria de quota**: quota costuma ser proporcional a tokens; a defesa real é
   fatiar prompts grandes (um scan por subsistema), não contar despachos.
-- **Tudo caindo em exit 2 ("Claude assume")**: checar cooldowns
+- **Tudo caindo em exit 2 ("a sessão assume")**: checar cooldowns
   (`ls gate/cooldown.*`, apagar pra resetar), login/quota dos CLIs, e se
   `DELEGATE_DISABLED` está setado.
 - **"policy inválida" no stderr**: `jq . config/model-policy.json` e corrigir.

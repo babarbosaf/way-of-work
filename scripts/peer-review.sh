@@ -9,7 +9,7 @@
 #   comentário da PR. Round 2: `--findings -` lê os findings anteriores do stdin.
 #
 # Cascata (--model auto, default):
-#   codex → gemini → exit 2 (Claude assume via subagente adversarial / inline)
+#   codex → gemini → exit 2 (a sessão assume via subagente adversarial / inline)
 #
 # Cada modelo tem cooldown próprio em ~/.claude/gate/cooldown.<model>. Cooldown de
 # um não bloqueia o outro. Override de duração: PEER_COOLDOWN_MINS (default 60).
@@ -19,7 +19,7 @@
 #   - M/L (spec) = ≥100 linhas OU ≥5 headers `##`
 #   - M/L (diff) = toca prod (agent/|apps/|bin/|libs/|migrations/|scripts/) OU input externo
 #                  OU diff grande (≥500 LOC OU ≥20 arquivos)
-#   - Fallback gracioso: todos reviewers indisponíveis → exit 2, Claude assume gate
+#   - Fallback gracioso: todos reviewers indisponíveis → exit 2, a sessão assume o gate
 #
 # Logs: ~/.claude/gate/usage.log (JSONL, sem conteúdo de spec/diff — só metadados)
 
@@ -317,7 +317,7 @@ if [[ $dg_rc -eq 0 ]]; then
 fi
 
 if [[ -z "$USED_REVIEWER" ]]; then
-    echo "⚠️  Nenhum reviewer disponível na cascata do delegate (ver config/model-policy.json, task 'review'). Claude assume gate via subagente adversarial (ver ~/.claude/docs/adversarial-evaluator.md § Fallback)." >&2
+    echo "⚠️  Nenhum reviewer disponível na cascata do delegate (ver config/model-policy.json, task 'review'). A sessão assume o gate via subagente adversarial (ver ~/.claude/docs/adversarial-evaluator.md § Fallback)." >&2
     log_usage "$MODE" "$(basename "$TARGET")" "unavailable" "all reviewers failed/in cooldown" ""
     exit 2
 fi

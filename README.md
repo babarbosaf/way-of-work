@@ -1,28 +1,42 @@
 # way-of-work
 
-Configuração curada de [Claude Code](https://claude.com/claude-code) — o `~/.claude` de um dev, versionado e público, pra quem quer adotar o mesmo modelo de trabalho com agentes.
+Modelo de trabalho com agentes, versionado e público. O núcleo é agnóstico de modelo e de
+harness: `AGENTS.md` como instrução única, skills como fase do ciclo, docs de doutrina e
+testes que travam o que importa. Codex, Cursor, Copilot e qualquer ferramenta que leia
+`AGENTS.md` consomem a mesma fonte, sem tradução.
 
-Não é um plugin nem um framework. É um conjunto vivo de **skills**, **docs de doutrina**, **hooks de enforcement** e um **padrão de `AGENTS.md`** que sustenta um modelo de trabalho simples: fundação de projeto por entrevista (kickoff), docs vivos como fonte de verdade, TDD sempre, spec só pra feature grande, memória durável entre sessões.
+A aplicação mais completa é em [Claude Code](https://claude.com/claude-code), que executa
+skill, hook e statusline direto do `~/.claude`. A tabela abaixo marca o que é dessa camada;
+o resto vale em qualquer lugar.
+
+A porta de entrada do método é o `/kickoff-project`: projeto novo nasce de uma entrevista
+dirigida que produz PRD, rotas, design, conventions e o AGENTS.md do próprio projeto.
+Depois disso, docs vivos como fonte de verdade, TDD sempre, spec só pra feature grande e
+memória durável entre sessões.
 
 ## O que tem dentro
 
 | Área | O que é |
 |------|---------|
-| `skills/` | Skills invocáveis — cada uma é uma fase do ciclo (ver taxonomia abaixo). |
+| `AGENTS.md` | Instrução viva, agnóstica, lida por Codex, Cursor e qualquer harness que siga o padrão. `CLAUDE.md` é symlink. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
+| `skills/` | Uma skill por fase do ciclo (taxonomia abaixo). O conteúdo é doutrina em markdown, então serve de leitura pra qualquer agente; o dispatch por `/comando` é do Claude Code. |
 | `docs/` | Doutrina: `evolve-over-create.md`, `autonomy-loops.md`, `adversarial-evaluator.md` (segunda opinião opcional) e runbooks em `docs/runbooks/`. |
-| `hooks/` | Enforcement em tempo de execução (grep-first em reads grandes, guardas de no-op, lembrete de doc atualizada). A mensagem de bloqueio ensina na hora. |
-| `AGENTS.md` | Padrão de instrução viva (agnóstico, lido por Codex/Cursor/etc.); `CLAUDE.md` é symlink. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
-| `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica; override privado via `*.local.json` gitignored). |
+| `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`. |
+| `tests/` | Suítes que travam o que quebraria calado: despacho de modelo, linter de escrita, agnosticismo do repo e link markdown morto. |
+| `specs/_TEMPLATE-spec/` | Formato de spec pra feature grande: contrato, design, slices, gate. |
+| `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
+| `hooks/` | **Claude Code.** Enforcement em runtime: grep-first em read grande, guarda de no-op, lembrete de doc atualizada. A mensagem de bloqueio diz o que fazer no lugar. |
+| `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. |
 
 Histórico de release em [`CHANGELOG.md`](CHANGELOG.md).
 
 Convenções estruturais:
 - **`AGENTS.md` é a fonte, `CLAUDE.md` symlink.** Editar sempre o `AGENTS.md`.
 - **`.gitignore` é allowlist:** ignora tudo (`*`), libera com `!`. O que é pessoal (scope pago, paths, roteamento) vive em `config/*.local.json`, gitignored, deep-merge em runtime.
-- **Memória (`memory/`) não é versionada** — comportamento do agente, específico da máquina.
+- **Memória (`memory/`) não é versionada.** É comportamento do agente, específico da máquina.
 - **Instrução viva, não changelog.** Docs de start-up não guardam histórico (→ `CHANGELOG.md`, ADR, memória).
 
-### Skills — taxonomia
+### Skills
 
 | Skill | Invocação |
 |-------|-----------|
@@ -33,33 +47,34 @@ Convenções estruturais:
 | [`coaching`](skills/coaching) | user-invoked |
 | [`handoff`](skills/handoff) | user-invoked |
 | [`capture-lessons`](skills/capture-lessons) | user-invoked |
+| [`design-workflow`](skills/design-workflow) | model-invoked (componente ou tela visual nova) |
 | [`writing`](skills/writing) | model-invoked (doutrina de escrita, catálogo anti-slop e linter) |
 
 **model-invoked** dispara sozinha quando o fluxo bate o gatilho (fase do ciclo, gate pré-ship). **user-invoked** você aciona por `/comando` num momento deliberado.
 
-## Filosofia em uma tela
+## Sete regras
 
 - **Fundação por entrevista.** Projeto novo nasce pelo `/kickoff-project`: entrevista dirigida → PRD, ROUTES, DESIGN, CONVENTIONS, AGENTS.md e FEEDBACK.md. Nada de formulário em branco.
-- **Docs vivos são a fonte de verdade.** Decisão de produto edita o PRD; padrão técnico, o CONVENTIONS; correção vira entrada no FEEDBACK.md (buffer com teto e promoção). Spec só pra feature grande, em 1 arquivo descartável — ao shippar, a verdade migra pro PRD.
+- **Docs vivos são a fonte de verdade.** Decisão de produto edita o PRD; padrão técnico, o CONVENTIONS; correção vira entrada no FEEDBACK.md (buffer com teto e promoção). Spec só pra feature grande, em 1 arquivo descartável. Ao shippar, a verdade migra pro PRD.
 - **TDD sempre.** Comportamento novo nasce com teste; bug ganha regressão antes do fix; suite verde é pré-condição de commit.
-- **Segunda opinião sob demanda.** O Adversarial Evaluator (`peer-review.sh`) é opcional — recomendado quando o diff toca prod ou é caro de reverter.
+- **Segunda opinião sob demanda.** O Adversarial Evaluator (`peer-review.sh`) é opcional, recomendado quando o diff toca prod ou é caro de reverter.
 - **Evoluir > criar.** Estender artefato existente antes de criar paralelo. `_v2` e "migro depois" nunca migra.
 - **Memória durável entre sessões.** Fatos que sobrevivem à sessão viram memória atômica indexada; o resto morre com o contexto.
 - **Escrita terse.** Fragmento > frase. Sem verborragia, sem AI slop.
 
 ## Como usar
 
-Três modos de consumo — do mais simples ao mais isolado.
+Três modos de consumo, do mais simples ao mais isolado.
 
 ### 1. User-level (fonte única)
 
-Clona pra `~/.claude`. Toda sessão de Claude Code na máquina herda skills, docs e hooks. Fonte única — melhorou aqui, melhorou em todo projeto.
+Clona pra `~/.claude`. Toda sessão de Claude Code na máquina herda skills, docs e hooks. Fonte única: melhorou aqui, melhorou em todo projeto.
 
 ```bash
 git clone https://github.com/babarbosaf/way-of-work ~/.claude
 ```
 
-O que é privado (scope pago, paths locais, roteamento de findings pra repos de negócio) vive em `config/*.local.json` — **gitignored, nunca versionado** — e faz merge sobre a base pública em runtime. Copie `config/model-policy.json` pra `config/model-policy.local.json` e preencha com seus valores.
+O que é privado (scope pago, paths locais, roteamento de findings pra repos de negócio) vive em `config/*.local.json`, **gitignored, nunca versionado**, e faz merge sobre a base pública em runtime. Copie `config/model-policy.json` pra `config/model-policy.local.json` e preencha com seus valores.
 
 #### `settings.json` é mínimo de propósito
 
@@ -100,8 +115,8 @@ git submodule add https://github.com/babarbosaf/way-of-work .claude
 
 ## Contribuir
 
-Melhoria nasce no uso real — você trabalha num projeto, sente a dor, ajusta a skill, propõe upstream. Fluxo em [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Melhoria nasce no uso real: você trabalha num projeto, sente a dor, ajusta a skill, propõe upstream. Fluxo em [`CONTRIBUTING.md`](CONTRIBUTING.md).
 
 ## Licença
 
-MIT — veja [`LICENSE`](LICENSE).
+MIT, veja [`LICENSE`](LICENSE).
