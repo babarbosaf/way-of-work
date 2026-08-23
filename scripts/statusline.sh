@@ -45,6 +45,8 @@ print(" · ".join(p for p in (model, cwd) if p))
 line="${color}[${profile}]${reset}"
 [ -n "$info" ] && line="$line $info"
 
+# Badge do caveman, opcional: sem o plugin instalado o find não acha nada e a
+# statusline segue sem badge. Ver config/plugins.json.
 cave=$(find "$HOME/.claude/plugins/cache/caveman" -name caveman-statusline.sh -type f 2>/dev/null | head -1)
 if [ -n "$cave" ]; then
   badge=$(printf '%s' "$payload" | bash "$cave" 2>/dev/null | tr -d '\n')

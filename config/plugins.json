@@ -1,0 +1,20 @@
+{
+  "_comentario": "Plugins que o modelo de trabalho usa. Todos opcionais: nenhum é pré-requisito do repo. Marketplace de conta (Slack, Linear, Notion) vive em plugins.local.json, gitignored. Aplicar com scripts/bootstrap-plugins.sh --apply.",
+  "marketplaces": {
+    "claude-plugins-official": { "builtin": true },
+    "caveman": { "github": "JuliusBrussee/caveman" },
+    "impeccable": { "github": "pbakaus/impeccable" }
+  },
+  "plugins": [
+    {
+      "name": "caveman",
+      "marketplace": "caveman",
+      "porque": "aplica a brevidade da skill writing no output em runtime. O estilo vive nos docs, então o plugin muda a entrega, não a doutrina. Níveis seguros com o requisito de bom português: lite e full."
+    },
+    {
+      "name": "pyright-lsp",
+      "marketplace": "claude-plugins-official",
+      "porque": "diagnóstico de tipo em projeto Python, no editor e na sessão."
+    }
+  ]
+}
