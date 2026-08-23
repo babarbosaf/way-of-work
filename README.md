@@ -24,6 +24,7 @@ memória durável entre sessões.
 | `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`. |
 | `tests/` | Suítes que travam o que quebraria calado: despacho de modelo, linter de escrita, agnosticismo do repo e link markdown morto. |
 | `specs/_TEMPLATE-spec/` | Formato de spec pra feature grande: contrato, design, slices, gate. |
+| `FEEDBACK.example.md` | Formato do buffer de correção do projeto: uma linha por entrada com o gatilho embutido, teto de 10, regra de promoção. O `FEEDBACK.md` real é gitignored. |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
 | `hooks/` | **Claude Code.** Enforcement em runtime: grep-first em read grande, guarda de no-op, lembrete de doc atualizada. A mensagem de bloqueio diz o que fazer no lugar. |
 | `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. |
