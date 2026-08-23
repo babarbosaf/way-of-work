@@ -39,12 +39,11 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   docs vivos; `/simplify` recomendado) e `capture-lessons` (roteador de 2
   destinos) reescritas de acordo.
 
-### Removed (→ `archive/`)
+### Removed
 
 - `docs/way-of-working.md` (7 cadeias), `project-template/` (24 arquivos) e
   `docs/rubrics/` — substituídos pela fundação gerada pelo kickoff + docs
   vivos. References de spec-folder e roteamento modelo-v2 das skills.
-
 - **Simplificação do modelo de trabalho** (~9k linhas cortadas). Ciclo enxuto:
   `coaching → spec-and-plan → build TDD → ship → capture-lessons`.
 - `ship-review` fundida em `git-workflow-and-versioning` como checklist único
@@ -59,9 +58,6 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - Cadeia de hooks `PreToolUse:Bash` cai de 5 pra 2 (só bloqueantes/proxy);
   nudges de commit removidos.
 - Governança do `model-policy.json` removida — edição direta, git é o histórico.
-
-### Removed
-
 - `refresh-model-rankings` (skill + cron), `higiene-repo-runner` (launchd),
   `skill-creator`, symlinks de skills desligadas, testes de hook sem runner.
 
