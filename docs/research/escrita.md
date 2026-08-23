@@ -3,8 +3,10 @@
 Doutrina de escrita adotada nos arquivos user-level e no output do agente.
 Fontes: https://github.com/juliusbrussee/caveman (brevidade) ·
 https://github.com/jalaalrd/anti-ai-slop-writing (naturalidade).
-Termos banidos específicos não vivem aqui — crescem por correção em
-`concept_anti_slop_termos` (memória).
+Este arquivo é a doutrina, e vale pra qualquer um. A calibração que é sua — banidos,
+registro, corpus de imitação se houver — vai num arquivo separado, um só, num lugar que
+todos os seus agentes alcancem: `templates/VOZ.md` é o molde. Lista de banidos cresce por
+correção ao vivo, e é isso que faz a correção de hoje valer amanhã.
 
 ## Brevidade (caveman)
 

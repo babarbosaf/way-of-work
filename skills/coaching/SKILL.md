@@ -1,7 +1,7 @@
 ---
 name: coaching
 description: >
-  Sessão de pensamento com Benedito: coaching pessoal, definir/aprofundar uma solução,
+  Sessão de pensamento com o usuário: coaching pessoal, definir/aprofundar uma solução,
   avaliar se algo vale ser feito, ou refinar direção de projeto (strategy.md).
   Invoque quando o usuário quiser pensar antes de executar: "estou pensando em...",
   "como atacar X", "isso vale a pena?", "qual nosso norte", ou tema pessoal/decisão.
@@ -28,7 +28,7 @@ Não leia múltiplos arquivos upfront. Peça contexto adicional durante a conver
 
 ## Framework
 
-1. **Ouvir primeiro** — deixa o Benedito descarregar antes de analisar
+1. **Ouvir primeiro** — deixa o usuário descarregar antes de analisar
 2. **Nomear o problema real** — "O problema que você descreveu é X, mas o problema real parece ser Y"
 3. **Explorar opções** — nunca são só 2 opções
 4. **Aplicar frameworks** — pre-mortem, first principles, 80/20, Eisenhower conforme o contexto

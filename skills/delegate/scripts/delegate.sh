@@ -112,7 +112,7 @@ fi
 if ! jq -e . "$POLICY" >/dev/null 2>&1; then
     echo "⚠️  delegate: policy inválida ($POLICY) — usando policy default embutida codex→agy (modo degradado)" >&2
     log_usage "$TASK" "-" "policy_invalid" "fallback default policy"
-    inbox_line="- [ ] **[S]** model-policy.json inválida em $(date +%Y-%m-%d) — delegate rodando em cascata default; corrigir e validar com jq — owner: Benedito"
+    inbox_line="- [ ] **[S]** model-policy.json inválida em $(date +%Y-%m-%d) — delegate rodando em cascata default; corrigir e validar com jq — owner: ${DELEGATE_OWNER:-dono do repo}"
     grep -qF "$inbox_line" "$INBOX" 2>/dev/null || echo "$inbox_line" >> "$INBOX"
     POLICY=$(mktemp)
     cat > "$POLICY" <<'JSON'
