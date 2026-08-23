@@ -1,13 +1,13 @@
-# triage — finding/bug → destino + state
+# triage, finding/bug → destino + state
 
-**Fronteira MECE:** triage **roteia e seta o state**; não escreve template (isso é `to-tickets.md`), não enriquece corpo (isso é `refine.md`), não recria severidade (isso é o gate de ship — triage **consome**). Task→worker é `delega:`.
+**Fronteira MECE:** triage **roteia e seta o state**; não escreve template (isso é `to-tickets.md`), não enriquece corpo (isso é `refine.md`), não recria severidade (isso é o gate de ship, triage **consome**). Task→worker é `delega:`.
 
 ## Quando roda
 
 - Finding do gate de ship / findings/pass-N.md que precisa virar trabalho endereçado.
-- Bug/pedido que chega solto (sem spec). Issue pode viver sem spec — não force vínculo.
+- Bug/pedido que chega solto (sem spec). Issue pode viver sem spec, não force vínculo.
 
-## State machine (1 category + 1 state por issue — invariante)
+## State machine (1 category + 1 state por issue, invariante)
 
 **Category (exatamente 1):** `bug` (quebrado) · `enhancement` (novo/melhoria).
 
@@ -22,13 +22,13 @@ needs-triage ──► needs-info ──► ready-for-agent   (autocontida, dele
 
 ## Passos
 
-1. **Gather** — ler o item inteiro; checar notas de triagem prévias; grep no codebase por redundância; **scan de rejeições prévias** (`findings/` fechados, `.out-of-scope/` se existir) pra não re-triar lixo já morto.
-2. **Recommend** — propor category + state + destino, com razão. Aguardar direção se ambíguo.
-3. **Verify-claim** — bug: **reproduzir** antes de aceitar. PR/finding: confirmar que o diff/sintoma bate com o alegado. Não-reproduzível → `needs-info`, não `ready-*`. Mata issue-fantasma.
+1. **Gather.** Ler o item inteiro; checar notas de triagem prévias; grep no codebase por redundância; **scan de rejeições prévias** (`findings/` fechados, `.out-of-scope/` se existir) pra não re-triar lixo já morto.
+2. **Recommend.** Propor category + state + destino, com razão. Aguardar direção se ambíguo.
+3. **Verify-claim.** Bug: **reproduzir** antes de aceitar. PR/finding: confirmar que o diff/sintoma bate com o alegado. Não-reproduzível → `needs-info`, não `ready-*`. Mata issue-fantasma.
 4. **Enrich (se magro)** → handoff pra `refine.md`; volta em `ready-*` quando executável.
-5. **Apply** — criar issue via writer de `to-tickets.md` (template + backend do `project.yaml`) + aplicar labels de category/state.
+5. **Apply.** Criar issue via writer de `to-tickets.md` (template + backend do `project.yaml`) + aplicar labels de category/state.
 
-## Destino — `finding_routing` no `model-policy.json`
+## Destino, `finding_routing` no `model-policy.json`
 
 O tipo do finding roteia pra onde e pra quem:
 

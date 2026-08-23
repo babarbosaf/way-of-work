@@ -15,7 +15,7 @@
 ```
 
 **Setup mínimo por projeto novo:**
-- `.github/workflows/ci.yml` — roda testes + lint em PR
+- `.github/workflows/ci.yml`: roda testes + lint em PR
 - Render service apontando pro repo (auto-deploy em push pra main)
 - Secrets em Render dashboard (não em `.env` versionado)
 - `.gitignore` cobrindo `.env`, credentials, `__pycache__`, `node_modules`

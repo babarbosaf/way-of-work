@@ -1,4 +1,4 @@
-# Voz, red flags e rationalizations — spec-and-plan
+# Voz, red flags e rationalizations, spec-and-plan
 
 ## Voz
 
@@ -10,12 +10,12 @@ Spec aprovada é um documento que vai sobreviver à conversa que a gerou e que o
 - **Resumo, Problema, Objetivo em prosa.** Bullets simétricos em todas as seções sinalizam preenchimento mecânico. Quando uma lista é mesmo uma lista (ACs, tasks, properties), bullets ok.
 - **Primeira pessoa quando faz sentido.** "Eu aprovo antes do build começar." Soa como dono, não como narrador externo.
 - **Mini-ADR em prosa.** "Considerei fazer X em vez de Y; Y ganhou porque mantém a arquitetura consistente, é testável sem rodar Python, e os próximos PRs reusam o skeleton." Sem `Opções: A, B / Escolhida: B / Por quê: ...` em estrutura rígida.
-- **Tabelas pra Security/Rollback/Rastreabilidade.** Continuam funcionando — são matriz de fato, não prosa que virou bullet.
+- **Tabelas pra Security/Rollback/Rastreabilidade.** Continuam funcionando, são matriz de fato, não prosa que virou bullet.
 
 **Não escreva:**
 
 - **Meta-commentary de processo no doc final.** Nada de "ratificadas em conversa", "verificada-contra-stale", "round 1 patch aplicado", "Owners: Claude (drafting)". Esse contexto vai pro commit, PR description, ou ficha de processo paralela. O doc fala do problema e da solução.
-- **`Owners: <nome> (decisões), Claude (drafting)`.** Owner é quem decide; Claude não é coautor do doc — é ferramenta de drafting. Frontmatter padrão: `Owner: <nome humano>`.
+- **`Owners: <nome> (decisões), Claude (drafting)`.** Owner é quem decide; Claude não é coautor do doc, é ferramenta de drafting. Frontmatter padrão: `Owner: <nome humano>`.
 - **`ZONA 1 — CONTRATO` como `## H2`.** Vira lente de revisão na cabeça do leitor, não cabeçalho impresso.
 - **"Decisão consciente do dono", "premissa load-bearing", "verificada-contra-stale"** e outros termos do processo. Quando precisar marcar uma decisão como pendente de validação live, escreve: *"Fica decidida em T0, com dado em mãos"* ou *"Aguardando confirmação do Robson"*.
 

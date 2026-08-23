@@ -19,7 +19,7 @@ CONVENTIONS.md consolida a camada técnica levantada aqui (ver `anatomia-convent
   nível-alvo tem tabelas de pontos, janelas de tempo com horário, limites numéricos.
 - **Sempre sondar quatro coisas por feature:** as regras exatas, os edge cases, o que
   ainda não foi decidido, e o racional das escolhas. São essas quatro que separam um PRD
-  robusto de uma lista de features.
+  de verdade de uma lista de features.
 - **Devolver o que foi capturado.** Ao fechar um bloco, resumir em uma ou duas linhas o
   que ficou entendido antes de avançar. Isso corrige mal-entendidos cedo.
 - **Persistir o que foi capturado.** Depois do mini-resumo de cada bloco, gravar o bloco
@@ -32,7 +32,7 @@ CONVENTIONS.md consolida a camada técnica levantada aqui (ver `anatomia-convent
   mas nunca pular: pilares, restrições invioláveis, regras+edge cases+pontos em aberto por
   feature, fluxo de dados, e o registro de decisões.
 
-## Fase 0 — Enquadramento
+## Fase 0, Enquadramento
 
 Objetivo: preencher a Visão Geral e travar as premissas de plataforma e stack.
 
@@ -58,7 +58,7 @@ Objetivo: preencher a Visão Geral e travar as premissas de plataforma e stack.
   produto)? Se sim, pedir que o usuário aponte o arquivo. Ele vira a base do DESIGN.md e nenhuma informação dele pode ser
   perdida (ver `anatomia-design.md`).
 
-## Fase 1 — Pilares
+## Fase 1, Pilares
 
 Objetivo: identificar os 2 a 4 motores principais de engajamento. Eles viram a espinha da
 Visão Geral e definem quais features ganham deep-dive.
@@ -67,7 +67,7 @@ Visão Geral e definem quais features ganham deep-dive.
   álbum de figurinhas.)
 - Qual a relação entre eles? Um alimenta o outro? São independentes?
 
-## Fase 2 — Deep-dive por feature (loop)
+## Fase 2, Deep-dive por feature (loop)
 
 Objetivo: para cada pilar (e cada feature relevante), produzir uma seção de PRD completa.
 Rodar as mesmas cinco sondagens, nesta ordem. Elas espelham exatamente o padrão de seção
@@ -85,10 +85,10 @@ do PRD-alvo.
 
 Repetir o loop para cada feature. Fechar cada uma com o mini-resumo antes de ir pra próxima.
 
-## Fase 3 — Camadas transversais
+## Fase 3: camadas transversais
 
 Objetivo: as seções que não pertencem a uma feature só, mas atravessam o produto inteiro.
-No PRD-alvo são as seções finais (notificações, dados/sync, i18n) — comportamento no PRD,
+No PRD-alvo são as seções finais (notificações, dados/sync, i18n): comportamento no PRD,
 detalhamento técnico no CONVENTIONS.md (regra de fronteira). Cobrir as que se aplicam:
 
 - **Dados e sincronização.** De onde vêm os dados? Há fonte externa ou API? Qual a cadência
@@ -102,7 +102,7 @@ detalhamento técnico no CONVENTIONS.md (regra de fronteira). Cobrir as que se a
 - **Internacionalização.** Quantos idiomas? O que é traduzido e o que não é (UGC, admin)?
 - **Admin.** Existe painel administrativo? O que ele cria, edita, mede?
 
-## Fase 4 — Decisões estratégicas
+## Fase 4, Decisões estratégicas
 
 Objetivo: o registro que dá contexto futuro ao time. É a seção mais negligenciada e a que
 mais agrega.

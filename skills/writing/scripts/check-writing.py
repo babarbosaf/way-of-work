@@ -37,7 +37,7 @@ RULES = [
     (
         "vocabulario",
         re.compile(
-            r"\b(crucial|primordial|robust[oa]s?|aprofundar|tapeçaria|sinergia|"
+            r"\b(crucial|primordial|robust[oa]s?|tapeçaria|sinergia|"
             r"utiliza(r|ndo|mos|m)?|alavanca(r|ndo)|viabiliza(r|ndo)|"
             r"ressalta(r|ndo)|sublinha(r|ndo))\b",
             re.I,
@@ -77,9 +77,12 @@ def strip_code(lines):
         if in_fence:
             out.append("")
             continue
-        clean = INLINE_CODE.sub(lambda m: " " * len(m.group()), line)
-        clean = LINK_TARGET.sub(lambda m: " " * len(m.group()), clean)
-        clean = BARE_URL.sub(lambda m: " " * len(m.group()), clean)
+        # preenche com "@" e não com espaço: espaço criaria contexto de
+        # fronteira que a linha original não tem, e `h1`–`h4` cairia como
+        # meia-risca de conector.
+        clean = INLINE_CODE.sub(lambda m: "@" * len(m.group()), line)
+        clean = LINK_TARGET.sub(lambda m: "@" * len(m.group()), clean)
+        clean = BARE_URL.sub(lambda m: "@" * len(m.group()), clean)
         out.append(clean)
     return out
 

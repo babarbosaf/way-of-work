@@ -55,6 +55,7 @@ assert_ignora "travessão em código inline"  'O padrão proíbe `a — b` no me
 assert_ignora "termo banido em inline"      'O catálogo bane `crucial` e `utilizar`.'
 assert_ignora "URL com termo banido"        'Fonte: https://exemplo.com/utilizar-crucial'
 assert_ignora "alvo de link markdown"       'Ver [doutrina](docs/utilizar-crucial.md).'
+assert_ignora "intervalo entre inline code" 'Os títulos `h1`–`h4` recebem o mesmo tracking.'
 assert_ignora "texto limpo"                 'O hook valida a query antes do deploy.'
 assert_ignora "comentário HTML"             '<!-- apague se rigor < governança -->
 Texto de verdade aqui.'

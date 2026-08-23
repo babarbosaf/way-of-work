@@ -5,7 +5,7 @@ description: >
   sem reabrir a conversa. Invoque quando o usuário disser "gera handoff", "vou compactar",
   "pausar por aqui", "retomo depois", ou quando compaction for iminente no meio de
   trabalho aberto (slice de spec, debug, investigação).
-  Não invoque para: lição durável — memória/docs/PRD (capture-lessons), sessão que fechou
+  Não invoque para: lição durável, memória/docs/PRD (capture-lessons), sessão que fechou
   tudo sem trabalho pendente.
 ---
 
@@ -16,9 +16,9 @@ Estado transiente de trabalho em curso, num arquivo só. Fronteira dura com `cap
 ## Destino (um só)
 
 `_tmp/handoff-sessao-YYYY-MM-DD-<tema>.md` (gitignored). Se o trabalho em curso é
-uma spec de `docs/specs/`, o handoff referencia a spec pelo path — não vira seção dela.
+uma spec de `docs/specs/`, o handoff referencia a spec pelo path, não vira seção dela.
 
-**Substitui, não acumula** — regenerar reescreve o arquivo. Morre quando absorvido: o cabeçalho declara a condição de morte ("apagar quando X absorver isto").
+**Substitui, não acumula**, regenerar reescreve o arquivo. Morre quando absorvido: o cabeçalho declara a condição de morte ("apagar quando X absorver isto").
 
 ## Formato
 

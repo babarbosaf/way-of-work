@@ -8,15 +8,15 @@ Como este produto se constrói. O comportamento prometido ao usuário vive no `P
 |---|---|
 | Front e renderização | Next.js (App Router, React Server Components), instalável como PWA |
 | Backend e dados | Supabase (Postgres gerenciado, RLS, edge functions) |
-| Deploy | Netlify Functions em São Paulo (`gru`), junto do Supabase (`sa-east-1`) — cada roundtrip cross-region custa ~140ms, ver `docs/deploy-netlify.md` |
+| Deploy | Netlify Functions em São Paulo (`gru`), junto do Supabase (`sa-east-1`), cada roundtrip cross-region custa ~140ms, ver `docs/deploy-netlify.md` |
 | Dados esportivos | API BallDontLie FIFA World Cup (https://fifa.balldontlie.io), tier GOAT |
 
-Segredos: a key da API é server-only (`BALLDONTLIE_API_KEY`); URL do projeto e anon key ficam no Supabase Vault — nenhum segredo é versionado.
+Segredos: a key da API é server-only (`BALLDONTLIE_API_KEY`); URL do projeto e anon key ficam no Supabase Vault, nenhum segredo é versionado.
 
 ## 2. Regras do projeto
 
 - **Sem mocks, sem dados estáticos.** Toda tela que exibe dados esportivos consome dados reais da BallDontLie, nunca constantes hard-coded. Todo dado externo precisa de (1) fonte real e (2) rotina de atualização agendada com cadência proporcional à volatilidade do dado.
-- **Regra de negócio não vai para o SQL.** A RPC só agrega leituras; cálculo (ex.: pontuação/ranking pela engine `lib/pontuacao`) permanece em JS, com helpers puros compartilhados entre telas (`agregarPontuacao`/`ordenarPosicoes`) — assim home, liga e perfil exibem números idênticos por construção.
+- **Regra de negócio não vai para o SQL.** A RPC só agrega leituras; cálculo (ex.: pontuação/ranking pela engine `lib/pontuacao`) permanece em JS, com helpers puros compartilhados entre telas (`agregarPontuacao`/`ordenarPosicoes`), assim home, liga e perfil exibem números idênticos por construção.
 - **RPCs de leitura são `SECURITY INVOKER` e `stable`.** Respeitam RLS, mesma visibilidade das queries que substituem.
 - **1 página = 1 roundtrip** (seção 6). Vale para toda tela nova ou alterada.
 
@@ -53,7 +53,7 @@ Agendamento via `pg_cron` + `pg_net`. A função legada `sync-balldontlie` (sync
 
 ## 4. Notificações (infra de entrega)
 
-Entrega via Web Push API com o app instalado como PWA. Camada de *entrega* sobre a central de notificações — os eventos, categorias e deep links são produto e vivem no PRD (seção 15).
+Entrega via Web Push API com o app instalado como PWA. Camada de *entrega* sobre a central de notificações, os eventos, categorias e deep links são produto e vivem no PRD (seção 15).
 
 **Arquitetura:**
 
@@ -63,7 +63,7 @@ Entrega via Web Push API com o app instalado como PWA. Camada de *entrega* sobre
 - **Service worker** (`src/sw.js`): handlers `push` (mostra a notificação) e `notificationclick` (foca/abre o app no deep link).
 - **Client** (`src/lib/push/client.ts`): pede permissão, assina (`pushManager.subscribe` com `NEXT_PUBLIC_VAPID_PUBLIC_KEY`) e persiste via server action.
 
-**Anti-spam:** dedupe por **chave estável** (`push-<tipo>:<id>`) na tabela `push_enviados` — 1 push por evento por usuário. Cada fonte tem **janela de recência** (ex.: acerto só nas últimas 3h, drop nas últimas 24h, cutucada nas últimas 6h), o que também evita disparar histórico no primeiro deploy. A `tag` da notificação reusa a chave: um re-disparo substitui em vez de empilhar.
+**Anti-spam:** dedupe por **chave estável** (`push-<tipo>:<id>`) na tabela `push_enviados`. 1 push por evento por usuário. Cada fonte tem **janela de recência** (ex.: acerto só nas últimas 3h, drop nas últimas 24h, cutucada nas últimas 6h), o que também evita disparar histórico no primeiro deploy. A `tag` da notificação reusa a chave: um re-disparo substitui em vez de empilhar.
 
 ## 5. Internacionalização (implementação)
 
@@ -79,14 +79,14 @@ Padrões adotados após diagnóstico de navegação lenta no PWA (~5s para troca
 
 ### Regra de ouro: 1 página = 1 roundtrip
 
-- Cada página server-rendered busca seus dados em **uma única chamada ao banco** — uma RPC consolidada (`get_home_resumo`, `get_liga_resumo`, `get_grupo_estatisticas`, `album_bootstrap`, `get_grupo_info`…) que devolve os dados crus em `jsonb`.
-- Resolução de "grupo ativo" no banco via helper `get_grupo_ativo_id()` — nenhuma página gasta uma onda só para descobrir o grupo.
+- Cada página server-rendered busca seus dados em **uma única chamada ao banco**, uma RPC consolidada (`get_home_resumo`, `get_liga_resumo`, `get_grupo_estatisticas`, `album_bootstrap`, `get_grupo_info`…) que devolve os dados crus em `jsonb`.
+- Resolução de "grupo ativo" no banco via helper `get_grupo_ativo_id()`, nenhuma página gasta uma onda só para descobrir o grupo.
 
 ### Proibido serializar queries independentes
 
-- `await` em sequência só quando uma query **depende do resultado** da anterior. Caso contrário, `Promise.all` — incluindo `getTranslations`/`getLocale`/timezone, que não dependem de dados.
+- `await` em sequência só quando uma query **depende do resultado** da anterior. Caso contrário, `Promise.all`, incluindo `getTranslations`/`getLocale`/timezone, que não dependem de dados.
 - Dedupe por render com `React.cache` em funções chamadas por mais de um componente na mesma request (`getRequestUser`, `getGrupoAtivo`, `getUserTimezone`, RPCs de manutenção idempotentes).
-- Dados públicos e estáveis (catálogo do álbum) usam cache cross-request (`unstable_cache`) — nunca refazer queries de catálogo por usuário.
+- Dados públicos e estáveis (catálogo do álbum) usam cache cross-request (`unstable_cache`), nunca refazer queries de catálogo por usuário.
 
 ### Shell instantâneo (layout fora do caminho crítico)
 
@@ -96,13 +96,13 @@ Padrões adotados após diagnóstico de navegação lenta no PWA (~5s para troca
 
 ### Cliente e infraestrutura
 
-- **Router cache:** `experimental.staleTimes.dynamic = 30` — voltar a uma aba visitada há <30s é instantâneo. Trade-off aceito: badges/contadores até 30s defasados.
+- **Router cache:** `experimental.staleTimes.dynamic = 30`, voltar a uma aba visitada há <30s é instantâneo. Trade-off aceito: badges/contadores até 30s defasados.
 - **Service worker** (`public/sw.js`): cache-first apenas para assets imutáveis (`/_next/static`, stickers, ícones, fontes, arte das figurinhas no Storage). **HTML, RSC, APIs e sessão nunca passam pelo cache.**
-- O matcher do proxy exclui assets, `sw.js` e manifest — nada que não dependa de sessão paga o roundtrip de auth.
+- O matcher do proxy exclui assets, `sw.js` e manifest, nada que não dependa de sessão paga o roundtrip de auth.
 
 ## 7. Processo
 
-- Migrations aplicadas via MCP devem ter o arquivo local nomeado com a **versão registrada no histórico remoto** (senão o workflow `supabase db push` quebra — caso do PR #28).
+- Migrations aplicadas via MCP devem ter o arquivo local nomeado com a **versão registrada no histórico remoto** (senão o workflow `supabase db push` quebra, caso do PR #28).
 - Checklist para tela nova: (1) dados em 1 RPC ou, no máximo, 2 ondas justificadas por dependência real; (2) `loading.tsx`; (3) nada de `await` serial de queries independentes; (4) catálogos/estáticos via cache compartilhado.
 
 ## 8. Índice de ADRs
@@ -111,4 +111,4 @@ Decisão técnica cara de reverter (schema, contrato público, plataforma) vira 
 
 | ADR | Decisão | Status |
 |---|---|---|
-| — | (nenhum ainda) | — |
+|. | (nenhum ainda) |. |

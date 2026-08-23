@@ -22,9 +22,10 @@ catálogo não se acusa.
 
 ## Linguagem
 
-7. **Vocabulário de IA.** `crucial`, `primordial`, `robusto`, `aprofundar`, `panorama`,
+7. **Vocabulário de IA.** `crucial`, `primordial`, `robusto`, `panorama`,
    `cenário` (abstrato), `ressaltar`, `sublinhar`, `tapeçaria`, `jornada`, `interseção`,
-   `sinergia`. Usa a palavra comum.
+   `sinergia`. Usa a palavra comum. `aprofundar` ficou fora da lista de propósito: em
+   PT-BR é o verbo normal, e regra que grita em uso legítimo é regra que alguém desliga.
 8. **Jeito pomposo de dizer "é".** `serve como`, `configura-se como`, `ostenta`,
    `apresenta como característica`. Diz "é" ou "tem".
 9. **Construção `não apenas X, mas Y`.** Afirma direto o ponto.
