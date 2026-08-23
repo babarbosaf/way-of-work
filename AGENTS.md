@@ -64,6 +64,18 @@ máquina (`docs/autonomy-loops.md`).
 - Evoluir > criar: estender artefato existente antes de criar paralelo
   (`docs/evolve-over-create.md`).
 
+## Antes de propor
+
+**Repo que já existe: o inventário é o primeiro entregável.** O que tem, onde
+estão os buracos, o que sai. Bloco de escolhas antes do mapa faz o dono escolher
+no escuro.
+
+**Fonte acessível se mede, não se opina.** API, banco ou arquivo na mão: medir
+primeiro. Diagnóstico com número decide; com adjetivo, negocia.
+
+**Operação em lote sobre dado dele** (Notion, wiki, Drive, prod) tem gate no
+**plano**, não só na execução: desenho do resultado e método na mesa, e espera o ok.
+
 ## Higiene de docs de raiz (AGENTS.md/CLAUDE.md, README.md, PRD…)
 
 Carregam toda sessão; instrução viva, não changelog. Sem histórico (→ ADR/spec/
@@ -71,6 +83,8 @@ FEEDBACK/memória), sem status volátil (→ TODOS/tracker). Child AGENTS.md só
 escreve override próprio. Teste linha-a-linha: "cortar isso faria o agente
 errar?" Não → cortar. Raiz em CAIXA-ALTA = doc único e estável; instância
 (`spec-<slug>`, `adr-NNNN`) em lowercase. Transiente vai pra `_tmp/` (gitignored).
+Escopo se declara pelo que o projeto **É**: nada de tabela de exclusão nem de
+"isto saiu daqui" — a negativa que importa vive na decisão que a produziu.
 
 ## Coding practices atualizadas (context7)
 
