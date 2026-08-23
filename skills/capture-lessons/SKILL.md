@@ -43,7 +43,7 @@ Casos derivados:
 | Situação | Ação |
 |---|---|
 | Lição de projeto que já está no FEEDBACK.md (reincidência) ou virou norma | **Promover:** mover pro doc permanente (AGENTS.md se instrução de agente, CONVENTIONS.md se regra de código, PRD.md/DESIGN.md se produto) e apagar a entrada |
-| FEEDBACK.md perto do teto (~30) | Compactar: promover o que virou norma, deletar o obsoleto |
+| FEEDBACK.md perto do teto (10 entradas) | Compactar: promover o que virou norma, deletar o obsoleto |
 | Decisão técnica cara de reverter | ADR em `docs/adrs/` + linha no índice do CONVENTIONS.md |
 | Tarefa com owner + esforço | `TODOS.md` do projeto |
 | Fato sobre o usuário | `profile/me.md` |

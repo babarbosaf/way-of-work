@@ -97,7 +97,7 @@ O worker roda com sandbox nativo do CLI, confinado a uma worktree em branch
    Órfãs: `delegate.sh --gc <repo-dir>`.
 5. Ruim mas recuperável → re-delegar com feedback no prompt (1 retry máx);
    ruim de novo → assumir a task inline.
-6. **Report de fechamento (tech-lead, sucinto/caveman).** Pós-integração, emitir
+6. **Report de fechamento (tech-lead, sucinto).** Pós-integração, emitir
    pra sessão orquestradora captar em 4 linhas (executor reportando pro tech-lead):
    ```
    feito: <o que mudou, observável>

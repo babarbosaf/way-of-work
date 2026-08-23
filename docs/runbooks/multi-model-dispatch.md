@@ -1,6 +1,5 @@
 # Runbook do workflow multi-modelo (delegate)
 
-Spec: SPEC-2026-002 (`specs/done/spec-2026-002-multi-model-dispatch/`)
 
 ## Pré-requisitos (one-time)
 

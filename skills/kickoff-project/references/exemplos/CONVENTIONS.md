@@ -8,7 +8,7 @@ Como este produto se constrói. O comportamento prometido ao usuário vive no `P
 |---|---|
 | Front e renderização | Next.js (App Router, React Server Components), instalável como PWA |
 | Backend e dados | Supabase (Postgres gerenciado, RLS, edge functions) |
-| Deploy | Netlify Functions em São Paulo (`gru`), junto do Supabase (`sa-east-1`), cada roundtrip cross-region custa ~140ms, ver `docs/deploy-netlify.md` |
+| Deploy | Netlify Functions em São Paulo (`gru`), junto do Supabase (`sa-east-1`), cada roundtrip cross-region custa ~140ms |
 | Dados esportivos | API BallDontLie FIFA World Cup (https://fifa.balldontlie.io), tier GOAT |
 
 Segredos: a key da API é server-only (`BALLDONTLIE_API_KEY`); URL do projeto e anon key ficam no Supabase Vault, nenhum segredo é versionado.
@@ -102,7 +102,7 @@ Padrões adotados após diagnóstico de navegação lenta no PWA (~5s para troca
 
 ## 7. Processo
 
-- Migrations aplicadas via MCP devem ter o arquivo local nomeado com a **versão registrada no histórico remoto** (senão o workflow `supabase db push` quebra, caso do PR #28).
+- Migrations aplicadas via MCP devem ter o arquivo local nomeado com a **versão registrada no histórico remoto** (senão o workflow `supabase db push` quebra).
 - Checklist para tela nova: (1) dados em 1 RPC ou, no máximo, 2 ondas justificadas por dependência real; (2) `loading.tsx`; (3) nada de `await` serial de queries independentes; (4) catálogos/estáticos via cache compartilhado.
 
 ## 8. Índice de ADRs

@@ -109,7 +109,7 @@ inexistente. Conteúdo inicial:
 Registro de feedbacks corretivos do usuário. Cada item tem força de regra: um erro
 registrado aqui não pode se repetir.
 
-Este arquivo é buffer, não arquivo morto. Teto: ~30 entradas. Entrada que se repetiu ou
+Este arquivo é buffer, não arquivo morto. Teto: 10 entradas. Entrada que se repetiu ou
 virou norma é promovida ao doc permanente (AGENTS.md se é instrução de agente,
 CONVENTIONS.md se é regra de código, PRD.md/DESIGN.md se é produto) e apagada daqui.
 Entrada obsoleta morre na compactação. Estourou o teto: compactar, não relaxar.

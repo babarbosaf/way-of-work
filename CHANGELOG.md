@@ -19,13 +19,25 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `ROUTES.md`, `DESIGN.md`, `CONVENTIONS.md`, `CLAUDE.md`, `AGENTS.md`,
   `FEEDBACK.md`, `TODOS.md`. Adaptações: fase CONVENTIONS na cascata (cisão
   PRD × conventions com regra de fronteira "usuário percebe → PRD"),
-  `FEEDBACK.md` com teto (~30) e regra de promoção, seção Execução (TDD/YAGNI)
+  `FEEDBACK.md` com teto e regra de promoção, seção Execução (TDD/YAGNI)
   no AGENTS.md gerado, `STRATEGY.md` opt-in, herança de fundação de design,
-  stack default da casa (ADR-0001), exemplos Chutaí com `CONVENTIONS.md` novo
+  molde de stack default, exemplos Chutaí com `CONVENTIONS.md` novo
   extraído do PRD.
 
 ### Changed
 
+- **Repo público fica agnóstico de dono.** `references/stack-default.md` deixa de
+  publicar uma stack específica e vira molde: seis perguntas que uma stack default
+  precisa responder, mais um exemplo preenchido que serve de régua de profundidade. A
+  stack que você repete de projeto em projeto vai pra `config/stack.local.md`, gitignored
+  junto dos outros overlays. Saem também as referências a ADR que não existem aqui, o
+  ponteiro pra spec arquivada, o nome próprio num exemplo de spec e a unidade de negócio
+  num exemplo de roteamento. O teto do `FEEDBACK.md` fica em 10 em todo lugar que o
+  cita, alinhado com o `AGENTS.md`.
+- **`tests/agnostico.test.sh`** trava a regressão com 19 asserts: identidade, caminho de
+  máquina, primeira pessoa, unidade de negócio, ponteiro morto, link markdown quebrado,
+  flag de permissão suprimida e formato da LICENSE. Cada regra roda duas vezes, no repo e
+  contra uma violação plantada, porque assert que nunca viu vermelho não prova nada.
 - **`settings.json` versionado vira mínimo.** Fica só o que faz o repo funcionar: hooks
   de enforcement, statusline, teto de auto-compact e `ask` em `git push`. Saíram três
   flags que suprimiam confirmação de permissão, as chaves de preferência pessoal
