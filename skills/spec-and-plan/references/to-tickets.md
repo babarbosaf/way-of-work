@@ -25,7 +25,7 @@ Fase 2 fecha as slices → materializa cada uma como issue. **Push automático n
 
 **Relações por projeto** (de `project.yaml`, entram na criação):
 - exemplo: issue no `tasks_db` (Acionável) **linka o repo** no `repos_db` (ex.: `<seu-repo>`).
-- comercial nontech: issue no `tasks_db` **linka um KR** no `kr_db`. Sem KR = não cria (toda task pendura num KR).
+- repo nontech: issue no `tasks_db` **linka um KR** no `kr_db`. Sem KR = não cria (toda task pendura num KR).
 
 ## Links vivos, regra dura
 

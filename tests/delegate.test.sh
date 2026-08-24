@@ -105,10 +105,10 @@ echo "T: claude_api não entra sozinho na cascata automática (second-opinion se
 MOCK_CODEX=fail MOCK_AGY=fail run --task second-opinion - >/dev/null; rc=$?
 assert_eq "exit 2 — cascata grátis esgotada, claude_api não é tentado" "$rc" "2"
 
-echo "T: journey fallback (todos rate-limited → exit 2 + Claude assume)"
+echo "T: journey fallback (todos rate-limited → exit 2 + a sessão assume)"
 MOCK_CODEX=ratelimit MOCK_AGY=ratelimit run --task review - >"$TMP/out2"; rc=$?
 assert_eq "exit 2" "$rc" "2"
-assert_contains "mensagem de fallback" "$(cat "$TMP/err")" "Claude assume"
+assert_contains "mensagem de fallback" "$(cat "$TMP/err")" "A sessão assume"
 [[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] && ok "cooldown codex armado" || fail "cooldown codex armado"
 [[ -f "$DELEGATE_GATE_DIR/cooldown.agy:gemini" ]] && ok "cooldown agy:gemini armado (por pool, não por backend inteiro)" || fail "cooldown agy:gemini armado"
 

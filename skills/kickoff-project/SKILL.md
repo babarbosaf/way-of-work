@@ -58,7 +58,7 @@ Persistir o material: ao fechar cada bloco, gravar o mini-resumo e as respostas 
 sessão cair ou o contexto se perder, a entrevista retoma do arquivo, e o PRD se redige a
 partir dele, não da memória.
 
-Na Fase 0, confirmar a stack: manter o default da casa (`references/stack-default.md`) ou
+Na Fase 0, confirmar a stack: manter o default declarado (`references/stack-default.md`) ou
 trocar. A escolha muda o conteúdo das seções transversais de arquitetura, não a profundidade.
 Ainda na Fase 0:
 
@@ -67,7 +67,7 @@ Ainda na Fase 0:
 - Perguntar se a visão/direção do negócio merece documento próprio. Se sim, gerar um
   `STRATEGY.md` curto (por que o produto existe, apostas, norte) antes do PRD; se não, o
   racional estratégico vive na seção de decisões do PRD. STRATEGY é opt-in, não default.
-- Perguntar se já existe um design system ou fundação de design da casa para herdar (design
+- Perguntar se já existe um design system ou fundação de design já existente para herdar (design
   system de umbrella, kit de componentes, DESIGN.md de outro produto). Se existir, o usuário
   aponta o arquivo, que vira a base do DESIGN.md sem perda de informação: o documento gerado
   declara a fonte e registra só os desvios.
@@ -149,6 +149,6 @@ antes de salvar. Quando a skill rodar no claude.ai (sem projeto local), salvar e
   com o PRD.
 - `references/anatomia-agents.md`: estrutura do CLAUDE.md, do AGENTS.md e do FEEDBACK.md,
   e as regras operacionais que eles carregam.
-- `references/stack-default.md`: a stack padrão da casa e como adaptar ao trocar.
+- `references/stack-default.md`: o molde da stack default e como adaptar ao trocar.
 - `references/exemplos/{PRD,ROUTES,DESIGN,CONVENTIONS}.md`: o padrão-ouro do Chutaí, a
   régua de profundidade. Consultar por seção.

@@ -29,8 +29,9 @@
 !tests/**
 
 # --- exceções dentro do versionado ---
-# overrides project-specific (privados, merge em runtime) — nunca versionar
+# overrides project-specific (privados, merge em runtime), nunca versionar
 config/*.local.json
+config/*.local.md
 # hook que carrega topologia local de repos: fica no disco, fora do template público
 hooks/emit_trace_guard.py
 skills/_archive/

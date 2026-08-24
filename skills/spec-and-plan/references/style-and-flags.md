@@ -17,7 +17,7 @@ Spec aprovada é um documento que vai sobreviver à conversa que a gerou e que o
 - **Meta-commentary de processo no doc final.** Nada de "ratificadas em conversa", "verificada-contra-stale", "round 1 patch aplicado", "Owners: Claude (drafting)". Esse contexto vai pro commit, PR description, ou ficha de processo paralela. O doc fala do problema e da solução.
 - **`Owners: <nome> (decisões), Claude (drafting)`.** Owner é quem decide; Claude não é coautor do doc, é ferramenta de drafting. Frontmatter padrão: `Owner: <nome humano>`.
 - **`ZONA 1 — CONTRATO` como `## H2`.** Vira lente de revisão na cabeça do leitor, não cabeçalho impresso.
-- **"Decisão consciente do dono", "premissa load-bearing", "verificada-contra-stale"** e outros termos do processo. Quando precisar marcar uma decisão como pendente de validação live, escreve: *"Fica decidida em T0, com dado em mãos"* ou *"Aguardando confirmação do Robson"*.
+- **"Decisão consciente do dono", "premissa load-bearing", "verificada-contra-stale"** e outros termos do processo. Quando precisar marcar uma decisão como pendente de validação live, escreve: *"Fica decidida em T0, com dado em mãos"* ou *"Aguardando confirmação do dono"*.
 
 **Regra simples:** se o trecho fosse lido em voz alta numa reunião e soasse robótico, reescreve. O doc é dele, não nosso.
 

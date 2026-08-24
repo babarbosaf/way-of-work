@@ -39,7 +39,7 @@ Objetivo: preencher a Visão Geral e travar as premissas de plataforma e stack.
 - O que é o produto em uma frase? Para quem é? Qual o objetivo primário (lúdico, receita,
   retenção, aquisição)?
 - Plataforma: web, PWA mobile, app nativo, desktop?
-- Stack: manter o default da casa (ver `stack-default.md`) ou trocar? Se trocar, capturar
+- Stack: manter o default declarado (ver `stack-default.md`) ou trocar? Se trocar, capturar
   a stack nova, porque ela muda as seções transversais do PRD e o CONVENTIONS.md.
 - Convenções de construção: além da stack, o que o dono já pratica? Estrutura de pastas,
   nomenclatura, padrões de teste, padrões de erro, regras obrigatórias ("sem mocks",
@@ -54,7 +54,7 @@ Objetivo: preencher a Visão Geral e travar as premissas de plataforma e stack.
   orçamento, de compliance)? Registrar cada uma textualmente: elas ganham seção própria
   no PRD e são ecoadas no AGENTS.md.
 - Design system existente: já existe um design system criado, ou uma fundação de design
-  da casa para herdar (design system de umbrella, kit de componentes, DESIGN.md de outro
+  já existente para herdar (design system de umbrella, kit de componentes, DESIGN.md de outro
   produto)? Se sim, pedir que o usuário aponte o arquivo. Ele vira a base do DESIGN.md e nenhuma informação dele pode ser
   perdida (ver `anatomia-design.md`).
 

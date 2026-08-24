@@ -14,7 +14,7 @@
 #   Roteamento vem de ~/.claude/config/model-policy.json (dado, não código):
 #   custo zero primeiro; Claude Code é o fallback implícito quando a cascata esgota.
 #
-# Exit codes: 0 ok · 2 nenhum worker disponível (Claude assume) · 1 erro de uso ·
+# Exit codes: 0 ok · 2 nenhum worker disponível (a sessão assume) · 1 erro de uso ·
 # 5 worker rodou mas não produziu diff/commit em --worktree (falha silenciosa suspeita).
 # (3=cooldown e 4=CLI ausente são internos à cascata, nunca externalizados.)
 #
@@ -23,7 +23,7 @@
 # revisão e integração são do orquestrador. Backend sem worktree_invoke na policy
 # não é elegível pra este modo.
 #
-# Kill switch: DELEGATE_DISABLED=1 → exit 2 (Claude assume tudo).
+# Kill switch: DELEGATE_DISABLED=1 → exit 2 (a sessão assume tudo).
 # Overrides p/ teste: DELEGATE_POLICY, DELEGATE_GATE_DIR, DELEGATE_INBOX.
 
 set -uo pipefail
@@ -97,7 +97,7 @@ if [[ -n "$GC" ]]; then
 fi
 
 if [[ "${DELEGATE_DISABLED:-0}" == "1" ]]; then
-    echo "delegate: desabilitado via DELEGATE_DISABLED — Claude assume." >&2
+    echo "delegate: desabilitado via DELEGATE_DISABLED, a sessão assume." >&2
     log_usage "${TASK:-?}" "-" "disabled" "kill switch"
     exit 2
 fi
@@ -343,6 +343,6 @@ fi
 
 # cascata esgotada — só remove worktree criada nesta chamada; --continue nunca apaga trabalho reaproveitado
 [[ -n "$WT_DIR" && "$WT_FRESH" == "1" ]] && { git -C "$WORKTREE" worktree remove --force "$WT_DIR" 2>/dev/null; git -C "$WORKTREE" branch -D "$WT_BRANCH" 2>/dev/null; } >/dev/null
-echo "⚠️  Nenhum worker disponível na cascata pra task '$TASK'. Claude assume." >&2
+echo "⚠️  Nenhum worker disponível na cascata pra task '$TASK'. A sessão assume." >&2
 log_usage "$TASK" "-" "unavailable" "cascata esgotada"
 exit 2

@@ -2,7 +2,7 @@
 
 Skill de Claude (Claude Code e claude.ai) que cria a fundação documental de um projeto novo de produto ou software. Em vez de escrever documentos de primeira, ela conduz uma entrevista dirigida com o dono do projeto, extrai a profundidade necessária e só então redige, em cadeia, os oito arquivos que fundam o projeto e evitam refação.
 
-Fork do [iagodemacedo/kickoff-project](https://github.com/iagodemacedo/kickoff-project), adaptado a este way-of-work: cascata com CONVENTIONS.md (cisão PRD × conventions), FEEDBACK.md com teto e promoção, seção de execução (TDD/YAGNI) no AGENTS.md gerado, STRATEGY.md opt-in e stack default da casa.
+Fork do [iagodemacedo/kickoff-project](https://github.com/iagodemacedo/kickoff-project), adaptado a este way-of-work: cascata com CONVENTIONS.md (cisão PRD × conventions), FEEDBACK.md com teto e promoção, seção de execução (TDD/YAGNI) no AGENTS.md gerado, STRATEGY.md opt-in e molde de stack default.
 
 ## O que ela entrega
 
@@ -55,7 +55,7 @@ kickoff-project/
     ├── anatomia-design.md            # Estrutura do design system
     ├── anatomia-conventions.md       # Estrutura do CONVENTIONS.md e a regra de fronteira
     ├── anatomia-agents.md            # Estrutura do CLAUDE.md, AGENTS.md e FEEDBACK.md
-    ├── stack-default.md              # A stack padrão da casa e como adaptar ao trocar
+    ├── stack-default.md              # Molde da stack default e como adaptar ao trocar
     └── exemplos/
         ├── PRD.md                    # Padrão-ouro de PRD (projeto Chutaí)
         ├── ROUTES.md                 # Padrão-ouro de rotas

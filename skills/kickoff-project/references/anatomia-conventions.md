@@ -18,7 +18,7 @@ Não duplicar a promessa aqui, nem o detalhamento lá.
 ## Dois níveis
 
 Se o projeto vive num umbrella com um CONVENTIONS.md compartilhado (o modelo de trabalho
-da casa), o documento do projeto **abre declarando que o estende** e registra só o que é
+comum a todos os projetos), o documento do projeto **abre declarando que o estende** e registra só o que é
 específico: stack, padrões e regras locais. Não re-narrar o modelo compartilhado.
 
 ## Esqueleto

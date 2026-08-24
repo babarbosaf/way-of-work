@@ -19,7 +19,7 @@ description: >-
 > planos atuais. Sonnet/Opus de graça via `agy --model` > o mesmo modelo pago
 > pela sessão. Em projetos com scope pago configurado, a cascata ainda tem um degrau pago
 > estratégico antes da sessão: backend `claude_api` (API key dedicada, roteado
-> pela policy, automático, sem ação sua). Claude da sessão assume tarefa
+> pela policy, automático, sem ação sua). A sessão assume a tarefa
 > delegável só quando tudo isso esgota (exit 2).
 
 ## Roteamento
@@ -97,7 +97,7 @@ O worker roda com sandbox nativo do CLI, confinado a uma worktree em branch
    Órfãs: `delegate.sh --gc <repo-dir>`.
 5. Ruim mas recuperável → re-delegar com feedback no prompt (1 retry máx);
    ruim de novo → assumir a task inline.
-6. **Report de fechamento (tech-lead, sucinto/caveman).** Pós-integração, emitir
+6. **Report de fechamento (tech-lead, sucinto).** Pós-integração, emitir
    pra sessão orquestradora captar em 4 linhas (executor reportando pro tech-lead):
    ```
    feito: <o que mudou, observável>
