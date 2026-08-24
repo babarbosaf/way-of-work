@@ -2,7 +2,7 @@
 
 ```
 1. Branch curto (feature/<slug>)
-2. Commits atômicos (~100 linhas, máx 300)
+2. Commits atômicos (tamanho: ver o gate na SKILL.md)
 3. Push → GitHub Actions roda testes + lint (free)
 4. PR aberto → preview deploy automático:
    - Backend Python: Render preview environment
