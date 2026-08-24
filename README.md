@@ -24,7 +24,9 @@ memória durável entre sessões.
 | `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`. |
 | `tests/` | Suítes que travam o que quebraria calado: despacho de modelo, linter de escrita, agnosticismo do repo e link markdown morto. |
 | `specs/_TEMPLATE-spec/` | Formato de spec pra feature grande: contrato, design, slices, gate. |
+| `FEEDBACK.example.md` | Formato do buffer de correção do projeto: uma linha por entrada com o gatilho embutido, teto de 10, regra de promoção. O `FEEDBACK.md` real é gitignored. |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
+| `config/plugins.json` | Manifesto de plugins com o porquê de cada um, aplicado por `scripts/bootstrap-plugins.sh`. Todos opcionais. |
 | `hooks/` | **Claude Code.** Enforcement em runtime: grep-first em read grande, guarda de no-op, lembrete de doc atualizada. A mensagem de bloqueio diz o que fazer no lugar. |
 | `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. |
 
@@ -86,12 +88,18 @@ habilitado nem prompt de permissão desligado.
 O `settings.example.json` lista as chaves de preferência mais comuns com valores
 neutros. Copie pro seu `settings.json` o que fizer sentido, ou rode com o mínimo.
 
-Plugin é opt-in de quem adota, então nenhum marketplace vem habilitado:
+Plugin é opt-in, então nenhum marketplace vem habilitado no `settings.json`. Os que o
+modelo de trabalho usa estão declarados em `config/plugins.json`, com o porquê de cada um,
+e nenhum é pré-requisito:
 
 ```bash
-claude plugin marketplace add <owner>/<repo>
-claude plugin install <plugin>@<marketplace>
+scripts/bootstrap-plugins.sh            # dry-run: mostra os comandos
+scripts/bootstrap-plugins.sh --apply    # instala
 ```
+
+Plugin de conta (Slack, Linear, Notion) fica de fora da base: o nome do workspace conta
+quem você é. Declare esses em `config/plugins.local.json`, que é gitignored e faz merge
+sobre a base, mesma convenção do `model-policy`.
 
 Verificação pós-instalação:
 
