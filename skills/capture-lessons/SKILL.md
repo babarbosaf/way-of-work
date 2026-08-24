@@ -3,6 +3,7 @@ name: capture-lessons
 description: |
   Revisa a sessão e roteia lições pra dois destinos: FEEDBACK.md do projeto (correção/padrão local, com teto e promoção) ou memória global (padrão cross-projeto). Propõe antes de escrever.
   Use ao final de sessão com bug resolvido, padrão/anti-pattern descoberto, decisão técnica, feedback do usuário, ou múltiplos arquivos editados. Funciona em qualquer projeto com AGENTS.md/CLAUDE.md.
+  Não invoque para: estado de trabalho em curso pra retomar depois, que é `handoff`; nem pra correção que morre com a sessão.
 ---
 
 # capture-lessons
@@ -43,7 +44,7 @@ Casos derivados:
 | Situação | Ação |
 |---|---|
 | Lição de projeto que já está no FEEDBACK.md (reincidência) ou virou norma | **Promover:** mover pro doc permanente (AGENTS.md se instrução de agente, CONVENTIONS.md se regra de código, PRD.md/DESIGN.md se produto) e apagar a entrada |
-| FEEDBACK.md perto do teto (10 entradas) | Compactar: promover o que virou norma, deletar o obsoleto |
+| FEEDBACK.md perto do teto | Compactar: promover o que virou norma, deletar o obsoleto |
 | Decisão técnica cara de reverter | ADR em `docs/adrs/` + linha no índice do CONVENTIONS.md |
 | Tarefa com owner + esforço | `TODOS.md` do projeto |
 | Fato sobre o usuário | `profile/me.md` |

@@ -69,6 +69,12 @@ regra    "organização do dono" 'da casa|na casa|nossa casa'  # guard-regex
 plantado "organização do dono" 'da casa|na casa|nossa casa' "A stack padrão da casa."  # guard-regex
 regra    "máquina ou SO específico" 'meu mac|fora do mac|meu notebook'  # guard-regex
 plantado "máquina ou SO específico" 'meu mac|fora do mac|meu notebook' "Fora do Mac isso não roda."  # guard-regex
+# Caminho de trabalho fora do diretório de config é topologia privada: nome de
+# projeto, layout de disco e, junto, o histórico de incidente que veio com ele.
+# Um hook privado entrou num commit por `git add -A` antes desta regra existir.
+# `Projects/repo` é o placeholder do exemplo de worktree, não projeto real.
+regra    "caminho de trabalho privado" '~/(Projects|Documents|Desktop)|\$HOME/(Projects|Documents|Desktop)' 'Projects/repo'  # guard-regex
+plantado "caminho de trabalho privado" '~/(Projects|Documents|Desktop)|\$HOME/(Projects|Documents|Desktop)' "WIKI = os.path.expanduser(\"~/Projects/llm-wiki\")"  # guard-regex
 
 echo "== ponteiro morto =="
 # CHANGELOG registra o que já saiu, então cita nome de arquivo removido por

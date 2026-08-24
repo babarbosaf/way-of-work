@@ -7,6 +7,17 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Suíte dos hooks e do Evaluator** (`tests/hooks.test.sh`, 33 asserts;
+  `tests/peer-review.test.sh`, 17). Os cinco hooks de enforcement e o
+  `peer-review.sh` não tinham um assert, e são justamente o que o README oferece
+  como enforcement e como segunda opinião. Payload JSON no stdin e delegate falso
+  em HOME falso: nada sai pra rede, nenhum CLI de modelo é invocado.
+- **Pré-requisitos no README**: o que é necessário (`python3`, `jq`), o que é
+  opcional (`rtk`), o comando de instalação do context7 MCP que a doutrina exige, e
+  os cinco kill switches dos hooks.
+- **Guarda de caminho de trabalho privado** em `tests/agnostico.test.sh`. Um hook
+  com topologia privada entrou num commit por `git add -A`, e nenhuma regra de
+  identidade casava: o tell estrutural é o caminho fora do diretório de config.
 - **Skill `writing`** (absorve `docs/research/escrita.md` e `templates/VOZ.md`): doutrina
   de brevidade e naturalidade, catálogo de 31 padrões anti-slop com o substituto de cada
   um (`references/padroes.md`), molde de calibração de voz (`references/voz.md`), pares
@@ -23,6 +34,23 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   no AGENTS.md gerado, `STRATEGY.md` opt-in, herança de fundação de design,
   molde de stack default, exemplos Chutaí com `CONVENTIONS.md` novo
   extraído do PRD.
+
+### Fixed
+
+- **Hook do RTK quebrava em quem clonasse sem o CLI.** `rtk-hook-wrapper.sh` chamava
+  `rtk` sem guarda, e o hook está ligado em todo `PreToolUse:Bash`: medido rc=127 e
+  `command not found` a cada comando. Agora sai limpo sem o binário, e `docs/rtk.md`
+  declara que é opcional.
+- **Fallback gracioso do Evaluator não rodava.** Com `set -e`, a chamada ao
+  `delegate.sh` abortava `peer-review.sh` antes do bloco de fallback: cascata
+  esgotada saía como exit 2 mudo, sem mensagem e sem a linha `unavailable` no
+  `usage.log`.
+- **Mensagem do hook de memória ensinava errado.** O bloqueio pedia `<op>` e o
+  regex aceita só `create|update|delete|lint|ingest`. As ops passam a sair de uma
+  tupla única que alimenta regex e mensagem, e o `AGENTS.md` nomeia as cinco.
+- **`/simplify` era apresentado como regra genérica** na seção de Testes do
+  `AGENTS.md`, sendo builtin do Claude Code. Quem roda outro harness lia regra que
+  não tem como executar.
 
 ### Changed
 

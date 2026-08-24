@@ -22,12 +22,12 @@ memória durável entre sessões.
 | `skills/` | Uma skill por fase do ciclo (taxonomia abaixo). O conteúdo é doutrina em markdown, então serve de leitura pra qualquer agente; o dispatch por `/comando` é do Claude Code. |
 | `docs/` | Doutrina: `evolve-over-create.md`, `autonomy-loops.md`, `adversarial-evaluator.md` (segunda opinião opcional) e runbooks em `docs/runbooks/`. |
 | `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`. |
-| `tests/` | Suítes que travam o que quebraria calado: despacho de modelo, linter de escrita, agnosticismo do repo e link markdown morto. |
+| `tests/` | Seis suítes, 169 asserts, sem rede e sem CLI real: despacho de modelo, review adversarial, os cinco hooks de enforcement, manifesto de plugins, linter de escrita, agnosticismo do repo e link markdown morto. |
 | `specs/_TEMPLATE-spec/` | Formato de spec pra feature grande: contrato, design, slices, gate. |
 | `FEEDBACK.example.md` | Formato do buffer de correção do projeto: uma linha por entrada com o gatilho embutido, teto de 10, regra de promoção. O `FEEDBACK.md` real é gitignored. |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
 | `config/plugins.json` | Manifesto de plugins com o porquê de cada um, aplicado por `scripts/bootstrap-plugins.sh`. Todos opcionais. |
-| `hooks/` | **Claude Code.** Enforcement em runtime: grep-first em read grande, guarda de no-op, lembrete de doc atualizada. A mensagem de bloqueio diz o que fazer no lugar. |
+| `hooks/` | **Claude Code.** Cinco hooks de enforcement em runtime: grep-first em read grande, no-op bloqueado, lembrete de doc atualizada, append obrigatório no log de memória e guarda de tamanho do `CLAUDE.md`. A mensagem de bloqueio diz o que fazer no lugar, e cada um tem kill switch (ver Pré-requisitos). |
 | `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. |
 
 Histórico de release em [`CHANGELOG.md`](CHANGELOG.md).
@@ -100,6 +100,30 @@ scripts/bootstrap-plugins.sh --apply    # instala
 Plugin de conta (Slack, Linear, Notion) fica de fora da base: o nome do workspace conta
 quem você é. Declare esses em `config/plugins.local.json`, que é gitignored e faz merge
 sobre a base, mesma convenção do `model-policy`.
+
+#### Pré-requisitos
+
+| ferramenta | pra quê | sem ela |
+|---|---|---|
+| `python3` | os cinco hooks de enforcement e o linter de escrita | hook e linter não rodam |
+| `jq` | merge dos overlays `*.local.json` (`model-policy`, `plugins`) | `model-policy-effective.sh` e `bootstrap-plugins.sh` abortam |
+| context7 MCP | a doutrina manda consultar doc de lib atualizada antes de escolher API | a regra existe e não tem como ser cumprida |
+| `rtk` | comprime a saída dos comandos antes de entrar no transcript | nada: o hook sai limpo e o comando roda normal |
+
+Só `python3` e `jq` são de fato necessários. O context7 se instala por comando, com a key
+grátis de `context7.com/dashboard`:
+
+```bash
+claude mcp add --scope user --header "CONTEXT7_API_KEY: SUA_KEY" \
+  --transport http context7 https://mcp.context7.com/mcp
+```
+
+Detalhes e a alternativa local por `npx` em [`docs/research/context7.md`](docs/research/context7.md).
+O `rtk` é opcional e sai por `brew install rtk` (ver [`docs/rtk.md`](docs/rtk.md)).
+
+Cada hook tem kill switch por variável de ambiente, pra quando o enforcement estorvar em
+vez de ajudar: `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,
+`CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`, `CLAUDE_MD_GUARD_DISABLED=1`.
 
 Verificação pós-instalação:
 

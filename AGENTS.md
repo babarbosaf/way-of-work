@@ -49,7 +49,7 @@ máquina (`docs/autonomy-loops.md`).
 ## Testes
 
 1. Comportamento novo nasce com teste: RED antes do código, GREEN mínimo,
-   REFACTOR = `/simplify` mantendo verde.
+   REFACTOR = simplificar mantendo verde.
 2. Todo bug ganha teste de regressão ANTES da correção; debug para na causa
    raiz, não no sintoma ("deduplicar no resultado" é sintoma; "query errada" é causa).
 3. Suite verde é pré-condição de commit. "Parece certo" não é done; AC "rodar
@@ -93,7 +93,7 @@ context7 MCP (`use context7`). Ref: `docs/research/context7.md`.
 
 ## Auto-memória
 
-1. Append em `memory/log.md` antes de criar/editar memória (header `## [YYYY-MM-DD] <op> | <basename> (session=<id>)`).
+1. Append em `memory/log.md` antes de criar/editar memória (header `## [YYYY-MM-DD] <op> | <basename> (session=<id>)`, com `<op>` em create, update, delete, lint ou ingest).
 2. **Índice hub-first.** Atômica nova referenciada no hub `concept_*` do tema (hubs são índices, não conteúdo), nunca em lista de órfãs no `MEMORY.md`. `MEMORY.md` = só hubs + cross-cutting sem hub natural. Atômica coberta por hub não repete linha (chega por recall). 3+ atômicas sem hub → criar hub.
 3. **Teto do índice.** `MEMORY.md` ≤ ~40 linhas / hubs-only. Estourou = compactar (dobrar órfãs em hub), não relaxar.
 4. Precedência: AGENTS.md > memory; memória conflitante corrigida/arquivada na hora.
@@ -119,6 +119,7 @@ append em `memory/log.md` antes de criar/editar; guard de tamanho do CLAUDE.md.
 Auto-compact forçado em 400k via env; RTK roda via hook proxy.
 
 **Kill-switches.** `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,
-`CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`.
+`CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`, `CLAUDE_MD_GUARD_DISABLED=1`.
 
-**Skills.** Dispatch por `/`.
+**Comandos.** Dispatch de skill por `/`. O REFACTOR do ciclo de testes usa o builtin
+`/simplify`; em outro harness, é simplificar na mão com a suíte verde.

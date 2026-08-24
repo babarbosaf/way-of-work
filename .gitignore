@@ -33,8 +33,11 @@
 # overrides project-specific (privados, merge em runtime), nunca versionar
 config/*.local.json
 config/*.local.md
-# hook que carrega topologia local de repos: fica no disco, fora do template público
+# hooks que carregam topologia local de repos: ficam no disco, fora do template
+# público. Nome de projeto, caminho de trabalho e histórico de incidente não são
+# doutrina transferível.
 hooks/emit_trace_guard.py
+hooks/wiki_push_guard.py
 skills/_archive/
 docs/_archive/
 hooks/__pycache__/

@@ -33,7 +33,7 @@ Sem comando runnable de aceite, **não abre loop**, volta pra turn-based. Crité
 
 ## Gate de saída = mecanismo existente, não paralelo
 
-Antes de ship unattended: suite verde + `/simplify` sobre o diff; se o diff toca prod ou é caro de reverter, rodar também `peer-review.sh diff` (segunda opinião, `docs/adversarial-evaluator.md`). **Não spawnar reviewer novo** paralelo; duplica o Evaluator. Evoluir>criar.
+Antes de ship unattended: suite verde + `/simplify` sobre o diff (builtin do Claude Code); se o diff toca prod ou é caro de reverter, rodar também `peer-review.sh diff` (segunda opinião, `docs/adversarial-evaluator.md`). **Não spawnar reviewer novo** paralelo; duplica o Evaluator. Evoluir>criar.
 
 ## Custo: corpo mecânico vs julgamento
 
