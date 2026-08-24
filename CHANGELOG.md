@@ -19,6 +19,14 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **`settings.json` versionado vira mínimo.** Fica só o que faz o repo funcionar: hooks
+  de enforcement, statusline, teto de auto-compact e `ask` em `git push`. Saíram três
+  flags que suprimiam confirmação de permissão, as chaves de preferência pessoal
+  (modelo, effort, idioma, voz, editor, TUI, canal de update) e a lista de plugins e
+  marketplaces habilitados. Quem clonou antes de agora herdava as três flags de
+  permissão: confira o próprio `settings.json` ao atualizar. Preferência passa a viver
+  em `settings.example.json`, um fragmento pra copiar chave por chave; plugin se instala
+  por `claude plugin install`.
 - **Modelo de trabalho vira 3 modos** (substitui o ciclo de 5 elos): projeto
   novo → `/kickoff-project`; feature grande → spec de 1 arquivo em
   `docs/specs/<slug>.md`; resto → direto no código com TDD. Docs vivos como

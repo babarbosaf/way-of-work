@@ -16,7 +16,7 @@ correção ao vivo, e é isso que faz a correção de hoje valer amanhã.
 - Código, comandos e mensagens de erro: **byte-a-byte exatos**, nunca comprimir.
 - Manter o idioma original (PT-BR aqui) e a correção ortográfica — nada de trocar acento por ASCII.
 
-O plugin `caveman` (instalado, `CAVEMAN_DEFAULT_MODE=lite`) aplica isso no output em runtime; dado o requisito de bom português, `lite`/`full` são os níveis seguros. O estilo em si vive nos docs — não depende do plugin.
+O plugin `caveman` é opcional: se você instalar e definir `CAVEMAN_DEFAULT_MODE`, ele aplica isso no output em runtime, e dado o requisito de bom português os níveis seguros são `lite` e `full`. O estilo em si vive nos docs, não depende do plugin.
 
 ## Naturalidade (anti-slop)
 

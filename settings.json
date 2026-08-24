@@ -1,20 +1,14 @@
 {
   "skillListingBudgetFraction": 0.02,
   "env": {
-    "CLAUDE_CODE_NEW_INIT": "1",
     "CLAUDE_CODE_AUTO_COMPACT_WINDOW": "400000",
-    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "100",
-    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1",
-    "EDITOR": "zed",
-    "CAVEMAN_DEFAULT_MODE": "lite"
+    "CLAUDE_AUTOCOMPACT_PCT_OVERRIDE": "100"
   },
   "permissions": {
     "ask": [
       "Bash(git push:*)"
-    ],
-    "defaultMode": "auto"
+    ]
   },
-  "model": "claude-fable-5[1m]",
   "hooks": {
     "PostToolUse": [
       {
@@ -68,38 +62,5 @@
   "statusLine": {
     "type": "command",
     "command": "bash \"$HOME/.claude/scripts/statusline.sh\""
-  },
-  "enabledPlugins": {
-    "pyright-lsp@claude-plugins-official": true,
-    "caveman@caveman": true,
-    "slack@claude-plugins-official": true
-  },
-  "extraKnownMarketplaces": {
-    "caveman": {
-      "source": {
-        "source": "github",
-        "repo": "JuliusBrussee/caveman"
-      }
-    },
-    "impeccable": {
-      "source": {
-        "source": "github",
-        "repo": "pbakaus/impeccable"
-      }
-    }
-  },
-  "language": "PT-BR",
-  "effortLevel": "high",
-  "autoUpdatesChannel": "latest",
-  "tui": "fullscreen",
-  "voice": {
-    "enabled": true,
-    "mode": "hold"
-  },
-  "showThinkingSummaries": true,
-  "skipDangerousModePermissionPrompt": true,
-  "skipWorkflowUsageWarning": true,
-  "remoteControlAtStartup": false,
-  "skipAutoPermissionPrompt": true,
-  "voiceEnabled": true
+  }
 }
