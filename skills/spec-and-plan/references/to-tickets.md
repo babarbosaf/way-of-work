@@ -1,4 +1,4 @@
-# to-tickets — slice de spec → issue no tracker
+# to-tickets, slice de spec → issue no tracker
 
 **Fronteira MECE (não redefinir o que é de outro verbo):**
 - **to-tickets** (aqui): slice → issue rica, executável sem contexto.
@@ -9,15 +9,15 @@
 
 ## Quando roda
 
-Fase 2 fecha as slices → materializa cada uma como issue. **Push automático no build, pós-gate** (só slice que passou o gate §5 vira issue; rascunho não vaza pro tracker). Issue é a **fonte da verdade da execução** daí pra frente; a spec é fonte da verdade do design. Spec não rastreia status — issue rastreia.
+Fase 2 fecha as slices → materializa cada uma como issue. **Push automático no build, pós-gate** (só slice que passou o gate §5 vira issue; rascunho não vaza pro tracker). Issue é a **fonte da verdade da execução** daí pra frente; a spec é fonte da verdade do design. Spec não rastreia status, issue rastreia.
 
-## Backend — lê de `project.yaml`
+## Backend, lê de `project.yaml`
 
 `tracker.backend` (ou `tracker.tech`/`tracker.nontech` quando o repo roteia duplo) decide o writer:
 
 | backend | writer | relação obrigatória |
 |---|---|---|
-| `github` | `gh issue create --title … --body … --label ready-for-agent` + `gh issue edit` pra `blocked_by` | — |
+| `github` | `gh issue create --title … --body … --label ready-for-agent` + `gh issue edit` pra `blocked_by` |. |
 | `linear` | MCP Linear (`create_issue`), team/estado/label de `project.yaml` | initiative/area de `project.yaml` |
 | `notion` | MCP Notion (`API-post-page`) no `tasks_db` | linka relação (ver abaixo) |
 
@@ -27,9 +27,9 @@ Fase 2 fecha as slices → materializa cada uma como issue. **Push automático n
 - exemplo: issue no `tasks_db` (Acionável) **linka o repo** no `repos_db` (ex.: `<seu-repo>`).
 - comercial nontech: issue no `tasks_db` **linka um KR** no `kr_db`. Sem KR = não cria (toda task pendura num KR).
 
-## Links vivos — regra dura
+## Links vivos, regra dura
 
-Issue referencia **só URL cloud** (github blob permalink ou página do tracker). **Nunca path local** (`docs/specs/...`, `file://`) — stale garantido.
+Issue referencia **só URL cloud** (github blob permalink ou página do tracker). **Nunca path local** (`docs/specs/...`, `file://`), stale garantido.
 - Spec no repo github: **commit + push antes de criar as issues**; referencia pelo blob URL (`github.com/<org>/<repo>/blob/<sha>/docs/specs/.../spec.md`).
 - Spec nativa no tracker (Notion): referencia a página.
 - Cross-ref github↔notion no mesmo projeto é OK (task Notion aponta pro PR/issue github e vice-versa).
@@ -60,12 +60,12 @@ label: ready-for-agent      # default; muda pra ready-for-human se delega=não
 ## Regras de fatiamento (tracer-bullet)
 
 - Slice = fatia vertical demoável/verificável sozinha, **cabe numa janela de contexto fresca**. Não fatiar por camada (schema/API/UI separados).
-- **`blocked_by` ordena**: bloqueadores primeiro; relação nativa do tracker (github sub-issues, Linear blocking, Notion relation). Priority ≠ dependência — os dois campos coexistem.
+- **`blocked_by` ordena**: bloqueadores primeiro; relação nativa do tracker (github sub-issues, Linear blocking, Notion relation). Priority ≠ dependência, os dois campos coexistem.
 - Prefactor antes: "make the change easy, then make the easy change". Refactor largo = expand→contract em issues separadas.
 
-## Executor + fallback — derivado, não reescrito
+## Executor + fallback, derivado, não reescrito
 
-O `delega: <task-type>` resolve a cascata do `model-policy.json` (`tasks.<type>`: backend primário → fallback). A issue **renderiza** `executor: X (fallback: Y)` lendo a cascata — pra humano/loop ler quem pega e quem assume se o primário cair. Não hand-authora executor; muda a policy, muda o render.
+O `delega: <task-type>` resolve a cascata do `model-policy.json` (`tasks.<type>`: backend primário → fallback). A issue **renderiza** `executor: X (fallback: Y)` lendo a cascata, pra humano/loop ler quem pega e quem assume se o primário cair. Não hand-authora executor; muda a policy, muda o render.
 
 ## Invariante de completude (presença, checada no gate)
 

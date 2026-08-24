@@ -1,4 +1,4 @@
-# DESIGN.md — Chutaí Design System
+# DESIGN.md, Chutaí Design System
 
 Sistema de design "**Neon Night**" do Chutaí. Cobre tokens, padrões de componentes, princípios de layout e como construir telas novas sem cair no AI slop.
 
@@ -17,9 +17,9 @@ Mobile-first bolão social brasileiro pra Copa do Mundo 2026. **Playful-confiant
 - How We Feel pra moodboard de cards coloridos sticker-y
 
 **Dial values** (do skill `design-taste-frontend`):
-- `DESIGN_VARIANCE: 7` — assimetria controlada, cards com tamanhos variados
-- `MOTION_INTENSITY: 6` — micro-interações spring-y, hover lifts
-- `VISUAL_DENSITY: 3` — espaçoso, focado em hierarquia clara
+- `DESIGN_VARIANCE: 7`, assimetria controlada, cards com tamanhos variados
+- `MOTION_INTENSITY: 6`, micro-interações spring-y, hover lifts
+- `VISUAL_DENSITY: 3`, espaçoso, focado em hierarquia clara
 
 **Modo de cor:** **DARK MODE LOCKED no MVP**. Não há light mode. `<html class="dark" style="color-scheme: dark">` no `src/app/layout.tsx`. Tokens light em `:root` são placeholders; as cores reais vivem em `:root, .dark` no `src/app/globals.css`.
 
@@ -42,7 +42,7 @@ Use **sempre as utilities Tailwind tokenizadas**, nunca hex/oklch direto em comp
 | `bg-secondary` | `oklch(0.24 0.005 270)` | Variantes secundárias. |
 | `text-foreground` | `oklch(0.97 0.003 90)` | Texto primário (off-white). |
 | `text-muted-foreground` | `oklch(0.68 0.008 90)` | Texto secundário. |
-| `bg-primary` / `text-primary` | `oklch(0.91 0.23 130)` | **Lime neon — único acento brand.** |
+| `bg-primary` / `text-primary` | `oklch(0.91 0.23 130)` | **Lime neon, único acento brand.** |
 | `text-primary-foreground` | `oklch(0.14 0.005 270)` | Texto sobre primary (near-black). |
 | `bg-destructive` / `text-destructive` | `oklch(0.68 0.22 25)` | Erros, ações destrutivas. |
 | `ring-border` | `oklch(1 0 0 / 8%)` | Bordas/anéis de 1px nos cards. |
@@ -398,10 +398,10 @@ import { ArrowRightIcon } from "@phosphor-icons/react";
 **Naming convention:** o suffix `Icon` é o nome canônico do Phosphor v2 (ex: `ArrowRightIcon`, não `ArrowRight`). Sempre use o suffix.
 
 **Weights:**
-- `fill` — padrão para ícones em status pills, badges, CTAs (sólido)
-- `regular` — texto inline, navegação muda
-- `duotone` — decoração de fundo, ícones grandes muted
-- `bold` — setinhas (Caret, Arrow) e ações
+- `fill`, padrão para ícones em status pills, badges, CTAs (sólido)
+- `regular`, texto inline, navegação muda
+- `duotone`, decoração de fundo, ícones grandes muted
+- `bold`, setinhas (Caret, Arrow) e ações
 
 **Tamanhos:**
 - Inline em texto: `size-3` ou `size-3.5`
@@ -421,14 +421,14 @@ import { ArrowRightIcon } from "@phosphor-icons/react";
 </div>
 ```
 
-Mobile-first. Largura máxima implícita pelo container do `(app)/layout.tsx`. **Não use `max-w-7xl`** ou containers fluidos — o app é mobile, design vai assim.
+Mobile-first. Largura máxima implícita pelo container do `(app)/layout.tsx`. **Não use `max-w-7xl`** ou containers fluidos, o app é mobile, design vai assim.
 
 ### 5.2 Hierarquia visual de sections
 
-1. **Hero card** — primeiro, com glow + decoração + CTA forte
-2. **Stats / métricas** — segundo, dá contexto do estado do usuário
-3. **Listas funcionais** — terceiro (jogos, eventos)
-4. **Quick actions** — último, 2-up com tratamentos distintos
+1. **Hero card.** Primeiro, com glow + decoração + CTA forte
+2. **Stats / métricas.** Segundo, dá contexto do estado do usuário
+3. **Listas funcionais.** Terceiro (jogos, eventos)
+4. **Quick actions.** Último, 2-up com tratamentos distintos
 
 ### 5.3 Sticky elements
 
@@ -578,25 +578,25 @@ Antes de `pnpm add <pacote>`:
 
 1. **Cheque se Phosphor / Tailwind / Geist já cobre.** 90% das vezes cobre.
 2. **Se for animação complexa**, use `motion/react` (não framer-motion legacy). Evite GSAP a menos que seja scroll-pinning real.
-3. **Se for um component lib novo**, prefira shadcn/ui add (`pnpm dlx shadcn@latest add ...`) — tem código próprio que você customiza.
+3. **Se for um component lib novo**, prefira shadcn/ui add (`pnpm dlx shadcn@latest add ...`), tem código próprio que você customiza.
 
 ---
 
 ## 10. O que NÃO fazer (lista negra do AI slop)
 
-- ❌ `bg-gradient-to-br from-purple-500 to-pink-500` — AI gradient slop
-- ❌ Inter como fonte default — banido
-- ❌ Fraunces / Instrument Serif — banido
-- ❌ Cream paper backgrounds (`#f5f1ea`, `#faf7f1`, etc) — banido (era do skill premium-consumer ban)
-- ❌ Drop shadow preto puro — use `shadow-primary/20` ou neutrals tintados
-- ❌ "3 cards iguais lado a lado" — sempre diferencie pelo menos um (size, content, treatment)
-- ❌ Em-dash (`—`) em qualquer texto visível — `.`, `,` ou `:` no lugar
-- ❌ Eyebrow em toda section — máximo 1 a cada 3
-- ❌ Section numbering ("01 / FOO") — banido
-- ❌ Logo wall genérico no hero ("Used by") — só sob a hero como section separada
+- ❌ `bg-gradient-to-br from-purple-500 to-pink-500`. AI gradient slop
+- ❌ Inter como fonte default, banido
+- ❌ Fraunces / Instrument Serif, banido
+- ❌ Cream paper backgrounds (`#f5f1ea`, `#faf7f1`, etc), banido (era do skill premium-consumer ban)
+- ❌ Drop shadow preto puro, use `shadow-primary/20` ou neutrals tintados
+- ❌ "3 cards iguais lado a lado", sempre diferencie pelo menos um (size, content, treatment)
+- ❌ Em-dash (`—`) em qualquer texto visível, `.`, `,` ou `:` no lugar
+- ❌ Eyebrow em toda section, máximo 1 a cada 3
+- ❌ Section numbering ("01 / FOO"), banido
+- ❌ Logo wall genérico no hero ("Used by"), só sob a hero como section separada
 - ❌ Pillar count rule violado: bento N items ≠ N cells
-- ❌ Lucide icons — migramos pra Phosphor
-- ❌ Light mode no MVP — dark locked
+- ❌ Lucide icons, migramos pra Phosphor
+- ❌ Light mode no MVP, dark locked
 
 ---
 

@@ -2,7 +2,7 @@
 
 Duas contas rodando ao mesmo tempo, em abas diferentes do terminal, sem logout.
 
-Neste doc, `<a>` e `<b>` são os nomes dos seus perfis — troque pelos que você usar.
+Neste doc, `<a>` e `<b>` são os nomes dos seus perfis, troque pelos que você usar.
 A convenção que o resto do repo assume: o perfil default fica em `~/.claude-<a>`, o
 segundo em `~/.claude-<b>`.
 
@@ -13,13 +13,13 @@ claude          # perfil <a> (~/.claude-<a>) — o default
 claude-<b>      # perfil <b> (~/.claude-<b>)
 ```
 
-`claude` é **função no `~/.zshrc`** (seta `CLAUDE_CONFIG_DIR` e chama `command claude`)
-— função, não wrapper, pra sobreviver a updates do binário em `~/.local/bin/claude`.
+`claude` é **função no `~/.zshrc`** (seta `CLAUDE_CONFIG_DIR` e chama `command claude`).
+Função, não wrapper, pra sobreviver a updates do binário em `~/.local/bin/claude`.
 Baseline no `~/.zshenv`: `export CLAUDE_CONFIG_DIR="${CLAUDE_CONFIG_DIR:-$HOME/.claude-<a>}"`
-— default guardado, que cobre shell novo de qualquer tipo sem clobrar o outro perfil.
+Default guardado, que cobre shell novo de qualquer tipo sem clobrar o outro perfil.
 **Aba aberta antes da mudança não relê rc**: `source ~/.zshrc` nela, ou abrir aba nova.
 `claude-<b>` é wrapper em `~/.local/bin/`. Flags passam direto (`--resume`, `-p`, etc.).
-Statusline mostra `[A]` / `[B]` — `scripts/statusline.sh` deriva o rótulo do nome do
+Statusline mostra `[A]` e `[B]`. `scripts/statusline.sh` deriva o rótulo do nome do
 diretório, então perfil novo aparece sozinho, sem editar o script.
 
 O dir default `~/.claude` continua sendo o clone deste repo (skills, docs, hooks
@@ -31,7 +31,7 @@ limpo: o repo num lugar, o estado de cada conta em `~/.claude-<nome>`.
 `CLAUDE_CONFIG_DIR` troca o diretório de estado do Claude Code. A credencial vai
 pro Keychain do macOS no serviço `Claude Code-credentials-<sha256(CLAUDE_CONFIG_DIR)[0:8]>`;
 o dir default (`~/.claude`) usa o nome legado `Claude Code-credentials`, sem sufixo.
-Perfil novo nasce **sem** credencial (`loggedIn: false`) — não herda nada do default.
+Perfil novo nasce **sem** credencial (`loggedIn: false`), não herda nada do default.
 
 **Renomear um perfil muda o hash** e a credencial antiga fica órfã. Ou você copia a
 entrada do Keychain pro serviço com hash novo, ou faz `/login` uma vez no perfil
@@ -63,7 +63,7 @@ fronteira de segurança acompanha o perfil em vez de assumir `~/.claude`.
 
 ## Login (uma vez por perfil)
 
-**Nunca rodar `logout`** — logout revoga o refresh token no servidor, e o estrago
+**Nunca rodar `logout`.** Logout revoga o refresh token no servidor, e o estrago
 não é local. Perfil sem credencial: abrir e `/login` com a conta certa.
 
 Verificar (sem `ANTHROPIC_API_KEY` no ambiente, senão o status reporta `api_key`):
@@ -78,7 +78,7 @@ env -u ANTHROPIC_API_KEY claude-<b> auth status
 OAuth de MCP mora na mesma entrada de Keychain do perfil, então re-login é por perfil.
 `.claude.json` é por perfil; servidor de scope local (por cwd) precisa ser recadastrado
 no perfil onde for usado. Se você aposentar um perfil, os MCPs user-scope que só
-existiam no `.claude.json` dele somem com ele — recadastrar no que sobrou.
+existiam no `.claude.json` dele somem com ele. Recadastrar no que sobrou.
 
 ## Rollback
 
@@ -92,6 +92,6 @@ Statusline volta ao default removendo `statusLine` do `settings.json` do perfil.
 
 ## Limites
 
-Uso e rate limit contam por conta, que é o efeito desejado — cada conta no escopo dela.
+Uso e rate limit contam por conta, que é o efeito desejado, cada conta no escopo dela.
 Perfil não é amarrado a diretório: `cd` na pasta de um cliente e `claude` por reflexo
 roda na outra conta. Amarração por cwd é evolução possível do wrapper.

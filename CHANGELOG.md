@@ -7,6 +7,13 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Skill `writing`** (absorve `docs/research/escrita.md` e `templates/VOZ.md`): doutrina
+  de brevidade e naturalidade, catálogo de 31 padrões anti-slop com o substituto de cada
+  um (`references/padroes.md`), molde de calibração de voz (`references/voz.md`), pares
+  antes/depois reais (`fixtures/`) e um linter (`scripts/check-writing.py`) que ignora
+  bloco de código e aponta `arquivo:linha:regra`. Suíte própria em
+  `tests/writing.test.sh`. A regra de escopo que faltava está explícita: fragmento é pra
+  instrução densa, texto lido de ponta a ponta pede frase conectada.
 - **Skill `kickoff-project`** (fork de [iagodemacedo/kickoff-project](https://github.com/iagodemacedo/kickoff-project),
   adaptado): fundação de projeto novo por entrevista dirigida → `PRD.md`,
   `ROUTES.md`, `DESIGN.md`, `CONVENTIONS.md`, `CLAUDE.md`, `AGENTS.md`,
@@ -32,19 +39,18 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `docs/specs/<slug>.md`; resto → direto no código com TDD. Docs vivos como
   fonte de verdade; lição roteada pra `FEEDBACK.md` (projeto) ou memória
   (global).
-- **Adversarial Evaluator vira opcional** — sem Status Block obrigatório, teto
+- **Adversarial Evaluator vira opcional.** Sem Status Block obrigatório, teto
   de rounds ou estado que bloqueia ship; recomendado quando o diff toca prod ou
   é caro de reverter. `spec-and-plan` (spec 1 arquivo, sem folder/rubric/
   ongoing-done), `git-workflow-and-versioning` (gate: testes + segurança +
   docs vivos; `/simplify` recomendado) e `capture-lessons` (roteador de 2
   destinos) reescritas de acordo.
 
-### Removed (→ `archive/`)
+### Removed
 
 - `docs/way-of-working.md` (7 cadeias), `project-template/` (24 arquivos) e
-  `docs/rubrics/` — substituídos pela fundação gerada pelo kickoff + docs
+  `docs/rubrics/`, substituídos pela fundação gerada pelo kickoff + docs
   vivos. References de spec-folder e roteamento modelo-v2 das skills.
-
 - **Simplificação do modelo de trabalho** (~9k linhas cortadas). Ciclo enxuto:
   `coaching → spec-and-plan → build TDD → ship → capture-lessons`.
 - `ship-review` fundida em `git-workflow-and-versioning` como checklist único
@@ -59,9 +65,6 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - Cadeia de hooks `PreToolUse:Bash` cai de 5 pra 2 (só bloqueantes/proxy);
   nudges de commit removidos.
 - Governança do `model-policy.json` removida — edição direta, git é o histórico.
-
-### Removed
-
 - `refresh-model-rankings` (skill + cron), `higiene-repo-runner` (launchd),
   `skill-creator`, symlinks de skills desligadas, testes de hook sem runner.
 

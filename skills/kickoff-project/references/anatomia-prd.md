@@ -12,7 +12,7 @@ O PRD é o documento-raiz. As rotas, o design e as conventions se derivam dele.
 (a notificação chega em até 1h, o dado é sempre real, o app abre instantâneo) fica no PRD.
 O como (a edge function, o cron, a RPC, a lib de i18n, o padrão de cache) vai para o
 CONVENTIONS.md. Onde o PRD encostar em técnica, fecha com um link para a seção
-correspondente do CONVENTIONS.md — nunca duplica o detalhamento. Decisão estratégica de
+correspondente do CONVENTIONS.md, nunca duplica o detalhamento. Decisão estratégica de
 teor técnico permanece na seção de decisões do PRD (decisão é produto); só o detalhamento
 migra.
 

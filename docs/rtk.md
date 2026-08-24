@@ -1,4 +1,4 @@
-# RTK — Rust Token Killer
+# RTK, Rust Token Killer
 
 CLI proxy que reduz tokens em ops de dev (60-90%). Hook reescreve comandos automaticamente (`git status` → `rtk git status`, transparente). Atua na **saída do comando**, antes de entrar no transcript. Sempre-ligado via hook.
 

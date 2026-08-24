@@ -8,7 +8,7 @@ A escada (estender > criar, reuse > novo) roda **depois** de entender o problema
 
 O menor diff **no lugar errado** é o segundo bug, não economia. Diff curto que você não entende é preguiça disfarçada de eficiência.
 
-**Simplificação deliberada ganha marca no código.** Ao parar de propósito num nível simples (sync-only, sem cache, hardcoded), comentar o teto + upgrade path: `# simplif: sync só; async se volume > 1k/min`. Distinto de `[ASSUMPTION ARBITRÁRIA]` (premissa incerta) — aqui a escolha é consciente, marca-se onde a simplicidade quebra.
+**Simplificação deliberada ganha marca no código.** Ao parar de propósito num nível simples (sync-only, sem cache, hardcoded), comentar o teto + upgrade path: `# simplif: sync só; async se volume > 1k/min`. Distinto de `[ASSUMPTION ARBITRÁRIA]` (premissa incerta). Aqui a escolha é consciente, marca-se onde a simplicidade quebra.
 
 Cada novo artefato (staging dbt, view, property no destino, módulo Python, flag CLI, helper, abstração) duplica superfície de manutenção:
 - Fix futuro vira N lugares
@@ -36,14 +36,14 @@ Outro smell: "vou criar o `_v2` e migrar depois". Migração nunca acontece. Evo
 
 ## Aplicação cross-domain
 
-Vale pra qualquer artefato — antes de criar o paralelo, evoluir o existente:
-- **dbt** — ampliar model em vez de `_extended`/`_v2`
-- **Pydantic** — campo opcional no model existente em vez de `ModelV2`
-- **Notion** — espelhar nome do source em vez de property nova
-- **Módulos Python** — arquivo direto no pacote existente em vez de subpacote novo
-- **Flags CLI** — mudar default + tests em vez de flag opt-in paralela
-- **Abstrações** — regra de 3 (só criar interface com 3 impls concretas)
+Vale pra qualquer artefato. Antes de criar o paralelo, evoluir o existente:
+- **dbt.** Ampliar model em vez de `_extended`/`_v2`
+- **Pydantic.** Campo opcional no model existente em vez de `ModelV2`
+- **Notion.** Espelhar nome do source em vez de property nova
+- **Módulos Python.** Arquivo direto no pacote existente em vez de subpacote novo
+- **Flags CLI.** Mudar default + tests em vez de flag opt-in paralela
+- **Abstrações.** Regra de 3 (só criar interface com 3 impls concretas)
 
 ## Exceção registrada
 
-Quando o boundary semântico é genuinamente novo (ex: staging `_completo` vs `_filtrado` — categorias diferentes de conjunto), criar é correto. Marcar a decisão no Mini-ADR da spec explicando POR QUÊ era boundary, não evolução.
+Quando o boundary semântico é genuinamente novo (ex: staging `_completo` vs `_filtrado`, categorias diferentes de conjunto), criar é correto. Marcar a decisão no Mini-ADR da spec explicando POR QUÊ era boundary, não evolução.

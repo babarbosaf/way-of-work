@@ -7,7 +7,7 @@ threshold: 4
 verify_cmd: "<comando que roda o aceite dos slices>"
 ---
 
-# spec-YYYY-NNN — <título>
+# spec-YYYY-NNN, <título>
 
 > Uma linha: o problema e a mudança. Se há PRD, linkar a seção
 > (`docs/prd/<sistema>.md#...`) em vez de reescrever o contexto.
@@ -27,12 +27,12 @@ Cada ramo do "depois" é a fonte única de um user journey em §2.
 
 ### Decisões
 
-**D-01 — <título>.** O que foi decidido, por quê, e o trade-off aceito.
+**D-01, <título>.** O que foi decidido, por quê, e o trade-off aceito.
 Parágrafo direto, sem template formulaico. Toda `D-NN` aparece em ≥1 slice.
 
 ### Critérios de aceite
 
-- SIM: <o que o sistema faz, em comportamento — não SQL nem função>
+- SIM: <o que o sistema faz, em comportamento, não SQL nem função>
 - NÃO: <o que explicitamente não acontece>
 
 ### Fora de escopo
@@ -66,7 +66,7 @@ runbook linkado.>
 
 - **Unit/contract:** <funções e estruturas de output>
 - **User journeys:** um por ramo do COMO FICA (mecânica em test-and-debug).
-- **Scenario (computer-use):** valida como o usuário faria, via `verify` —
+- **Scenario (computer-use):** valida como o usuário faria, via `verify`,
   obrigatório se muda superfície user-facing dirigível.
 - **Smoke pós-deploy:** script com asserts (não "usuário roda na mão").
 
@@ -74,13 +74,13 @@ runbook linkado.>
 
 Ordem respeitando dependências. Cada slice = 1 commit atômico verde.
 
-**S1 — <título>.** <o que faz>. _Pronto:_ <critério verificável>.
+**S1, <título>.** <o que faz>. _Pronto:_ <critério verificável>.
 
 ## 4. Ao fechar
 
 - <invariante de fechamento: PRD atualizado, CHANGELOG, tasks done>
 
-## 5. Gate — Evaluator Status Block
+## 5. Gate do Evaluator Status Block
 
 ```
 Gate 1 (spec): <ok | critical_aberto | pulado>

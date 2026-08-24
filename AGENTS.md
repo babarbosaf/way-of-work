@@ -1,16 +1,17 @@
-# AGENTS.md — instrução de trabalho (todos os projetos)
+# AGENTS.md, instrução de trabalho de todos os projetos
 
 Fonte única de instrução pro agente (padrão AGENTS.md, lido por Codex/Cursor/
 Copilot/etc.). `CLAUDE.md` é symlink pra este arquivo. A mecânica específica do
 Claude Code (hooks, kill-switches) vive na seção final "Claude Code specifics".
 
-**Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina:
-`docs/research/escrita.md` (brevidade + naturalidade). A calibração de voz — banidos,
-registro, corpus de imitação se houver — vive num arquivo só, fora daqui: preencha
-`templates/VOZ.md` na sua base de conhecimento e aponte pra ele. Lista de banidos cresce
-por correção ao vivo; hardcodar aqui é garantir que ninguém atualiza.
+**Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina, catálogo
+anti-slop e linter na skill `writing`; rode `check-writing.py` no arquivo antes do commit.
+A calibração de voz (banidos, registro, corpus de imitação) vive num arquivo só, fora
+daqui: preencha `skills/writing/references/voz.md` na sua base de conhecimento e aponte
+pra ele. Lista de banidos cresce por correção ao vivo; hardcodar aqui é garantir que
+ninguém atualiza.
 
-## Modelo de trabalho — 3 modos
+## Modelo de trabalho
 
 ```
 projeto novo    →  /kickoff-project (entrevista → PRD·ROUTES·DESIGN·CONVENTIONS·AGENTS·FEEDBACK)
@@ -29,7 +30,7 @@ Correção/lição do projeto: append no `FEEDBACK.md`, **uma linha por entrada*
 gatilho embutido (teto 10; a narrativa do incidente fica na decisão que o produziu, e
 entrada que virou norma é promovida ao doc permanente e apagada). Lição cross-projeto:
 memória (skill `capture-lessons` roteia). Achado colateral: resolve agora ou vira linha
-no `TODOS.md` com contexto — nunca solto na conversa.
+no `TODOS.md` com contexto, nunca solto na conversa.
 
 **Identidade de projeto tem dono.** Mudança que altera o que um projeto **é** (o que
 faz, stack, canal, quem mantém, se morreu) atualiza a página dele na sua base de
@@ -40,12 +41,12 @@ que não existia mais.
 Cross-cutting: context7 antes de API/lib; `delegate` mecânico/economia;
 `design-workflow` antes de componente/tela visual novo ou redesenho; `/handoff`
 antes de compactar com trabalho aberto. Segunda opinião adversarial
-(`scripts/peer-review.sh {spec|diff}`) é opcional, sob demanda — recomendada em
-diff que toca prod ou é caro de reverter (`docs/adversarial-evaluator.md`).
+(`scripts/peer-review.sh {spec|diff}`) é opcional, sob demanda. Recomendada
+em diff que toca prod ou é caro de reverter (`docs/adversarial-evaluator.md`).
 Autonomia/loops: escada turn→`/goal`→`/loop`→`/schedule`, stop-condition de
 máquina (`docs/autonomy-loops.md`).
 
-## Testes — 3 regras
+## Testes
 
 1. Comportamento novo nasce com teste: RED antes do código, GREEN mínimo,
    REFACTOR = `/simplify` mantendo verde.
@@ -54,7 +55,7 @@ máquina (`docs/autonomy-loops.md`).
 3. Suite verde é pré-condição de commit. "Parece certo" não é done; AC "rodar
    manualmente" vira script com assert.
 
-## Código simples — YAGNI extremo
+## YAGNI extremo
 
 - Abstração só na 3ª repetição (rule of three). Helper extraído na 1ª duplicação = corte.
 - Zero feature especulativa: com agente, adicionar depois é trivial; remover
@@ -83,23 +84,23 @@ escreve override próprio. Teste linha-a-linha: "cortar isso faria o agente
 errar?" Não → cortar. Raiz em CAIXA-ALTA = doc único e estável; instância
 (`spec-<slug>`, `adr-NNNN`) em lowercase. Transiente vai pra `_tmp/` (gitignored).
 Escopo se declara pelo que o projeto **É**: nada de tabela de exclusão nem de "isto saiu
-daqui" — a negativa que importa vive na decisão que a produziu.
+daqui". A negativa que importa vive na decisão que a produziu.
 
 ## Coding practices atualizadas (context7)
 
 Antes de escolher API/assinatura/versão de lib, consultar doc atualizada via
 context7 MCP (`use context7`). Ref: `docs/research/context7.md`.
 
-## Auto-memória — regras
+## Auto-memória
 
 1. Append em `memory/log.md` antes de criar/editar memória (header `## [YYYY-MM-DD] <op> | <basename> (session=<id>)`).
-2. **Índice hub-first.** Atômica nova referenciada no hub `concept_*` do tema (hubs são índices, não conteúdo), nunca em lista de órfãs no `MEMORY.md`. `MEMORY.md` = só hubs + cross-cutting sem hub natural — atômica coberta por hub não repete linha (chega por recall). 3+ atômicas sem hub → criar hub.
+2. **Índice hub-first.** Atômica nova referenciada no hub `concept_*` do tema (hubs são índices, não conteúdo), nunca em lista de órfãs no `MEMORY.md`. `MEMORY.md` = só hubs + cross-cutting sem hub natural. Atômica coberta por hub não repete linha (chega por recall). 3+ atômicas sem hub → criar hub.
 3. **Teto do índice.** `MEMORY.md` ≤ ~40 linhas / hubs-only. Estourou = compactar (dobrar órfãs em hub), não relaxar.
 4. Precedência: AGENTS.md > memory; memória conflitante corrigida/arquivada na hora.
 
 ## Infra / migração de schema
 
-Antes de artefato de fidelidade (baseline, equivalência, snapshot de prod): reconhecimento completo do ambiente primeiro — versão real do servidor, enumeração dinâmica de objetos, tipos invisíveis a `information_schema`. Não usar CI/prod como sonda de descoberta.
+Antes de artefato de fidelidade (baseline, equivalência, snapshot de prod): reconhecimento completo do ambiente primeiro: versão real do servidor, enumeração dinâmica de objetos, tipos invisíveis a `information_schema`. Não usar CI/prod como sonda de descoberta.
 
 ## RTK (economia de tokens)
 
@@ -109,7 +110,7 @@ Proxy sempre-ligado; analytics: `rtk gain`. Detalhes: `docs/rtk.md`.
 
 ## Claude Code specifics
 
-Mecânica de enforcement específica do Claude Code — a mensagem de bloqueio do
+Mecânica de enforcement específica do Claude Code. A mensagem de bloqueio do
 hook ensina na hora. Outros harnesses ignoram esta seção.
 
 **Hooks ativos.** Grep-first em Read >200 linhas; no-op flush bloqueado; lembrete

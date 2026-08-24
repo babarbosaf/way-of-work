@@ -1,4 +1,4 @@
-# Adversarial Evaluator — segunda opinião sob demanda
+# Adversarial Evaluator
 
 Reviewer LLM independente revisa specs e diffs do Claude (segunda opinião
 adversarial). **Ferramenta opcional, não gate:** não existe Status Block
@@ -19,7 +19,7 @@ pedir, ou oferecer quando o diff/spec **toca prod ou é caro de reverter**
 
 **Tamanho não captura risco.** Mudança de schema, migração de dados ou rename
 consumido downstream é alto-risco mesmo pequena (perda de dado silenciosa,
-quebra de consumidor que unit/CI leve não pegam) — bons candidatos a review.
+quebra de consumidor que unit/CI leve não pegam). Bons candidatos a review.
 
 **Contexto injetado automaticamente:** primeiras 40 linhas do CLAUDE.md do
 projeto; em spec mode, o PRD do sistema (ou `idea_ref:` do frontmatter); em
@@ -28,17 +28,17 @@ se `--findings` for passado.
 
 ## Cascata de reviewers
 
-1. **codex** — primário. Requer `codex` CLI no PATH.
-2. **gemini** — segundo. Requer `gemini` CLI (`npm i -g @google/gemini-cli`).
-3. **subagente Claude adversarial de contexto fresco** — quando 1 e 2
+1. **codex.** Primário. Requer `codex` CLI no PATH.
+2. **gemini.** Segundo. Requer `gemini` CLI (`npm i -g @google/gemini-cli`).
+3. **subagente Claude adversarial de contexto fresco.** Quando 1 e 2
    indisponíveis (`exit 2`). Prompt red-team explícito: "Você é um revisor
    cético. Tente REFUTAR esta spec/diff. Liste apenas problemas reais
    classificados em Critical/Important/Suggestion; default a Critical quando em
    dúvida sobre segurança ou perda de dado."
-4. **inline Claude** — piso-do-piso (ex. session limit). Mesmo viés do agente
+4. **inline Claude.** Piso do piso (ex. session limit). Mesmo viés do agente
    principal; cada finding cita `file:line` real, não inferência.
 
-Reportar sempre **quem realmente produziu o output** — nunca apresentar
+Reportar sempre **quem realmente produziu o output**, nunca apresentar
 findings como se um reviewer indisponível tivesse rodado. `rc≠0` com output
 truncado = "não rodou", nunca "ok".
 
@@ -46,7 +46,7 @@ truncado = "não rodou", nunca "ok".
 
 Cooldown por reviewer em `~/.claude/gate/cooldown.<model>` (override
 `PEER_COOLDOWN_MINS`, default 60; limpo no primeiro sucesso). O script checa
-`command -v` antes de invocar — reviewer ausente desce a cascata sem latência.
+`command -v` antes de invocar. Reviewer ausente desce a cascata sem latência.
 Workspace não-git é normal pra review de spec (codex roda com
 `--skip-git-repo-check`); diff mode precisa de git no cwd.
 
@@ -60,12 +60,12 @@ Destino do registro:
   própria `spec.md`.
 - **Critical encontrado:** apresentar com a evidência crua e propor opções
   (corrigir e seguir, re-rodar review no patch, redesenhar). A decisão é do
-  dono — o review não bloqueia nada sozinho.
+  dono. O review não bloqueia nada sozinho.
 
 Re-run incremental: `printf '%s' "$ROUND1_FINDINGS" | peer-review.sh spec <path> --findings -`
 (o reviewer foca em verificar os fixes).
 
 ## Referências
 
-- `~/.claude/scripts/peer-review.sh` — implementação
-- `~/.claude/gate/usage.log` — JSONL de uso (metadados, sem conteúdo)
+- `~/.claude/scripts/peer-review.sh`: implementação
+- `~/.claude/gate/usage.log`: JSONL de uso (metadados, sem conteúdo)

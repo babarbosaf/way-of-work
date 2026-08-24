@@ -7,11 +7,11 @@ description: |
 
 # capture-lessons
 
-Revisa a sessão e roteia lições — com aprovação antes de escrever.
+Revisa a sessão e roteia lições, com aprovação antes de escrever.
 
 Não invocar: meio de sessão, ou decisão estratégica não-técnica (use `/coaching`).
 
-Fronteira com `/handoff`: estado de trabalho em curso (onde parei, próximo passo) não é lição — vai pro handoff. Aqui só entra o durável.
+Fronteira com `/handoff`: estado de trabalho em curso (onde parei, próximo passo) não é lição, vai pro handoff. Aqui só entra o durável.
 
 ---
 
@@ -29,14 +29,14 @@ Checar também os arquivos tocados na sessão (via conversation history): refere
 
 ---
 
-## 2. Rotear — dois destinos
+## 2. Rotear, dois destinos
 
 **A pergunta única: a lição vale fora deste projeto?**
 
 | Resposta | Destino |
 |---|---|
-| Não — é deste projeto (gotcha da stack local, correção de comportamento aqui, padrão do código daqui) | `FEEDBACK.md` do projeto (formato do scaffold: data + contexto + instrução) |
-| Sim — é jeito de trabalhar, preferência do usuário, padrão de qualquer projeto | Memória global (`memory/`, hub-first) |
+| Não, é deste projeto (gotcha da stack local, correção de comportamento aqui, padrão do código daqui) | `FEEDBACK.md` do projeto (formato do scaffold: data + contexto + instrução) |
+| Sim, é jeito de trabalhar, preferência do usuário, padrão de qualquer projeto | Memória global (`memory/`, hub-first) |
 
 Casos derivados:
 
@@ -61,7 +61,7 @@ Casos derivados:
 
 ## 3. Higiene (junto com a captura)
 
-- **Docs de raiz acima do alvo** (`AGENTS.md` ≤130 linhas, `MEMORY.md` ≤200): propor `[OTIMIZAÇÃO]` — mover detalhe pro doc certo, deixar link.
+- **Docs de raiz acima do alvo** (`AGENTS.md` ≤130 linhas, `MEMORY.md` ≤200): propor `[OTIMIZAÇÃO]`, mover detalhe pro doc certo, deixar link.
 - **Duplicação** entre AGENTS.md raiz e child: conteúdo universal mora só no pai; child só override.
 - **Status estagnado** (`## Status (YYYY-MM-DD)` >30 dias): atualizar ou cortar.
 - **TODOS.md:** `## Concluído` >20 itens → arquivar antigos, manter os 10 mais recentes.
@@ -70,7 +70,7 @@ Casos derivados:
 
 ## 4. Propor (formato único)
 
-Ordem: **manutenção/higiene → captura nova** — saúde estrutural primeiro.
+Ordem: **manutenção/higiene → captura nova**, saúde estrutural primeiro.
 
 Cada item:
 ```
@@ -93,7 +93,7 @@ Conteúdo de memória: regra/fato → `**Why:**` → `**How to apply:**`. 1-3 li
 Interpretar: `ok`/texto livre → aprovar tudo · `n:X` → descartar X · `ajustar:X <texto>` → ajuste antes de escrever.
 
 **Aplicação:**
-1. Edits cirúrgicos — substituir seções, não reescrever.
+1. Edits cirúrgicos: substituir seções, não reescrever.
 2. Pra cada `create/update/delete` em `memory/*.md`, **append em `memory/log.md` ANTES** (hook bloqueia): `## [YYYY-MM-DD] <op> | <basename> (session=<id>)` + 1-3 linhas.
 3. Limpar TODOS.md automaticamente: `[x]` com data em **Ativo** vão pra **Concluído** cronológico; `[x]` sem data → aviso, não move.
 4. Reportar arquivos atualizados.

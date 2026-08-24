@@ -30,7 +30,7 @@ nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
   espaço natural para correção.
 - **Fronteira PRD × CONVENTIONS:** o que o usuário percebe é PRD; o que só o dev percebe é
   CONVENTIONS. Onde o PRD encostar em técnica, vira link para a seção correspondente do
-  CONVENTIONS.md — nunca duplicação.
+  CONVENTIONS.md, nunca duplicação.
 - **Entrega padrão são os quatro documentos mais CLAUDE.md, AGENTS.md, o scaffold de
   FEEDBACK.md e um TODOS.md vazio.** Só pular algum se o usuário pedir explicitamente.
 - **Português por padrão**, acompanhando o idioma do usuário.
@@ -83,7 +83,7 @@ detalhe de cada seção (abrir por seção, não carregar o arquivo inteiro de u
 
 Garantir os diferenciais: padrão de seção repetido (modelo, estrutura, regras em tabela,
 edge cases, pontos a definir), a seção de decisões estratégicas registradas com racional, e
-as seções transversais em nível de comportamento — o detalhamento técnico delas nasce aqui
+as seções transversais em nível de comportamento. O detalhamento técnico delas nasce aqui
 na conversa, mas o texto final aponta para o CONVENTIONS.md (regra de fronteira na
 anatomia). Guardar o material técnico levantado para o Passo 5.
 
@@ -141,14 +141,14 @@ antes de salvar. Quando a skill rodar no claude.ai (sem projeto local), salvar e
 
 ## Recursos
 
-- `references/metodo-entrevista.md` — o protocolo de entrevista, fase a fase.
-- `references/anatomia-prd.md` — estrutura e convenções do PRD.
-- `references/anatomia-rotas.md` — estrutura do documento de rotas e como derivá-lo do PRD.
-- `references/anatomia-design.md` — estrutura do design system e como derivá-lo das rotas.
-- `references/anatomia-conventions.md` — estrutura do CONVENTIONS.md e a regra de fronteira
+- `references/metodo-entrevista.md`: o protocolo de entrevista, fase a fase.
+- `references/anatomia-prd.md`: estrutura e convenções do PRD.
+- `references/anatomia-rotas.md`: estrutura do documento de rotas e como derivá-lo do PRD.
+- `references/anatomia-design.md`: estrutura do design system e como derivá-lo das rotas.
+- `references/anatomia-conventions.md`: estrutura do CONVENTIONS.md e a regra de fronteira
   com o PRD.
-- `references/anatomia-agents.md` — estrutura do CLAUDE.md, do AGENTS.md e do FEEDBACK.md,
+- `references/anatomia-agents.md`: estrutura do CLAUDE.md, do AGENTS.md e do FEEDBACK.md,
   e as regras operacionais que eles carregam.
-- `references/stack-default.md` — a stack padrão da casa e como adaptar ao trocar.
-- `references/exemplos/{PRD,ROUTES,DESIGN,CONVENTIONS}.md` — o padrão-ouro do Chutaí, a
+- `references/stack-default.md`: a stack padrão da casa e como adaptar ao trocar.
+- `references/exemplos/{PRD,ROUTES,DESIGN,CONVENTIONS}.md`: o padrão-ouro do Chutaí, a
   régua de profundidade. Consultar por seção.

@@ -4,8 +4,8 @@ Descreve a estrutura e o nível de profundidade do CONVENTIONS.md-alvo. O exempl
 está em `exemplos/CONVENTIONS.md` (Chutaí). Consultar por seção, como nos demais.
 
 O CONVENTIONS.md é o "como se constrói" do projeto: stack, padrões de arquitetura, regras
-obrigatórias de implementação. Ele nasce da mesma entrevista que gerou o PRD — a camada
-técnica das seções transversais e as convenções de construção capturadas na Fase 0 — e é
+obrigatórias de implementação. Ele nasce da mesma entrevista que gerou o PRD, a camada
+técnica das seções transversais e as convenções de construção capturadas na Fase 0, e é
 escrito depois do design, quando toda a superfície do produto já é conhecida.
 
 ## Regra de fronteira com o PRD

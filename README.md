@@ -11,7 +11,6 @@ Não é um plugin nem um framework. É um conjunto vivo de **skills**, **docs de
 | `skills/` | Skills invocáveis — cada uma é uma fase do ciclo (ver taxonomia abaixo). |
 | `docs/` | Doutrina: `evolve-over-create.md`, `autonomy-loops.md`, `adversarial-evaluator.md` (segunda opinião opcional) e runbooks em `docs/runbooks/`. |
 | `hooks/` | Enforcement em tempo de execução (grep-first em reads grandes, guardas de no-op, lembrete de doc atualizada). A mensagem de bloqueio ensina na hora. |
-| `archive/` | Modelo anterior (way-of-working de 7 cadeias, `project-template/` de 24 arquivos, rubrics) — substituído pelo kickoff + docs vivos. |
 | `AGENTS.md` | Padrão de instrução viva (agnóstico, lido por Codex/Cursor/etc.); `CLAUDE.md` é symlink. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica; override privado via `*.local.json` gitignored). |
 
@@ -34,6 +33,7 @@ Convenções estruturais:
 | [`coaching`](skills/coaching) | user-invoked |
 | [`handoff`](skills/handoff) | user-invoked |
 | [`capture-lessons`](skills/capture-lessons) | user-invoked |
+| [`writing`](skills/writing) | model-invoked (doutrina de escrita, catálogo anti-slop e linter) |
 
 **model-invoked** dispara sozinha quando o fluxo bate o gatilho (fase do ciclo, gate pré-ship). **user-invoked** você aciona por `/comando` num momento deliberado.
 

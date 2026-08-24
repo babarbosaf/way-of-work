@@ -1,4 +1,4 @@
-# Árvore de rotas — Chutaí
+# Árvore de rotas, Chutaí
 
 Mapa completo das telas do app. Complementa o PRD (referência de navegação e estrutura de URLs).
 
@@ -28,7 +28,7 @@ Sem bottom nav. Duas portas de entrada: convite (única forma de criar conta) e 
 
 5 abas. Sino de notificações no header de cada aba.
 
-### Aba 1 — Início (passiva, informacional)
+### Aba 1, Início (passiva, informacional)
 
 Sem CTAs, sem ações. Espaço de contexto sobre a Copa.
 
@@ -40,7 +40,7 @@ Sem CTAs, sem ações. Espaço de contexto sobre a Copa.
 | `/inicio/regras` | Regras completas, pontuação, multiplicadores |
 | `/inicio/copa` | Mapa geográfico das 16 sedes (pins por lat/long), lista de estádios com capacidade, seleções classificadas agrupadas por continente e chaveamento do mata-mata |
 
-### Aba 2 — Palpites (transacional)
+### Aba 2, Palpites (transacional)
 
 Sub-abas: Jogos, Torneio.
 
@@ -61,7 +61,7 @@ Sub-abas: Jogos, Torneio.
 | `/palpites/torneio/jovem-revelacao` | Pick do melhor jogador jovem (sub 21) |
 | `/palpites/historico` | Histórico pessoal de palpites |
 
-### Aba 3 — Grupo
+### Aba 3, Grupo
 
 Sub-abas: Liga, Estatísticas.
 
@@ -76,7 +76,7 @@ Sub-abas: Liga, Estatísticas.
 | `/grupo/trocar` | Seletor (quando o usuário está em mais de um grupo) |
 | `/grupo/entrar` | Inserir código de convite manualmente |
 
-### Aba 4 — Álbum
+### Aba 4, Álbum
 
 Coleção, drop diário, missões, trocas.
 
@@ -96,7 +96,7 @@ Coleção, drop diário, missões, trocas.
 | `/album/trocas/:id` | Detalhe com confirmação dupla |
 | `/album/listas` | Gerenciar listas Tenho e Quero |
 
-### Aba 5 — Perfil
+### Aba 5, Perfil
 
 | Rota | Descrição |
 |---|---|

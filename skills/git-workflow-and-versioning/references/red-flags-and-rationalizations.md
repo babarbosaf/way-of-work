@@ -1,4 +1,4 @@
-# Red Flags e Rationalizations — git-workflow-and-versioning
+# Red Flags e Rationalizations
 
 ## Red Flags
 

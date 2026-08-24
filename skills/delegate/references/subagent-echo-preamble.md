@@ -1,6 +1,6 @@
 # Echo-preamble pra subagente Claude fresco
 
-`Agent` (sem `subagent_type: "fork"`) spawna subagente com contexto vazio —
+`Agent` (sem `subagent_type: "fork"`) spawna subagente com contexto vazio ,
 herda só `CLAUDE.md` + tools + MCP servers, **não herda skills da sessão**.
 Se esse subagente precisar operar `delegate`/`model-policy.json`
 (escolher task-type, interpretar exit codes, seguir o protocolo de
@@ -19,7 +19,7 @@ contexto + eco de validação, em vez de assumir herança.
 ## Como montar
 
 1. Gerar o preâmbulo com os pontos que esse subagente específico precisa
-   saber (não a skill inteira — só o que a tarefa dele toca):
+   saber (não a skill inteira, só o que a tarefa dele toca):
 
    ```bash
    ~/.claude/skills/delegate/scripts/echo_preamble.sh build \
@@ -41,7 +41,7 @@ contexto + eco de validação, em vez de assumir herança.
 4. `check` falhou (exit 1) → o subagente não confirmou entendimento.
    **Não assuma que ele sabe mesmo assim.** Reforce o prompt (repita o
    preâmbulo, mais explícito) e rode de novo; se falhar de novo, trate como
-   falha de delegação — resolva você mesmo ou escale, não force adiante.
+   falha de delegação, resolva você mesmo ou escale, não force adiante.
 
 ## Por que markers curtos, não a skill inteira
 
