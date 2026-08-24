@@ -16,8 +16,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 WINDOW_SECONDS = 120
+# Fonte única das ops aceitas: o regex e a mensagem de bloqueio saem daqui, senão
+# a mensagem ensina uma op que o regex rejeita (aconteceu com `edit`).
+OPS = ("create", "update", "delete", "lint", "ingest")
 LOG_REGEX = re.compile(
-    r"^## \[\d{4}-\d{2}-\d{2}\] (?:create|update|delete|lint|ingest) \| (.+?)(?:\s+\(session=([a-f0-9-]+)\))?$"
+    r"^## \[\d{4}-\d{2}-\d{2}\] (?:" + "|".join(OPS) + r") \| "
+    r"(.+?)(?:\s+\(session=([a-f0-9-]+)\))?$"
 )
 
 
@@ -131,7 +135,8 @@ def main() -> int:
     msg = (
         f"memory hook: arquivo {basename} editado sem entrada correspondente "
         f"em log.md (na janela de {WINDOW_SECONDS}s). "
-        f"Adicione: ## [{today}] <op> | {basename} (session=<id>)"
+        f"Adicione: ## [{today}] <op> | {basename} (session=<id>), "
+        f"com <op> em {'|'.join(OPS)}"
     )
     print(msg, file=sys.stderr)
     return 2
