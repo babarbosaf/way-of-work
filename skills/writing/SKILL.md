@@ -3,6 +3,7 @@ name: writing
 description: |
   Doutrina de escrita: brevidade sem perder informação e naturalidade sem cheiro de IA. Traz o catálogo de padrões anti-slop, o molde de calibração de voz e um linter que roda no arquivo antes do commit.
   Use antes de escrever ou revisar texto que outra pessoa vai ler: README, doc de doutrina, PRD, spec, mensagem de commit, corpo de PR, e-mail, post. Use também quando o usuário reclamar que o texto ficou prolixo, genérico ou com cara de IA.
+  Não invoque para: código, nome de identificador, log e mensagem de erro, que vão byte-a-byte e nunca são reescritos por estilo; nem pra resposta curta de conversa.
 ---
 
 # Writing

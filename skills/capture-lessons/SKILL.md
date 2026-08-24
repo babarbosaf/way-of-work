@@ -3,6 +3,7 @@ name: capture-lessons
 description: |
   Revisa a sessão e roteia lições pra dois destinos: FEEDBACK.md do projeto (correção/padrão local, com teto e promoção) ou memória global (padrão cross-projeto). Propõe antes de escrever.
   Use ao final de sessão com bug resolvido, padrão/anti-pattern descoberto, decisão técnica, feedback do usuário, ou múltiplos arquivos editados. Funciona em qualquer projeto com AGENTS.md/CLAUDE.md.
+  Não invoque para: estado de trabalho em curso pra retomar depois, que é `handoff`; nem pra correção que morre com a sessão.
 ---
 
 # capture-lessons
