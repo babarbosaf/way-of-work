@@ -66,7 +66,7 @@ TDD por task, sem ping fora de checkpoint (obstáculo → nota na spec, segue at
 
 - [ ] **1. RED.** Teste que falha documenta o comportamento esperado.
 - [ ] **2. GREEN.** Mínimo pra passar, sem extras.
-- [ ] **3. REFACTOR.** `/simplify` mantendo verde; sem comportamento novo.
+- [ ] **3. REFACTOR.** Simplificar mantendo verde, sem comportamento novo. No Claude Code, `/simplify`.
 - [ ] **4. Diff só com arquivos da task**; checkpoint antes do próximo slice.
 - [ ] **5. Segunda opinião no diff (opcional):** mesma regra da spec, toca prod ou é caro de reverter → oferecer `peer-review.sh diff HEAD` com suite verde. Não é gate.
 

@@ -61,7 +61,7 @@ Um checklist, uma passada. **Critical aberto bloqueia o ship.**
 
 - [ ] **Intenção:** o diff faz o que a spec/pedido descreve? Hunk que não casa = refactor não-relacionado → commit separado.
 - [ ] **Testes:** suite completa verde; comportamento novo tem teste; bug corrigido tem teste de regressão. AC "rodar manualmente" é anti-padrão → reescrever como script com assert.
-- [ ] **`/simplify` sobre o diff**, recomendado, não bloqueante. Caça: regra de 3 violada (helper na 1ª duplicação), abstração sem 2º consumidor real, indireção que serve só ao caso atual, código morto "por garantia". Anti-purismo: abstração com 2+ consumidores reais não é prematura; duplicação com semântica diferente não vira DRY forçado.
+- [ ] **`/simplify` sobre o diff** (builtin do Claude Code), recomendado, não bloqueante. Caça: regra de 3 violada (helper na 1ª duplicação), abstração sem 2º consumidor real, indireção que serve só ao caso atual, código morto "por garantia". Anti-purismo: abstração com 2+ consumidores reais não é prematura; duplicação com semântica diferente não vira DRY forçado.
 - [ ] **Segurança:** `references/security-checklist.md`, inputs validados, sem credenciais no diff, logs sem dado sensível, erros genéricos pro usuário.
 - [ ] **Docs vivos:** comportamento de produto mudou → `PRD.md` atualizado; fluxo → `ROUTES.md`; padrão visual → `DESIGN.md`; padrão técnico → `CONVENTIONS.md`; decisão cara de reverter → ADR em `docs/adrs/`.
 - [ ] **Segunda opinião (opcional):** diff que toca prod ou é caro de reverter → oferecer `peer-review.sh diff` antes do commit. O dono decide.

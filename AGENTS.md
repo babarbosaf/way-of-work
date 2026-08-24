@@ -49,7 +49,7 @@ máquina (`docs/autonomy-loops.md`).
 ## Testes
 
 1. Comportamento novo nasce com teste: RED antes do código, GREEN mínimo,
-   REFACTOR = `/simplify` mantendo verde.
+   REFACTOR = simplificar mantendo verde.
 2. Todo bug ganha teste de regressão ANTES da correção; debug para na causa
    raiz, não no sintoma ("deduplicar no resultado" é sintoma; "query errada" é causa).
 3. Suite verde é pré-condição de commit. "Parece certo" não é done; AC "rodar
@@ -121,4 +121,5 @@ Auto-compact forçado em 400k via env; RTK roda via hook proxy.
 **Kill-switches.** `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,
 `CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`, `CLAUDE_MD_GUARD_DISABLED=1`.
 
-**Skills.** Dispatch por `/`.
+**Comandos.** Dispatch de skill por `/`. O REFACTOR do ciclo de testes usa o builtin
+`/simplify`; em outro harness, é simplificar na mão com a suíte verde.
