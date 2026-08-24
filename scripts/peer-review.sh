@@ -307,8 +307,11 @@ delegate_args=(--task review --timeout 120)
 [[ "$MODEL" != "auto" ]] && delegate_args+=(--model "$MODEL")
 
 USED_REVIEWER=""
-bash "$DELEGATE" "${delegate_args[@]}" - < "$PROMPT_FILE" > "$TMP_OUT" 2>"$DG_ERR"
-dg_rc=$?
+# `|| dg_rc=$?` é obrigatório: com `set -e`, a chamada crua abortaria o script no
+# exit≠0 do delegate, e o fallback gracioso abaixo (mensagem + log unavailable)
+# nunca rodaria. Cascata esgotada saía como exit 2 mudo.
+dg_rc=0
+bash "$DELEGATE" "${delegate_args[@]}" - < "$PROMPT_FILE" > "$TMP_OUT" 2>"$DG_ERR" || dg_rc=$?
 cat "$DG_ERR" >&2
 if [[ $dg_rc -eq 0 ]]; then
     # linha estável 'worker: <backend>' emitida pelo delegate no sucesso
