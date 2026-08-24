@@ -1,5 +1,10 @@
 # RTK, Rust Token Killer
 
+**Opcional.** O hook `scripts/rtk-hook-wrapper.sh` sai limpo quando o CLI não está
+instalado, então o repo funciona sem ele. Instala por `brew install rtk`
+(homepage: https://www.rtk-ai.app/, Apache-2.0). Sem o binário no PATH, nada é comprimido
+e nada quebra.
+
 CLI proxy que reduz tokens em ops de dev (60-90%). Hook reescreve comandos automaticamente (`git status` → `rtk git status`, transparente). Atua na **saída do comando**, antes de entrar no transcript. Sempre-ligado via hook.
 
 **Meta commands** (rodar `rtk` direto, sem proxy):

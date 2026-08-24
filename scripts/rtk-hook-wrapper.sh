@@ -24,5 +24,10 @@ else
     fi
 fi
 
+# RTK é opcional: sem o CLI instalado o hook sai limpo e o comando roda sem
+# compressão. Sem esta guarda, todo Bash de quem clona o repo sem rtk toma
+# `rtk: command not found` e rc=127.
+command -v rtk >/dev/null 2>&1 || exit 0
+
 # Para todos os outros comandos, delega ao RTK normalmente
 echo "$payload" | rtk hook claude
