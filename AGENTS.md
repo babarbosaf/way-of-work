@@ -119,6 +119,6 @@ append em `memory/log.md` antes de criar/editar; guard de tamanho do CLAUDE.md.
 Auto-compact forçado em 400k via env; RTK roda via hook proxy.
 
 **Kill-switches.** `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,
-`CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`.
+`CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`, `CLAUDE_MD_GUARD_DISABLED=1`.
 
 **Skills.** Dispatch por `/`.
