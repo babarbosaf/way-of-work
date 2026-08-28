@@ -39,6 +39,11 @@ Jeito óbvio único não rende one-pager: é Conversa, ou vai direto fazer.
 Catraca de mão única: na dúvida entre os dois, pega One-pager; complexidade descoberta no meio
 promove Conversa a One-pager; nada rebaixa.
 
+**Pedido, dentro do One-pager.** Declarar junto com o trilho, mesmo mecanismo de voz alta e
+correção: `escolha` quando a próxima ação é sua, `proposta` quando a próxima ação exige alguém
+dizer sim. O discriminador é quem age em seguida. `proposta` dispensa Opções e Comparação, e
+troca a seção que fecha o documento (`references/one-pager.md`).
+
 **Teto de uma página.** Estourou, o trilho estava errado: roteia pela tabela de Destino. O
 tamanho é o sinal.
 
@@ -74,13 +79,17 @@ Vale nos dois trilhos.
 | "Ele já decidiu, meu papel é detalhar" | Advogado do diabo é lente, não ofensa. Decisão que não sobrevive a ela era frágil. |
 | "Agora é execução, o arquivo eu fecho depois" | Depois não chega. Arquivo declarando bloco em aberto sobre coisa que já shippou é arquivo que mente. Fecha na mesma rodada. |
 | "Isso pede um arquivo novo" | Com one-pager aberto, arquivo novo exige motivo dito em voz alta e uma linha no one-pager apontando pra ele. Sem isso é o mesmo trabalho em dois lugares. |
+| "Marco `proposta` e escapo da Comparação" | Comparação é sinal de Pedido errado, como tamanho é sinal de trilho errado. Montou tabela comparando caminhos, o Pedido era `escolha`. |
+| "Decido entre A e B, e depois peço aprovação" | Isso é `escolha` com etapa de proposta depois. Dois docs, ou um doc que troca de Pedido quando a escolha fecha. |
+| "Ele pediu um doc, então o formato é o de sempre" | O núcleo é o mesmo, os blocos não. Bloco entra por condição observável, nunca por categoria de documento. |
 
 ## Trilho One-pager
 
 Ler `references/one-pager.md` antes de começar.
 
 **Onde.** `docs/one-pagers/<slug>.md`. Se o `AGENTS.md` do projeto define outro endereço pra
-proposta descartável, ele ganha. Escolhe **um** e não espalha.
+proposta descartável, ele ganha. Escolhe **um** e não espalha: dois endereços pra mesma coisa
+garantem que o próximo doc cai no errado.
 
 **Abrir cedo, com a morte escrita.** Assim que o trilho for declarado, criar o arquivo e abrir
 com uma linha de propósito e a condição de morte: *"morre quando X absorver isto"*. A sessão

@@ -54,6 +54,21 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **One-pager ganha `Pedido`, e para de pressupor que todo doc decide.** A doutrina tratava
+  Opções e Comparação como núcleo obrigatório, e cinco docs reais medidos mostraram três formas
+  distintas: uma decide entre caminhos, duas pedem que alguém diga sim. O doc que só propõe
+  alinhamento existia fora da doutrina. Agora o Pedido é declarado no topo do arquivo e em voz
+  alta na sessão, com dois valores e um discriminador observável, que é **quem age em seguida**:
+  `escolha` quando a próxima ação é sua, `proposta` quando ela exige alguém dizer sim. Sob
+  `proposta`, Opções e Comparação são dispensadas e a seção terminal troca de "escolha e
+  destino" para "o que peço". A catraca inversa fecha a rota de fuga: Comparação num doc marcado
+  `proposta` denuncia Pedido errado, assim como tamanho denuncia trilho errado. Cinco blocos
+  novos na tabela por gatilho (Inventário medido, Como sabemos que funcionou, Tradeoff
+  principal, Workarounds em pé, Resumo em uma frase), cada um com ocorrência medida em doc real
+  e ligado por **condição observável** em vez de categoria de documento. Três lentes de negócio
+  (Dimensionamento, Unit economics, Menor aposta com evidência), porque as 13 anteriores eram
+  todas de decisão técnica ou pessoal; o teto de duas lentes por sessão fica intacto, já que o
+  risco é o agente escolher a lente que soa impressionante e não a que o gatilho pede.
 - **Skill `coaching` passa a ter dois trilhos e um artefato.** A versão anterior era um
   framework de 6 passos que saía só em conversa: sessão sobre o que construir terminava sem
   registro da escolha, e a decisão se perdia entre sessões. Agora o trilho é declarado em voz

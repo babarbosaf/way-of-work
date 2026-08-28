@@ -17,3 +17,6 @@ duas por sessão: empilhar lente é performance, não pensamento.
 | Vai validar com usuários | **Mom Test** | Perguntar sobre o passado concreto ("o que você fez da última vez"), nunca sobre o futuro hipotético ("você usaria"). |
 | Discussão virou lista de features | **Resultado vs. entrega** | Qual métrica muda se isso existir. Feature sem resultado nomeado é entrega procurando justificativa. |
 | Lista de ações sem ordem | **Eisenhower** | Urgente × importante. O que é urgente e não importante vira delegação ou corte. |
+| Proposta afirma ganho sem número | **Dimensionamento** | Ordem de grandeza antes do mecanismo. Se o ganho não sobrevive a uma conta de guardanapo, detalhar como fazer é trabalho perdido. |
+| Pedido consome recurso recorrente de outro | **Unit economics** | Custo por unidade, e o que muda quando escala dez vezes. Piloto barato que fica caro no escalar é o modo mais comum de aprovar errado. |
+| Proposta grande e fatiável | **Menor aposta com evidência** | Qual a menor fatia que produz evidência de verdade. Canário nomeado vale mais que plano completo, porque o que se pede é um sim menor. |

@@ -1,8 +1,8 @@
 # One-pager
 
-O documento que registra **a escolha**: por que esta opção e não as outras. Não descreve o que
-o projeto é (isso é PRD, CONVENTIONS, ROUTES, DESIGN) nem o contrato de uma feature (isso é
-spec). Vem antes de ambos, e morre quando você executa.
+O documento que registra **o racional**: por que esta opção e não as outras, ou por que alguém
+deveria dizer sim. Não descreve o que o projeto é (isso é PRD, CONVENTIONS, ROUTES, DESIGN) nem
+o contrato de uma feature (isso é spec). Vem antes de ambos, e morre quando você executa.
 
 Salvar em `docs/one-pagers/<slug>.md`, aberto assim que o trilho for declarado.
 
@@ -14,7 +14,27 @@ PRD: referenciar a seção, não recontar.
 
 ---
 
-## Núcleo (sempre)
+## Pedido
+
+Declarado no topo do arquivo, em uma linha, e em voz alta na sessão junto com o trilho.
+
+| Pedido | Teste | Seção terminal | Opções e Comparação |
+|---|---|---|:-:|
+| `escolha` | a próxima ação é sua | O pedido: escolha e destino | obrigatórias |
+| `proposta` | a próxima ação exige alguém dizer sim | O pedido: o que peço | dispensadas |
+
+**O discriminador é quem age em seguida.** Não a natureza do que se pede, que é difícil de
+classificar, e nem quem lê, que muitas vezes é a mesma pessoa em toda decisão.
+
+**Comparação é sinal de Pedido errado**, do mesmo jeito que tamanho é sinal de trilho errado.
+Se você está montando tabela de comparação num doc marcado `proposta`, o Pedido era `escolha`.
+
+"Decido entre A e B, e depois peço aprovação" é `escolha` com uma etapa de proposta depois.
+Dois docs, ou um doc que troca de Pedido quando a escolha fecha.
+
+---
+
+## Núcleo
 
 ### Problema / Resultado
 
@@ -48,6 +68,9 @@ Status possíveis: `Objetivo central`, `Obrigatório`, `Desejável`, `Em aberto`
 Requisito diz **o que é preciso**, nunca se algo satisfaz. Satisfação só aparece na comparação.
 
 ### Opções
+
+**Só quando Pedido = `escolha`.** Sob `proposta` a seção não entra: não há caminho a escolher,
+há um sim a obter.
 
 2 a 3, mutuamente exclusivas, com título que caracteriza a abordagem, não "Opção A: a solução".
 
@@ -90,6 +113,8 @@ depois.
 
 ### Comparação
 
+**Só quando Pedido = `escolha`.** Ver a catraca inversa na seção Pedido.
+
 | Req | Requisito | Status | ATUAL | A | B |
 |-----|-----------|--------|-------|---|---|
 | R0 | ... | Objetivo central | ❌ | ✅ | ✅ |
@@ -108,10 +133,15 @@ Regras:
 **Comparação escopada.** Para decidir entre variantes de uma parte, mesma tabela, só as
 variantes daquela parte nas colunas, e só os requisitos que aquela parte toca nas linhas.
 
-### Escolha e destino
+### O pedido
 
-A opção, em uma linha o porquê, e para onde vai: código direto, `/spec-and-plan`,
-`/kickoff-project`, executar no meio certo, ou não fazer.
+A seção que fecha o documento, e a única que muda de forma com o Pedido.
+
+**`escolha`.** A opção, em uma linha o porquê, e para onde vai: código direto,
+`/spec-and-plan`, `/kickoff-project`, executar no meio certo, ou não fazer.
+
+**`proposta`.** O que você precisa da outra pessoa, no verbo dela: liberar, aprovar, concordar,
+responder até tal data. Pedido implícito é pedido não atendido.
 
 ---
 
@@ -162,6 +192,11 @@ Entram só quando o gatilho dispara. Nenhum é obrigatório.
 | **Stack e padrões** | CONVENTIONS | a escolha amarra técnica |
 | **Superfície visual** | DESIGN | **só nomear e chamar `design-workflow`.** Nunca detalhar aqui. |
 | **Referências** | pesquisa | houve pesquisa: links, repos, produtos comparáveis, doc de lib |
+| **Inventário medido** | fonte acessível | há API, banco, arquivo ou workspace na mão. Mede antes de opinar; diagnóstico com número decide, com adjetivo negocia |
+| **Como sabemos que funcionou** | recurso de terceiro | a proposta consome tempo, verba ou pessoa de outro. Quem entrega precisa saber por que régua será julgado |
+| **Tradeoff principal** | custo sentido pelo outro lado | existe um custo que o outro lado paga e não reverte de graça. Um, o principal, não uma lista de ressalvas |
+| **Workarounds em pé** | provisório seu no caminho | você construiu paliativo que isto substitui. Nomear qual morre, e o que fica revisitável se a proposta não passar |
+| **Resumo em uma frase** | leitor não acompanhou | vai **no fim**, nunca no topo. Proposta a outra área é convite, e convite não abre com número de auditoria |
 
 ---
 
