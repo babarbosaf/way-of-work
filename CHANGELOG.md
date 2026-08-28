@@ -54,6 +54,21 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **Skill `coaching` passa a ter dois trilhos e um artefato.** A versão anterior era um
+  framework de 6 passos que saía só em conversa: sessão sobre o que construir terminava sem
+  registro da escolha, e a decisão se perdia entre sessões. Agora o trilho é declarado em voz
+  alta e corrigível. **Conversa** (pessoal, decisão, direção) sai em ações no `TODOS.md`;
+  **One-pager** sai em `docs/one-pagers/<slug>.md`, aberto no início com a condição de morte
+  escrita. Catraca de mão única: na dúvida pega One-pager, complexidade descoberta no meio
+  promove, nada rebaixa. Teto de uma página é o sinal de trilho errado, e roteia pela tabela de
+  Destino (código direto, `/spec-and-plan`, `/kickoff-project`, sistema externo, não fazer).
+  Dois references novos: `references/lentes.md` (13 frameworks, cada um com o gatilho que o
+  dispara e teto de dois por sessão, porque framework sem gatilho não roda) e
+  `references/one-pager.md` (núcleo Problema/Requisitos/Opções/Comparação, notação
+  R/opção/parte/variante que serve de trilha de auditoria, `ATUAL` como opção nomeada pra
+  evoluir vencer criar, ⚠️ reprovando na comparação e Sondagem como a saída dele). Nove
+  bandeiras vermelhas travam as fugas conhecidas, sendo a principal "chamo de Conversa e pulo o
+  arquivo".
 - **Repo público fica agnóstico de dono.** `references/stack-default.md` deixa de
   publicar uma stack específica e vira molde: seis perguntas que uma stack default
   precisa responder, mais um exemplo preenchido que serve de régua de profundidade. A

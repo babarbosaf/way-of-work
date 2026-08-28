@@ -46,7 +46,7 @@ Convenções estruturais:
 | [`spec-and-plan`](skills/spec-and-plan) | model-invoked (só feature grande) |
 | [`git-workflow-and-versioning`](skills/git-workflow-and-versioning) | model-invoked (inclui o gate de ship) |
 | [`delegate`](skills/delegate) | model-invoked |
-| [`coaching`](skills/coaching) | user-invoked |
+| [`coaching`](skills/coaching) | user-invoked (dois trilhos: Conversa e One-pager) |
 | [`handoff`](skills/handoff) | user-invoked |
 | [`capture-lessons`](skills/capture-lessons) | user-invoked |
 | [`design-workflow`](skills/design-workflow) | model-invoked (componente ou tela visual nova) |
