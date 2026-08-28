@@ -1,8 +1,10 @@
 # DESIGN.md, Chutaí Design System
 
-Sistema de design "**Neon Night**" do Chutaí. Cobre tokens, padrões de componentes, princípios de layout e como construir telas novas sem cair no AI slop.
+Sistema de design "**Neon Night**" do Chutaí. Cobre as constraints do produto, tokens, padrões de componentes, princípios de layout e como construir telas novas sem cair no AI slop.
 
 Quando este doc divergir do código real, **o código vence**. Atualize este arquivo no mesmo PR que mudar tokens, fontes, ou patterns globais.
+
+Incômodo visual ainda não corrigido não entra aqui: vai como linha `[papercut]` no `TODOS.md` e volta como constraint na próxima passada de design. Aqui só o que já é norma.
 
 ---
 
@@ -25,11 +27,46 @@ Mobile-first bolão social brasileiro pra Copa do Mundo 2026. **Playful-confiant
 
 ---
 
-## 2. Tokens
+## 2. Constraints
+
+O que todo desenho do Chutaí precisa satisfazer, antes de qualquer discussão de estética.
+Tokens dizem *como* pintar; isto diz *o que precisa caber*. Proposta se avalia contra esta
+lista, não contra gosto.
+
+**Workflows a suportar** (ordem de frequência, e é ela que autoriza destaque):
+
+1. Palpitar no próximo jogo antes do fechamento.
+2. Ver a própria posição na liga do grupo.
+3. Conferir resultado do palpite do jogo que acabou.
+4. Abrir drop diário do álbum.
+5. Trocar figurinha repetida.
+
+Pedido de "deixa X mais destacado" só entra se mover X nesta ordem, ou se a ordem mudou.
+
+**Estados obrigatórios** (todo card de lista, form e stat trata os seis):
+
+- Vazio (grupo sem membros, sem palpite feito, álbum zerado).
+- Carregando (skeleton com a mesma altura do conteúdo real, sem salto de layout).
+- Erro (mensagem curta em português, com ação de retry).
+- Um item só (não pode parecer grade quebrada).
+- Muitos itens (lista de 40 membros, scroll sem perder o header sticky).
+- Texto longo (nome de time e apelido de usuário truncam com ellipsis, nunca quebram o card).
+
+**Pisos invioláveis:**
+
+- Contraste WCAG AA, 4.5:1 em texto de corpo, 3:1 em texto grande.
+- Área de toque mínima 44x44px em qualquer alvo tocável.
+- `motion-safe:` em todo transform e scale, sem exceção.
+- Densidade máxima: 1 ação primária visível por tela.
+- Números métricos sempre `tabular-nums`.
+
+---
+
+## 3. Tokens
 
 Todos os tokens estão definidos em `src/app/globals.css` como CSS custom properties OKLCH. Tailwind v4 expõe via `@theme inline`.
 
-### 2.1 Cores
+### 3.1 Cores
 
 Use **sempre as utilities Tailwind tokenizadas**, nunca hex/oklch direto em componentes:
 
@@ -58,7 +95,7 @@ Use **sempre as utilities Tailwind tokenizadas**, nunca hex/oklch direto em comp
 />
 ```
 
-### 2.2 Tipografia
+### 3.2 Tipografia
 
 **Fonte única:** `Geist` (sans). `Geist Mono` para números tabulares e código. Outfit foi removido por ser excessivamente friendly contra o vibe techy-neon.
 
@@ -94,7 +131,7 @@ Tailwind utilities: `font-sans`, `font-mono`, `font-display` (alias de sans).
 
 **Italics:** raramente. Quando usar em headline display com `y/g/j/p/q`, garanta `leading-[1.1]` mínimo e `pb-1` reserve no wrapper (italic descender clearance).
 
-### 2.3 Radius
+### 3.3 Radius
 
 Base `--radius: 1.25rem`. Escala derivada (via `@theme inline`):
 
@@ -111,7 +148,7 @@ Base `--radius: 1.25rem`. Escala derivada (via `@theme inline`):
 
 **Regra de forma:** o sistema é **soft + pill**. Botões CTA são SEMPRE `rounded-full`. Cards são `rounded-2xl` ou `rounded-3xl`. Badges/pills são `rounded-full`. Chips de ícone quadrados são `rounded-xl` ou `rounded-2xl`. **Nunca misture sharp e soft** numa mesma tela (zero radius bate em pill é inconsistente).
 
-### 2.4 Motion
+### 3.4 Motion
 
 Sempre wrap em `motion-safe:` quando for transform/scale. CSS-only (sem `motion/react`) é suficiente pra interações atuais.
 
@@ -133,7 +170,7 @@ Sempre wrap em `motion-safe:` quando for transform/scale. CSS-only (sem `motion/
 
 Easing fica default (Tailwind ease-in-out). Durations default (150ms). Não over-engineerize.
 
-### 2.5 Sombras
+### 3.5 Sombras
 
 Cards normais: `shadow-sm`. Featured cards e CTAs lime: `shadow-lg shadow-primary/20` ou `shadow-xl shadow-primary/30` (lime tinted, NÃO black puro).
 
@@ -141,11 +178,11 @@ Sticker stack figurinhas: `shadow-2xl` + `ring-[3px] ring-card` ou `ring-backgro
 
 ---
 
-## 3. Patterns de Componentes
+## 4. Patterns de Componentes
 
 Os patterns abaixo são repetidos em múltiplas telas. Quando criar algo novo, **prefira ESTENDER um pattern existente** a inventar uma variante visual.
 
-### 3.1 Hero card
+### 4.1 Hero card
 
 Pattern: card grande com glow no canto, conteúdo em camada `relative` por cima.
 
@@ -186,7 +223,7 @@ Pattern: card grande com glow no canto, conteúdo em camada `relative` por cima.
 
 **Hero stack discipline:** máximo **4 elementos textuais** (eyebrow, headline, subtext, CTA). Nada de "trust strip" ou tagline sob o CTA dentro do hero.
 
-### 3.2 Card list item (JogoCard, RankRow, NotifRow, etc)
+### 4.2 Card list item (JogoCard, RankRow, NotifRow, etc)
 
 Pattern: link block com hover lift + ring lime no hover.
 
@@ -208,7 +245,7 @@ Pattern: link block com hover lift + ring lime no hover.
 - Conteúdo: 2 linhas de texto (título bold + subtitle muted)
 - Slot direito: pill de status (lime tinted) + CaretRight ou círculo lime com ArrowRight
 
-### 3.3 Stat card
+### 4.3 Stat card
 
 Identidade visual única por stat. NÃO faça 4 stats idênticas. Veja `/inicio` `StatsRow`:
 
@@ -243,7 +280,7 @@ Identidade visual única por stat. NÃO faça 4 stats idênticas. Veja `/inicio`
 </div>
 ```
 
-### 3.4 CTA pill button
+### 4.4 CTA pill button
 
 **Primário (lime preenchido):**
 
@@ -277,7 +314,7 @@ Identidade visual única por stat. NÃO faça 4 stats idênticas. Veja `/inicio`
 "shrink-0 rounded-full bg-card px-4 py-1.5 text-[12px] font-bold text-muted-foreground ring-1 ring-border transition-colors hover:text-foreground"
 ```
 
-### 3.5 Pill / Badge
+### 4.5 Pill / Badge
 
 Sempre `rounded-full`, sempre uppercase tracking-wider para status:
 
@@ -299,7 +336,7 @@ Sempre `rounded-full`, sempre uppercase tracking-wider para status:
 </span>
 ```
 
-### 3.6 Input (DarkInput)
+### 4.6 Input (DarkInput)
 
 Não use shadcn `<Input>`. Use o pattern dark:
 
@@ -317,7 +354,7 @@ Não use shadcn `<Input>`. Use o pattern dark:
 </label>
 ```
 
-### 3.7 Avatar / Flag chip
+### 4.7 Avatar / Flag chip
 
 **Avatar com iniciais (Perfil hero, Liga RankRow, Estatísticas):**
 
@@ -348,7 +385,7 @@ Não use shadcn `<Input>`. Use o pattern dark:
 
 Use o helper `toIso2(country_code)` de `src/lib/country-codes.ts` pra converter FIFA 3-letter → ISO 2-letter.
 
-### 3.8 Icon-mark dentro de card
+### 4.8 Icon-mark dentro de card
 
 Pattern: chip pequeno com ícone Phosphor.
 
@@ -381,7 +418,7 @@ Pattern: chip pequeno com ícone Phosphor.
 
 ---
 
-## 4. Ícones
+## 5. Ícones
 
 Use **`@phosphor-icons/react`**. Lucide está banida (foi removida quando migramos).
 
@@ -411,9 +448,9 @@ import { ArrowRightIcon } from "@phosphor-icons/react";
 
 ---
 
-## 5. Layout
+## 6. Layout
 
-### 5.1 Padrão de página
+### 6.1 Padrão de página
 
 ```tsx
 <div className="flex flex-col gap-5 px-4 pb-6 pt-4">
@@ -423,14 +460,14 @@ import { ArrowRightIcon } from "@phosphor-icons/react";
 
 Mobile-first. Largura máxima implícita pelo container do `(app)/layout.tsx`. **Não use `max-w-7xl`** ou containers fluidos, o app é mobile, design vai assim.
 
-### 5.2 Hierarquia visual de sections
+### 6.2 Hierarquia visual de sections
 
 1. **Hero card.** Primeiro, com glow + decoração + CTA forte
 2. **Stats / métricas.** Segundo, dá contexto do estado do usuário
 3. **Listas funcionais.** Terceiro (jogos, eventos)
 4. **Quick actions.** Último, 2-up com tratamentos distintos
 
-### 5.3 Sticky elements
+### 6.3 Sticky elements
 
 **Bottom nav** (`src/components/app/bottom-nav.tsx`): sticky bottom, `bg-card/95 backdrop-blur`, respeita `env(safe-area-inset-bottom)`.
 
@@ -446,7 +483,7 @@ Mobile-first. Largura máxima implícita pelo container do `(app)/layout.tsx`. *
 
 ---
 
-## 6. Anti-Slop Checklist
+## 7. Anti-Slop Checklist
 
 Antes de commit, valide:
 
@@ -466,18 +503,20 @@ Antes de commit, valide:
 - [ ] **Tabular nums (`tabular-nums`)** em qualquer número métrico.
 - [ ] **Reduced motion respeitado** via `motion-safe:` prefix em todo transform/scale.
 - [ ] **Contraste WCAG AA** mínimo: texto sobre lime tem `text-primary-foreground` (near-black), texto muted sobre dark passa em 4.5:1.
+- [ ] **Passe de subtração feito.** Elemento por elemento, "preciso disso?". Cópia extra, divisória, ícone decorativo, badge, card que só preenche grade. Removeu zero = justifique.
+- [ ] **Os seis estados da seção 2** conferidos no `/showcase`, não só o happy path.
 
 ---
 
-## 7. Como criar uma nova tela
+## 8. Como criar uma nova tela
 
 1. **Identifique o pattern dominante:** é hero + lista? hero + form? lista pura? dashboard de stats?
 2. **Reuse o esqueleto** do `src/app/(app)/inicio/page.tsx` ou `palpites/jogos/page.tsx` como ponto de partida.
-3. **Hero card primeiro:** copie o pattern da seção 3.1.
+3. **Hero card primeiro:** copie o pattern da seção 4.1.
 4. **Sections com gap-5** entre si. Headers de section são `h2 className="text-[22px] font-black tracking-tight"`.
 5. **Cards de lista:** use `JogoCard` se for jogo, ou crie um por extensão do mesmo padrão (`group block rounded-3xl bg-card ring-1 ring-border transition-all...`).
 6. **CTAs sempre pill lime.** Secundários são pill ring border.
-7. **Antes do PR, rode o checklist da seção 6.**
+7. **Antes do PR, rode o checklist da seção 7.**
 
 ### Smoke test rápido
 
@@ -489,7 +528,25 @@ Deve retornar `200`. Olhe `tail -30` do log do dev server pra confirmar zero `�
 
 ---
 
-## 8. Como criar um componente novo
+## 9. Como criar um componente novo
+
+### Showcase primeiro
+
+Componente novo nasce em `/showcase`, nunca direto na tela real. Monte lá com dado fake e
+os seis estados obrigatórios da seção 2 visíveis lado a lado. Isolado ele é manipulável e
+comparável; dentro da tela, cada ajuste arrasta regra de negócio e custa mais.
+
+```tsx
+// src/app/showcase/page.tsx, uma section por componente
+<ShowcaseSection title="JogoCard">
+  <JogoCard {...mockJogo} />
+  <JogoCard {...mockJogo} timeCasa="Bósnia e Herzegovina" />   {/* texto longo */}
+  <JogoCardSkeleton />                                          {/* carregando */}
+  <JogoCardEmpty />                                             {/* vazio */}
+</ShowcaseSection>
+```
+
+Só depois de aprovado no showcase o componente entra na tela.
 
 ### Quando criar um componente vs inline
 
@@ -552,7 +609,7 @@ export function MeuCard({ href, title, subtitle, variant = "default" }: MeuCardP
 
 ---
 
-## 9. Tooling
+## 10. Tooling
 
 ### Stack
 
@@ -582,7 +639,7 @@ Antes de `pnpm add <pacote>`:
 
 ---
 
-## 10. O que NÃO fazer (lista negra do AI slop)
+## 11. O que NÃO fazer (lista negra do AI slop)
 
 - ❌ `bg-gradient-to-br from-purple-500 to-pink-500`. AI gradient slop
 - ❌ Inter como fonte default, banido
@@ -598,29 +655,3 @@ Antes de `pnpm add <pacote>`:
 - ❌ Lucide icons, migramos pra Phosphor
 - ❌ Light mode no MVP, dark locked
 
----
-
-## 11. Roadmap visual
-
-Estado atual (95% das telas com sistema aplicado):
-
-- ✅ `/`, `/login`, `/cadastro`, `/cadastro/email-confirmacao`
-- ✅ `/entrar/[codigo]`, `/entrar/erro`, `/recuperar-senha`
-- ✅ `/boas-vindas/[1-6]` (via OnboardingStep)
-- ✅ `/inicio`, `/palpites/jogos`, `/palpites/jogos/[id]`
-- ✅ `/grupo/liga`, `/grupo/estatisticas`
-- ✅ `/album`, `/perfil`, `/notificacoes`
-
-Pendente (ainda como Placeholder genérico):
-
-- 🟡 `/album/drop-diario`, `/album/drop-diario/abertura`, `/album/drop-diario/resumo`
-- 🟡 `/album/colecao/[slug]`, `/album/figurinha/[id]`, `/album/repetidas`
-- 🟡 `/album/trocas`, `/album/trocas/nova`, `/album/trocas/[id]`, `/album/listas`
-- 🟡 `/palpites/torneio` + as 7 long-term picks (campeao, vice, ...)
-- 🟡 `/palpites/jogos/[id]/ao-vivo`, `/palpites/jogos/[id]/resultado`
-- 🟡 `/palpites/historico`
-- 🟡 `/grupo/info`, `/grupo/entrar`, `/grupo/trocar`, `/grupo/liga/membro/[id]`
-- 🟡 `/inicio/calendario`, `/inicio/jogo/[id]`, `/inicio/regras`, `/inicio/copa`
-- 🟡 `/perfil/streak`, `/perfil/editar`, `/perfil/notificacoes`, `/perfil/configuracoes`, `/perfil/ajuda`, `/perfil/sobre`, `/perfil/deletar-conta`
-
-Pra cada uma delas: aplicar o checklist da seção 6, usar o pattern de hero + sections + cards descritos aqui, e remover o componente `Placeholder`.
