@@ -54,6 +54,36 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **One-pager ganha `Pedido`, e para de pressupor que todo doc decide.** A doutrina tratava
+  Opções e Comparação como núcleo obrigatório, e cinco docs reais medidos mostraram três formas
+  distintas: uma decide entre caminhos, duas pedem que alguém diga sim. O doc que só propõe
+  alinhamento existia fora da doutrina. Agora o Pedido é declarado no topo do arquivo e em voz
+  alta na sessão, com dois valores e um discriminador observável, que é **quem age em seguida**:
+  `escolha` quando a próxima ação é sua, `proposta` quando ela exige alguém dizer sim. Sob
+  `proposta`, Opções e Comparação são dispensadas e a seção terminal troca de "escolha e
+  destino" para "o que peço". A catraca inversa fecha a rota de fuga: Comparação num doc marcado
+  `proposta` denuncia Pedido errado, assim como tamanho denuncia trilho errado. Cinco blocos
+  novos na tabela por gatilho (Inventário medido, Como sabemos que funcionou, Tradeoff
+  principal, Workarounds em pé, Resumo em uma frase), cada um com ocorrência medida em doc real
+  e ligado por **condição observável** em vez de categoria de documento. Três lentes de negócio
+  (Dimensionamento, Unit economics, Menor aposta com evidência), porque as 13 anteriores eram
+  todas de decisão técnica ou pessoal; o teto de duas lentes por sessão fica intacto, já que o
+  risco é o agente escolher a lente que soa impressionante e não a que o gatilho pede.
+- **Skill `coaching` passa a ter dois trilhos e um artefato.** A versão anterior era um
+  framework de 6 passos que saía só em conversa: sessão sobre o que construir terminava sem
+  registro da escolha, e a decisão se perdia entre sessões. Agora o trilho é declarado em voz
+  alta e corrigível. **Conversa** (pessoal, decisão, direção) sai em ações no `TODOS.md`;
+  **One-pager** sai em `docs/one-pagers/<slug>.md`, aberto no início com a condição de morte
+  escrita. Catraca de mão única: na dúvida pega One-pager, complexidade descoberta no meio
+  promove, nada rebaixa. Teto de uma página é o sinal de trilho errado, e roteia pela tabela de
+  Destino (código direto, `/spec-and-plan`, `/kickoff-project`, sistema externo, não fazer).
+  Dois references novos: `references/lentes.md` (13 frameworks, cada um com o gatilho que o
+  dispara e teto de dois por sessão, porque framework sem gatilho não roda) e
+  `references/one-pager.md` (núcleo Problema/Requisitos/Opções/Comparação, notação
+  R/opção/parte/variante que serve de trilha de auditoria, `ATUAL` como opção nomeada pra
+  evoluir vencer criar, ⚠️ reprovando na comparação e Sondagem como a saída dele). Nove
+  bandeiras vermelhas travam as fugas conhecidas, sendo a principal "chamo de Conversa e pulo o
+  arquivo".
 - **Repo público fica agnóstico de dono.** `references/stack-default.md` deixa de
   publicar uma stack específica e vira molde: seis perguntas que uma stack default
   precisa responder, mais um exemplo preenchido que serve de régua de profundidade. A
