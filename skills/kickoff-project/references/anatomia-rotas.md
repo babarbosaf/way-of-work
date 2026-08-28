@@ -27,6 +27,10 @@ Grupos típicos:
 - **Públicas.** Acessíveis sem sessão, pensadas para compartilhamento.
 - **Camada global.** Rotas abertas de qualquer contexto (ex.: central de notificações
   aberta pelo sino em qualquer aba).
+- **Showcase.** `/showcase`, rota de desenvolvimento onde todo componente novo nasce com
+  dado fake e todos os estados obrigatórios antes de entrar numa tela real. Default em
+  projeto com UI; fora do build de produção ou atrás de guarda de ambiente. É ela que
+  impede o componente de nascer enxertado na lógica da tela (ver `anatomia-design.md`).
 
 Dentro de cada grupo, uma tabela `Rota | Descrição`.
 

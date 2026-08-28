@@ -101,9 +101,15 @@ global) e escrevendo a lógica condicional de navegação em cada descrição. C
 
 Ler `references/anatomia-design.md`. Rodar a entrevista de design curta (vibe references,
 dial values, modo de cor, stack visual), identificar os patterns de componente que as telas
-exigem, e escrever o design system: identidade, tokens exatos, patterns com código, e as
-duas listas de guarda-corpo (anti-slop checklist e lista negra). Calibrar por
-`references/exemplos/DESIGN.md`. Para a stack visual default, ver `references/stack-default.md`.
+exigem, e escrever o design system: identidade, **constraints** (workflows a suportar em
+ordem de frequência, estados obrigatórios, pisos invioláveis), tokens exatos, patterns com
+código, a regra de showcase e as duas listas de guarda-corpo (anti-slop checklist e lista
+negra). Calibrar por `references/exemplos/DESIGN.md`. Para a stack visual default, ver
+`references/stack-default.md`.
+
+As constraints vêm antes dos tokens: são elas que permitem avaliar um desenho sem cair em
+gosto, e é a ausência delas que faz cada pedido de mudança visual ser atendido isolado. A
+evolução do sistema depois do kickoff é da skill `design-workflow`.
 
 Se o usuário apontou um design system existente na Fase 0, lê-lo por inteiro antes de
 escrever: ele é a base do DESIGN.md e nenhuma informação dele pode ser perdida (ver a seção
@@ -138,6 +144,10 @@ se foi opt-in na Fase 0). CLAUDE.md, AGENTS.md e FEEDBACK.md precisam estar na r
 os agentes não os carregam. Se não houver um diretório de projeto claro, perguntar o destino
 antes de salvar. Quando a skill rodar no claude.ai (sem projeto local), salvar em
 `/mnt/user-data/outputs/`.
+
+`TODOS.md` nasce vazio, exceto pelo bloco `[papercut]` no fim: o endereço de incômodo
+visual observado e não corrigido, uma linha por entrada, que a `design-workflow` lê como
+entrada de constraint. Sem esse endereço, papercut vira spot-fix.
 
 `_tmp/notas-entrevista.md` é material de trabalho, não entregável: fica no `_tmp/`
 (gitignored), fora do repo. Se o usuário pediu para pular algum documento, não gerar aquele.

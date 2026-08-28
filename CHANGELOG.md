@@ -54,6 +54,39 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **Design ganha constraints, variantes e dois trilhos, e para de jogar wackamole.** O fluxo
+  da `design-workflow` era linear: buscava referência na base, gerava um preview, aplicava.
+  Nunca escrevia as constraints, nunca gerava alternativa, nunca voltava atrás quando a
+  rodada revelava constraint nova. É o processo que Alexander descreve em *Notes on the
+  Synthesis of Form* com o passo 3 cortado, e sem ele cada pedido visual é atendido isolado:
+  o resultado prioriza umas interações sobre outras sem ninguém ter decidido isso. Agora:
+  todo pedido visual entra classificado em **trilho papercut** (fix óbvio na hora, ou linha
+  `[papercut]` no `TODOS.md`, que não é executável individualmente e volta como entrada de
+  constraint) ou **trilho design**, 12 passos que abrem fechando as constraints e incluem
+  3 a 4 variantes fora do codebase (skill `design` pra tela, `artifact-design` pra
+  componente), passe de subtração com justificativa obrigatória quando nada foi removido,
+  veredito de 1 linha no `FEEDBACK.md` sobre qual variante ganhou e contra qual constraint,
+  e um loop-back check explícito. Primeira versão no código real do repo passa a ser
+  proibida: ela cria gravidade, e refinar o que já enxertou fácil parece mais barato que
+  explorar alternativa. Referência externa deixa de ser opcional, 2 a 3 produtos que
+  resolvem problema parecido, salvos em `docs/design/references/<slug>/`.
+- **`DESIGN.md` ganha seção Constraints e regra de showcase, e perde o roadmap visual.**
+  Tokens diziam *como* pintar e nada dizia *o que precisa caber*, então avaliar proposta
+  virava questão de gosto. A nova seção 2 traz três blocos: workflows a suportar em ordem
+  de frequência (é essa ordem que autoriza ou nega um "deixa X mais destacado"), estados
+  obrigatórios (vazio, carregando, erro, um item, muitos itens, texto longo) e pisos
+  invioláveis. Componente novo passa a nascer na rota `/showcase` com dado fake e todos os
+  estados visíveis, antes de ser fiado numa tela com lógica em volta. A seção 11, Roadmap
+  visual, saiu: estado de aplicação por tela é status volátil e viola a higiene de doc de
+  raiz que carrega toda sessão, então vive no `TODOS.md`. `anatomia-design.md`,
+  `anatomia-rotas.md` (rota `/showcase` como default) e o exemplo Chutaí acompanham.
+- **PR de frontend e de backend se separam, porque o critério de verificação é diferente.**
+  Backend prova por teste e CI verde basta; frontend exige preview deploy com dado real e
+  olho humano, que teste não substitui. Num PR único o backend fica esperando o olho humano
+  e o frontend passa escondido atrás de CI verde. Fica registrado também que polish depois
+  do preview não é retrabalho: mesmo quando o agente construiu exatamente o que foi pedido,
+  dado real revela o que mockup esconde (nome longo, lista vazia, número de 9 dígitos).
+
 - **One-pager ganha `Pedido`, e para de pressupor que todo doc decide.** A doutrina tratava
   Opções e Comparação como núcleo obrigatório, e cinco docs reais medidos mostraram três formas
   distintas: uma decide entre caminhos, duas pedem que alguém diga sim. O doc que só propõe

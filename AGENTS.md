@@ -38,13 +38,13 @@ conhecimento na mesma rodada. Quem sabe que mudou é quem mudou: varredura que d
 depois sempre chega tarde, e foi assim que uma página descreveu por três meses um agente
 que não existia mais.
 
-Cross-cutting: context7 antes de API/lib; `delegate` mecânico/economia;
-`design-workflow` antes de componente/tela visual novo ou redesenho; `/handoff`
-antes de compactar com trabalho aberto. Segunda opinião adversarial
-(`scripts/peer-review.sh {spec|diff}`) é opcional, sob demanda. Recomendada
-em diff que toca prod ou é caro de reverter (`docs/adversarial-evaluator.md`).
-Autonomia/loops: escada turn→`/goal`→`/loop`→`/schedule`, stop-condition de
-máquina (`docs/autonomy-loops.md`).
+Cross-cutting: context7 antes de API/lib; `delegate` mecânico/economia; `design-workflow` em
+todo pedido visual, roteado em papercut (fix óbvio, ou linha `[papercut]` no `TODOS.md`) ou
+design (constraints antes do pixel, variantes fora do repo); `/handoff` antes de compactar
+com trabalho aberto. Segunda opinião adversarial (`scripts/peer-review.sh {spec|diff}`) é
+opcional, sob demanda. Recomendada em diff que toca prod ou é caro de reverter
+(`docs/adversarial-evaluator.md`). Autonomia/loops: escada turn→`/goal`→`/loop`→`/schedule`,
+stop-condition de máquina (`docs/autonomy-loops.md`).
 
 ## Testes
 
@@ -62,6 +62,7 @@ máquina (`docs/autonomy-loops.md`).
   depois que espalhou não é.
 - Antes de escrever helper, procurar função existente (stdlib, lib do projeto, codebase).
 - Diff pequeno > diff completo. Deletar código conta como progresso.
+- Vale pra UI: elemento só quando constraint exige; remover elemento também é progresso.
 - Evoluir > criar: estender artefato existente antes de criar paralelo
   (`docs/evolve-over-create.md`).
 
