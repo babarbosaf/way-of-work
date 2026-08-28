@@ -7,6 +7,8 @@
 4. PR aberto → preview deploy automático:
    - Backend Python: Render preview environment
    - Frontend (futuro Next.js): Vercel preview deploy
+   O link do preview é o artefato de review do PR de frontend, não um extra: é onde o
+   desenho é visto com dado real antes do merge (ver o split frontend/backend na SKILL.md).
 5. Self-review (checklist acima)
 6. Merge em main → deploy automático pra prod
    - Render: redeploy automático em push pra main

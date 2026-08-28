@@ -64,6 +64,7 @@ Um checklist, uma passada. **Critical aberto bloqueia o ship.**
 - [ ] **`/simplify` sobre o diff** (builtin do Claude Code), recomendado, não bloqueante. Caça: regra de 3 violada (helper na 1ª duplicação), abstração sem 2º consumidor real, indireção que serve só ao caso atual, código morto "por garantia". Anti-purismo: abstração com 2+ consumidores reais não é prematura; duplicação com semântica diferente não vira DRY forçado.
 - [ ] **Segurança:** `references/security-checklist.md`, inputs validados, sem credenciais no diff, logs sem dado sensível, erros genéricos pro usuário.
 - [ ] **Docs vivos:** comportamento de produto mudou → `PRD.md` atualizado; fluxo → `ROUTES.md`; padrão visual → `DESIGN.md`; padrão técnico → `CONVENTIONS.md`; decisão cara de reverter → ADR em `docs/adrs/`.
+- [ ] **Diff de UI:** preview deploy visto com dado real (não só screenshot de mock), e o anti-slop checklist do `DESIGN.md` rodado. Incômodo que sobrou e não é óbvio vira linha `[papercut]` no `TODOS.md`, não spot-fix de última hora.
 - [ ] **Segunda opinião (opcional):** diff que toca prod ou é caro de reverter → oferecer `peer-review.sh diff` antes do commit. O dono decide.
 
 **Severidade:** Critical = segurança, perda de dado, funcionalidade quebrada, débito irreversível ("me força a aceitar o design errado por meses"), bloqueia. Important = resolver antes do ship ou virar issue rastreada. Suggestion = opcional.
@@ -165,6 +166,24 @@ Sessões paralelas com worktree (1 sessão = 1 worktree = 1 branch) e comandos d
 - [ ] Cada hunk casa com a spec ou descrição? (se não, sobrou refactor não relacionado, mover pra commit/PR separado)
 - [ ] Gate de ship (seção acima) rodou, checklist completo, sem Critical aberto
 - [ ] CI verde no PR
+
+**Split frontend / backend (feature que toca os dois):**
+
+PRs separados, porque o critério de verificação é diferente:
+
+- **Backend:** verifica por teste, unit mais integração. CI verde é prova suficiente, segue
+  o fluxo normal.
+- **Frontend:** exige preview deploy e olho humano em cima, com dado real. Teste não
+  substitui. Suite verde num diff de UI prova que nada quebrou, não que o desenho está
+  certo; o que dado real revela (nome longo, lista vazia, número de 9 dígitos) nenhum
+  mockup mostrou.
+
+Num PR único, o backend fica esperando o olho humano e o frontend passa escondido atrás de
+CI verde. Backend primeiro, frontend em cima dele, atrás de feature flag se precisar.
+
+**Polish depois do preview não é retrabalho.** Mesmo quando o agente construiu exatamente o
+que foi pedido, ver com dado real muda o que se pede. Orçar isso no ship, não tratar como
+falha de execução.
 
 **Quando delegar review humano:**
 - PR > ~300 linhas em área de prod
