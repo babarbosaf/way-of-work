@@ -3,7 +3,7 @@ name: kickoff-project
 description: |
   Cria a fundação documental de um projeto novo por entrevista dirigida, em cadeia: PRD, documento de rotas, design system, CONVENTIONS.md, CLAUDE.md, AGENTS.md, FEEDBACK.md e TODOS.md. Oito arquivos por default, cada um derivando do anterior; pula algum só se for pedido.
   Invoque quando o usuário for começar ou estruturar um projeto novo, ou pedir "kickoff", "fundação do projeto", "planta do projeto", "documentação base", "blueprint", ou o PRD, as rotas, o design ou as convenções de um produto.
-  Não invoque para: feature dentro de projeto que já tem fundação (é `spec-and-plan`), doc avulso sem projeto novo por trás, ou ajuste em documento que já existe.
+  Não invoque para: feature dentro de projeto que já tem fundação (é `to-spec`), doc avulso sem projeto novo por trás, ou ajuste em documento que já existe.
 ---
 
 # Kickoff de Projeto

@@ -64,7 +64,7 @@ a tarefa inline** e segue; nunca re-tente em loop.
 ## Modo worktree (tasks de spec)
 
 **O marcador `delega: <type>` é vinculante e decidido no planejamento** (Fase 2
-do spec-and-plan classifica TODA task: delegável ou orquestrador). No build:
+do to-tickets carimba TODO ticket: delegável ou orquestrador). No build:
 task marcada → despacha; task sem marcador → executa inline, sem reavaliar.
 Degradar é sempre permitido (worker indisponível ou task marcada se revelou
 acoplada → assumir inline, com nota na spec); **promover não** (nunca delegar

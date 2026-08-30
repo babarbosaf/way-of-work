@@ -60,8 +60,8 @@ A disciplina de construção que vale em qualquer tarefa do projeto:
 - **YAGNI:** abstração só na 3ª repetição; zero feature especulativa; antes de escrever
   helper, procurar função existente; evoluir artefato existente antes de criar paralelo.
 - **Feature grande** (várias sessões, muitos arquivos, toca contrato ou prod): escrever
-  antes uma spec curta em `docs/specs/<slug>.md` (contrato + plano). Ao shippar, a
-  verdade funcional vai para o PRD; a spec é descartável.
+  antes uma spec curta em `docs/specs/<slug>/spec.md` (contrato), e fatiá-la em tickets
+  antes do build. Ao shippar, a verdade funcional vai para o PRD; a spec é descartável.
 - **Componente ou tela visual novo, ou redesenho:** rodar o `design-workflow` (busca na
   base canônica de design antes de codar). Se a casa não mantém base canônica, consultar
   o DESIGN.md e seguir seus patterns.

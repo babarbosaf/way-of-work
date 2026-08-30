@@ -7,7 +7,7 @@ description: >
   Invoque quando o usuário quiser pensar antes de executar: "estou pensando em...",
   "como atacar X", "isso vale a pena?", "quero criar/montar Y", "qual nosso norte",
   ou tema pessoal/decisão.
-  Não invoque para: escopo já claro pronto pra spec (spec-and-plan), projeto de software
+  Não invoque para: escopo já claro pronto pra spec (to-spec), projeto de software
   novo já decidido (kickoff-project), bug com linha localizada (vai direto pro código).
   Aceita tema como argumento (ex: /coaching fechamento financeiro).
 ---
@@ -123,7 +123,7 @@ Ação ainda vaga: *"essa está vaga, quer refinar antes de registrar?"*
 | Resultado | Destino |
 |---|---|
 | Cabe numa sessão | direto pro código, com TDD |
-| Feature grande em projeto existente | `/spec-and-plan` |
+| Feature grande em projeto existente | `/to-spec` |
 | Produto de software novo, várias telas | `/kickoff-project` |
 | Artefato num sistema externo (Notion, planilha, Slack, Drive) | construir lá. No instante em que existe, o sistema externo é a verdade: o rascunho local recebe o endereço do artefato ou é apagado |
 | Direção de projeto mudou | atualizar `STRATEGY.md` |

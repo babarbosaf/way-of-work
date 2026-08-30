@@ -15,13 +15,14 @@ ninguém atualiza.
 
 ```
 projeto novo    →  /kickoff-project (entrevista → PRD·ROUTES·DESIGN·CONVENTIONS·AGENTS·FEEDBACK)
-feature grande  →  spec curta em docs/specs/<slug>.md (contrato+plano) → TDD → ship
+feature grande  →  /to-spec (contrato) → /to-tickets (execução) → TDD → ship
 todo o resto    →  direto no código com TDD → ship
 ```
 
 Feature grande = várias sessões, muitos arquivos, toca contrato ou prod. Na
-dúvida, vai direto e promove pra spec se crescer. A spec é descartável: ao
-shippar, a verdade funcional vai pro PRD (skill `spec-and-plan`).
+dúvida, vai direto e promove pra spec se crescer. Spec aprovada sempre vira
+ticket: 1 ticket = 1 worktree = 1 branch = 1 PR, e o ticket é a unidade de
+execução. A spec é descartável: ao shippar, a verdade funcional vai pro PRD.
 
 **Docs vivos** (política por projeto, no AGENTS.md dele): decisão de produto
 edita PRD; fluxo novo, ROUTES; padrão visual, DESIGN; padrão técnico,

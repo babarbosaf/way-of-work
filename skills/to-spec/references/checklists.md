@@ -1,4 +1,4 @@
-# Checklists, spec-and-plan
+# Checklists, to-spec
 
 ## Checklist obrigatório para pipelines / handlers / endpoints
 

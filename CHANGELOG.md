@@ -7,6 +7,17 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **`to-spec` e `to-tickets`** substituem `spec-and-plan` (arquivada em
+  `skills/_archive/`). A spec fundia contrato, design e execução num arquivo só;
+  agora a spec guarda o contrato e as decisões `D-NN`, e o ticket guarda o que um
+  agente frio precisa pra executar: `files:` (ownership), `blocked_by:`,
+  `delega:`, `verify:` e aceite em checkbox.
+- **Lint de spec e ticket** (`scripts/check-spec.py`, 23 asserts em
+  `tests/spec-lint.test.sh`). Checa sintoma, não tamanho: o que separa uma spec de
+  270 linhas de uma de 1700 são as seções que não deviam estar lá. Achado bloqueia; `aviso:` só informa. Nos tickets, cruza os `files:` dos
+  `[P]` e acusa disputa de arquivo antes do conflito acontecer.
+- **Marcador `[P]` e fases** no fatiamento: `Setup`, `Foundational`, `Slices`,
+  `Polish`. `[P]` só onde os `files:` não se cruzam.
 - **Suíte dos hooks e do Evaluator** (`tests/hooks.test.sh`, 33 asserts;
   `tests/peer-review.test.sh`, 17). Os cinco hooks de enforcement e o
   `peer-review.sh` não tinham um assert, e são justamente o que o README oferece
@@ -54,6 +65,15 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **Worktree e branch** (`git-workflow-and-versioning`): 1 ticket = 1 worktree =
+  1 branch = 1 PR, worktree nativo (`claude -w`), SHA congelado na leva, teto de
+  3 a 5, merge serializado, branch morrendo no merge. Squash-merge cega o
+  `git branch --merged` (SHA novo): a varredura de órfãs passa a usar
+  `gh pr list --state merged`.
+- **Evaluator adversarial** (`docs/adversarial-evaluator.md`): finding vira
+  ticket, nunca seção nova na spec. Spec aprovada é append-only. Era esta linha
+  que inflava as specs: 43 arquivos `.round-N.md` e seções `## Resposta ao Round N`
+  no corpo.
 - **Design ganha constraints, variantes e dois trilhos, e para de jogar wackamole.** O fluxo
   da `design-workflow` era linear: buscava referência na base, gerava um preview, aplicava.
   Nunca escrevia as constraints, nunca gerava alternativa, nunca voltava atrás quando a
