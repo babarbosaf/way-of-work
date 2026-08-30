@@ -1,6 +1,6 @@
 ---
 spec: category-derivada
-Owner: Benedito
+Owner: Ana
 status: aprovado
 prd: docs/prd/medallion-core.md#dimensoes
 ---

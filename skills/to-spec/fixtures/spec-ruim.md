@@ -1,6 +1,6 @@
 ---
 spec: SPEC-2026-049
-Owners: Benedito (decisões), Claude (drafting)
+Owners: Ana (decisões), Claude (drafting)
 status: ongoing (post-reconciliation v3 — D-2; pre Codex round 3 confirm)
 ---
 

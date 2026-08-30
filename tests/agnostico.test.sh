@@ -18,13 +18,15 @@ PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); echo "  ✓ $1"; }
 fail() { FAIL=$((FAIL+1)); echo "  ✗ $1"; }
 
-# scan REGEX [EXCECAO] : varre os arquivos versionados de texto e imprime os hits.
+# scan REGEX [EXCECAO] : varre os arquivos de texto do repo e imprime os hits.
+# --untracked porque o vazamento chega em arquivo novo: sem isso o gate passa
+# verde antes do commit e só acusa depois que o conteúdo já subiu.
 # A exceção é por CONTEÚDO da linha, nunca por arquivo: isentar arquivo inteiro é
 # o buraco por onde o próximo vazamento entra verde.
 scan() {
   local regex="$1" excecao="${2:-}"
   local hits
-  hits=$(git grep -inIE "$regex" -- $FILES 2>/dev/null || true)
+  hits=$(git grep --untracked -inIE "$regex" -- $FILES 2>/dev/null || true)
   # linha marcada com guard-regex é dado desta suíte (padrão ou violação
   # plantada), não conteúdo do repo.
   hits=$(grep -vE '# guard-regex' <<<"$hits" || true)
@@ -51,7 +53,9 @@ plantado() {
   else fail "$nome: NÃO acusou a violação plantada (regra morta)"; fi
 }
 
-FILES=$(git ls-files '*.md' '*.json' '*.sh' '*.py' | tr '\n' ' ')
+# --others: arquivo novo ainda não commitado entra na varredura. É onde o
+# vazamento chega, e é antes do commit que o gate precisa acusar.
+FILES=$(git ls-files --cached --others --exclude-standard '*.md' '*.json' '*.sh' '*.py' | tr '\n' ' ')
 
 # O nome do dono é legítimo em dois lugares: a linha de copyright da LICENSE e a
 # URL do próprio repo. Em qualquer outro, é identidade vazando.
