@@ -12,7 +12,7 @@ não está aqui está no ticket que constrói.
 ```markdown
 ---
 spec: category-derivada
-Owner: Benedito
+Owner: Ana
 status: aprovado
 created: 2026-07-09
 prd: docs/prd/medallion-core.md#dimensoes
