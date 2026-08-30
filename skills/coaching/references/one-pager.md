@@ -6,7 +6,7 @@ o contrato de uma feature (isso é spec). Vem antes de ambos, e morre quando voc
 
 Salvar em `docs/one-pagers/<slug>.md`, aberto assim que o trilho for declarado.
 
-**Teto de uma página.** Estourou, o trilho estava errado: promove pra `/spec-and-plan` ou
+**Teto de uma página.** Estourou, o trilho estava errado: promove pra `/to-spec` ou
 `/kickoff-project`.
 
 **Fronteira com doc vivo.** O one-pager **cita e aponta**, nunca duplica. Projeto que já tem
@@ -138,7 +138,7 @@ variantes daquela parte nas colunas, e só os requisitos que aquela parte toca n
 A seção que fecha o documento, e a única que muda de forma com o Pedido.
 
 **`escolha`.** A opção, em uma linha o porquê, e para onde vai: código direto,
-`/spec-and-plan`, `/kickoff-project`, executar no meio certo, ou não fazer.
+`/to-spec`, `/kickoff-project`, executar no meio certo, ou não fazer.
 
 **`proposta`.** O que você precisa da outra pessoa, no verbo dela: liberar, aprovar, concordar,
 responder até tal data. Pedido implícito é pedido não atendido.

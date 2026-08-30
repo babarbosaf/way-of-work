@@ -56,8 +56,11 @@ Findings saem no **stdout**, classificados em Critical/Important/Suggestion.
 Destino do registro:
 
 - **Diff com PR:** comentário na PR, co-localizado com o diff.
-- **Spec:** resumo dos findings + o que mudou por causa deles, ao fim da
-  própria `spec.md`.
+- **Spec:** o finding vira **ticket** (ou comentário no ticket que ele atinge),
+  nunca seção nova na `spec.md`. Spec aprovada é append-only: se o finding muda
+  o contrato, apenda `## Revisão N` com a decisão e o ticket que ela cria, sem
+  reescrever o texto assinado. Rodada de review não deixa rastro no corpo da
+  spec, nem arquivo irmão `<spec>.round-N.md`, o registro é o ticket.
 - **Critical encontrado:** apresentar com a evidência crua e propor opções
   (corrigir e seguir, re-rodar review no patch, redesenhar). A decisão é do
   dono. O review não bloqueia nada sozinho.

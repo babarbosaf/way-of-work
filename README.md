@@ -22,7 +22,7 @@ memória durável entre sessões.
 | `skills/` | Uma skill por fase do ciclo (taxonomia abaixo). O conteúdo é doutrina em markdown, então serve de leitura pra qualquer agente; o dispatch por `/comando` é do Claude Code. |
 | `docs/` | Doutrina: `evolve-over-create.md`, `autonomy-loops.md`, `adversarial-evaluator.md` (segunda opinião opcional) e runbooks em `docs/runbooks/`. |
 | `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`. |
-| `tests/` | Seis suítes, 169 asserts, sem rede e sem CLI real: despacho de modelo, review adversarial, os cinco hooks de enforcement, manifesto de plugins, linter de escrita, agnosticismo do repo e link markdown morto. |
+| `tests/` | Sete suítes, 192 asserts, sem rede e sem CLI real: despacho de modelo, review adversarial, os cinco hooks de enforcement, manifesto de plugins, linter de escrita, lint de spec e ticket, agnosticismo do repo e link markdown morto. |
 | `specs/_TEMPLATE-spec/` | Formato de spec pra feature grande: contrato, design, slices, gate. |
 | `FEEDBACK.example.md` | Formato do buffer de correção do projeto: uma linha por entrada com o gatilho embutido, teto de 10, regra de promoção. O `FEEDBACK.md` real é gitignored. |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
@@ -43,7 +43,8 @@ Convenções estruturais:
 | Skill | Invocação |
 |-------|-----------|
 | [`kickoff-project`](skills/kickoff-project) | user-invoked (fundação de projeto novo por entrevista) |
-| [`spec-and-plan`](skills/spec-and-plan) | model-invoked (só feature grande) |
+| [`to-spec`](skills/to-spec) | user-invoked (contrato de feature grande) |
+| [`to-tickets`](skills/to-tickets) | user-invoked (fatia a spec em tickets executáveis) |
 | [`git-workflow-and-versioning`](skills/git-workflow-and-versioning) | model-invoked (inclui o gate de ship) |
 | [`delegate`](skills/delegate) | model-invoked |
 | [`coaching`](skills/coaching) | user-invoked (dois trilhos: Conversa e One-pager) |

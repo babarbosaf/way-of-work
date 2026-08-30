@@ -1,0 +1,1 @@
+../skills/to-spec/scripts/check-spec.py

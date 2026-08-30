@@ -16,7 +16,8 @@ Estado transiente de trabalho em curso, num arquivo só. Fronteira dura com `cap
 ## Destino (um só)
 
 `_tmp/handoff-sessao-YYYY-MM-DD-<tema>.md` (gitignored). Se o trabalho em curso é
-uma spec de `docs/specs/`, o handoff referencia a spec pelo path, não vira seção dela.
+uma spec de `docs/specs/`, o handoff referencia a spec e o ticket aberto pelo path,
+não vira seção de nenhum dos dois. Spec aprovada é append-only.
 
 **Substitui, não acumula**, regenerar reescreve o arquivo. Morre quando absorvido: o cabeçalho declara a condição de morte ("apagar quando X absorver isto").
 

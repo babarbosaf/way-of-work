@@ -2,7 +2,7 @@
 
 ## Checklist de segurança (aplicar sempre antes do ship)
 
-> Em spec de tier **governança**, este checklist **verifica** o Modelo de Ameaça definido na spec (`spec-and-plan` → Security): confirma que cada vetor previsto tem defesa no código. Não redefine o modelo.
+> Em spec de tier **governança**, este checklist **verifica** o Modelo de Ameaça definido na spec (`to-spec` → Segurança): confirma que cada vetor previsto tem defesa no código. Não redefine o modelo.
 
 - [ ] Credenciais apenas em `.env` / secret manager, nunca no código
 - [ ] `.env` no `.gitignore`; `.env.example` existe com placeholders

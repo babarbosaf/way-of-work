@@ -26,7 +26,7 @@ Alternativa all-in-one: `npx ctx7 setup` (OAuth + gera key + instala skill).
 ## Onde amarrado no fluxo
 
 - **CLAUDE.md** (seção "Coding practices atualizadas"): consultar antes de escolher API/assinatura/versão de lib.
-- **spec-and-plan / build TDD**: gatilho `use context7` no passo de escolha de lib/API.
+- **to-spec / build TDD**: gatilho `use context7` no passo de escolha de lib/API.
 - **Hook `~/.claude/hooks/context7_reminder.py`** (PreToolUse Edit|Write|MultiEdit): dispara em qualquer skill, em qualquer fase do ciclo. Avisa (stderr, não bloqueia) quando:
   - arquivo é manifesto de dependência (`package.json`, `requirements.txt`, `pyproject.toml`, `go.mod`, `Gemfile`, `composer.json`, `Cargo.toml`, `Pipfile`);
   - diff introduz linha de import/require nova que não existia no `old_string`/conteúdo anterior.
