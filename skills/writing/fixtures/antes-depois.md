@@ -69,3 +69,27 @@ antes: As queries são validadas antes do deploy.
 ```
 
 depois: O hook de pre-commit valida as queries antes do deploy.
+
+## 7. Anúncio em canal: esforço e punchline
+
+Padrões 43 e 44 no mesmo par, de uma mensagem de chat interno. O antes passa no linter e
+ainda assim lê como agente, e é esse o ponto: o mecânico já estava limpo. Nome de cliente e
+de repo trocados por genéricos; a estrutura das frases é a do par real.
+
+```
+antes: O que virou skill foi o que doeu na mão. Reconstruí o layout do zero em vez de
+       reaproveitar o que já existia, calculei a grade do mês no terminal, e só descobri
+       no meio do caminho que o roadmap do cliente estava cinco semanas atrasado.
+
+       Então ela lê o roadmap, os compromissos e o review do mês fechado, monta os slides,
+       e usa farol de três estados escritos por extenso: on track, at risk, off track.
+       Todo at risk tem que dizer o que destrava, senão é enfeite. E ela para de gerar se o
+       ledger estiver velho; deck sobre ledger velho parece atual e não é.
+```
+
+depois: Basicamente, ela lê o roadmap, os compromissos e o review do mês fechado, monta os
+slides, e usa farol de on track, at risk, off track por iniciativa em aberto pra avaliar o
+quão no pace estamos.
+
+O parágrafo do esforço saiu inteiro, e as duas frases de efeito que o autor do antes mais
+gostou saíram com ele. Sobrou o que a skill faz.

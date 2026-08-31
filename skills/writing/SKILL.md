@@ -22,7 +22,10 @@ Fontes: [caveman](https://github.com/juliusbrussee/caveman) (brevidade),
    que é mecânico, e só isso: travessão, aspa curva, filler, vocabulário de IA, frase de
    chatbot, emoji decorativo em título.
 3. Passe o catálogo `references/padroes.md`. É o que regex não pega, e é a maior parte.
-4. Se algum agente escreve em nome de uma pessoa, calibre por `references/voz.md`.
+4. Se algum agente escreve em nome de uma pessoa, calibre pelo arquivo de voz
+   **preenchido**, que vive na base de conhecimento e não aqui, com o nome
+   `concept_voz_<slug>.md`. O `references/voz.md` deste diretório é o molde vazio, e ler o
+   molde no lugar do preenchido calibra por inferência sem avisar ninguém.
 5. Rode o self-check abaixo antes de entregar.
 
 ## Brevidade
@@ -39,6 +42,11 @@ pra instrução densa: AGENTS.md, checklist, bullet de doc, item de tabela. Text
 alguém lê de ponta a ponta (README, corpo de PR, post) pede frase conectada, senão cai
 em parataxe, que é justamente um dos padrões do catálogo.
 
+Mensagem pra uma pessoa num canal é o terceiro escopo, e nenhum dos dois anteriores
+descreve ela. Vale a frase conectada do texto longo, mas o fecho que pede ação pode
+repetir o pedido, porque adesão ganha de economia quando alguém tem que fazer algo depois
+de ler.
+
 O plugin `caveman` é opcional e aplica a brevidade no output em runtime. Instala por
 `claude plugin install` e liga por `CAVEMAN_DEFAULT_MODE`. Dado o requisito de bom
 português, os níveis seguros são `lite` e `full`. O estilo em si vive aqui, não depende
@@ -51,7 +59,8 @@ Vale sobretudo em texto longo, onde a brevidade não protege:
 - **Sem parataxe.** "Frase curta. Outra. Outra." lê como IA. Conecte mostrando a relação,
   seja causa, contraste ou ressalva.
 - **Sem gangorra de hedging.** Escolha um lado e afirme. Contraponto em uma frase, nunca
-  com peso igual.
+  com peso igual. A dúvida que você de fato tem é exceção, porque é informação: apagar
+  ela mente sobre o que se sabe. O vício é empilhar ressalva em cima do que você sabe.
 - **Sem tom de pep talk corporativo.** Escreva como quem já pagou o custo, frustração
   inclusa.
 - **Sem parágrafo em molde idêntico.** Varie abertura e tamanho.
@@ -91,7 +100,7 @@ Tirar padrão é metade do trabalho. Texto sem voz denuncia máquina do mesmo je
 
 1. Três frases seguidas do mesmo tamanho? Varie.
 2. Parataxe, três curtas em sequência? Conecte.
-3. Hedging em vez de posição? Escolha o lado.
+3. Hedging em vez de posição? Escolha o lado, e deixe a dúvida real declarada como dúvida.
 4. Travessão, parêntese explicativo ou dois-pontos conector no trecho? Remova.
 5. Passiva sem ator? Nomeie quem age.
 6. Dado que você não mediu? Remova ou marque como hipótese.
@@ -104,4 +113,4 @@ Tirar padrão é metade do trabalho. Texto sem voz denuncia máquina do mesmo je
 | `references/padroes.md` | Catálogo de padrões anti-slop, com o substituto de cada um. |
 | `references/voz.md` | Molde de calibração de voz. Preenchido vive fora do repo. |
 | `fixtures/antes-depois.md` | Pares reais deste repo, pra calibrar o que é reescrita boa. |
-| `scripts/check-writing.py` | O linter. Testado por `tests/writing.test.sh`. |
+| `scripts/check-writing.py` | O linter. Testado por `tests/writing.test.sh`, na raiz do repo. |
