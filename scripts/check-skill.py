@@ -37,7 +37,33 @@ CITACAO = re.compile(r"[\"\u201c\u201d\'][^\"\u201c\u201d\']{0,80}[\"\u201c\u201
 GATILHO = re.compile(r"\b(use|usar|invoc|quando|antes de|dispara)", re.I)
 LINK_MD = re.compile(r"\[[^\]]*\]\((?!https?://)([^)#]+?)(?:#[^)]*)?\)")
 BACKSLASH = re.compile(r"\]\([^)]*\\[^)]*\)|`[a-z0-9_./-]+\\[a-z0-9_./-]+`", re.I)
-TITULO_INDICE = re.compile(r"^#{1,3}\s*(conte[úu]do|sum[áa]rio|[íi]ndice|contents)\s*$", re.I | re.M)
+# Índice é título mais lista que nomeia as seções do próprio arquivo. Um catálogo
+# cuja primeira categoria se chama "Conteúdo" tem o título e uma lista de itens
+# que não são seções, e por isso não navega nada.
+TITULO_INDICE = re.compile(
+    r"^#{1,3}[ \t]*(conte[úu]do|sum[áa]rio|[íi]ndice|contents)[ \t]*$", re.I | re.M
+)
+ITEM_LISTA = re.compile(r"^[ \t]*(?:[-*+]|\d+\.)[ \t]+(.+?)\s*$")
+HEADING = re.compile(r"^#{2,4}[ \t]+(.+?)\s*$", re.M)
+
+
+def tem_indice(conteudo: str) -> bool:
+    """Índice de verdade: título de índice seguido de itens que são seções daqui."""
+    m = TITULO_INDICE.search(conteudo[:1200])
+    if not m:
+        return False
+    secoes = {h.strip().strip("*`").lower() for h in HEADING.findall(conteudo)}
+    itens: list[str] = []
+    for linha in conteudo[m.end() :].split("\n"):
+        item = ITEM_LISTA.match(linha)
+        if item:
+            itens.append(item.group(1).strip().strip("*`").lower())
+        elif itens and linha.strip():
+            break
+    if not itens:
+        return False
+    casam = sum(1 for i in itens if any(i in s or s in i for s in secoes))
+    return casam >= 1 and casam * 2 >= len(itens)
 
 
 class Achados:
@@ -176,7 +202,7 @@ def check_skill(raiz: Path, ach: Achados) -> None:
         # Amostra de artefato (`exemplos/`, `fixtures/`) é molde, e índice
         # enfiado no meio de um PRD de exemplo estraga o molde.
         amostra = chave.startswith(("exemplos/", "fixtures/")) or "/exemplos/" in chave
-        if nl > REF_INDICE and not amostra and not TITULO_INDICE.search(conteudo[:1200]):
+        if nl > REF_INDICE and not amostra and not tem_indice(conteudo):
             ach.add(prel, 1, f"{nl} linhas sem índice no topo: leitura parcial não vê o escopo", aviso=True)
 
         meta = p.name == "README.md" or chave.startswith("fixtures/")

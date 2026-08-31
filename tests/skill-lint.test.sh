@@ -158,6 +158,13 @@ d=$(planta com-indice); mkdir -p "$d/references"
 printf '\nVer `references/longa.md`.\n' >> "$d/SKILL.md"
 esperado_limpo "referência longa com índice passa" "$d"
 
+# Catálogo cuja primeira categoria se chama "Conteúdo" tem o título e nenhuma
+# navegação: o índice é título mais lista.
+d=$(planta indice-falso); mkdir -p "$d/references"
+{ echo "# Catálogo"; echo; echo "## Conteúdo"; echo; echo "Primeira categoria de padrão."; for i in $(seq 1 120); do echo "linha $i"; done; } > "$d/references/longa.md"
+printf '\nVer `references/longa.md`.\n' >> "$d/SKILL.md"
+esperado_aviso "seção chamada Conteúdo sem lista não é índice" "sem índice no topo" "$d"
+
 d=$(planta orfa); mkdir -p "$d/references"
 printf '# Órfã\n\nNinguém aponta pra cá.\n' > "$d/references/orfa.md"
 esperado_aviso "referência não citada pelo SKILL.md" "não é citada" "$d"
