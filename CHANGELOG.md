@@ -46,6 +46,17 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   molde de stack default, exemplos Chutaí com `CONVENTIONS.md` novo
   extraído do PRD.
 
+- **Régua de autoria de skill** (`docs/skill-authoring.md`) e o lint que a aplica
+  (`scripts/check-skill.py`, 23 asserts em `tests/skill-lint.test.sh`). Mede o que decide
+  discovery e progressive disclosure: frontmatter que permite escolher a skill, corpo do
+  `SKILL.md` até 500 linhas, referência a um nível do `SKILL.md`, índice no topo de
+  referência acima de 100 linhas, link relativo que resolve. Bloqueante trava o gate;
+  aviso só informa. Amostra de artefato (`references/exemplos/`, `fixtures/`) fica fora da
+  régua de índice e de navegação, porque é molde e entrada de teste, não referência.
+- **Índice no topo** das sete referências acima de 100 linhas em `coaching`,
+  `kickoff-project`, `to-spec` e `to-tickets`. Leitura parcial (`head`) via de regra não
+  alcança o fim do arquivo, e sem índice o agente não sabe o que deixou de ler.
+
 ### Fixed
 
 - **Hook do RTK quebrava em quem clonasse sem o CLI.** `rtk-hook-wrapper.sh` chamava
