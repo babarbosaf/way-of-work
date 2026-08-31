@@ -8,6 +8,16 @@ A entrevista alimenta principalmente o PRD. As rotas e o design se derivam do PR
 entrevistas curtas e complementares (ver `anatomia-rotas.md` e `anatomia-design.md`), e o
 CONVENTIONS.md consolida a camada técnica levantada aqui (ver `anatomia-conventions.md`).
 
+## Conteúdo
+
+- Princípios de condução
+- Fase 0, Enquadramento
+- Fase 1, Pilares
+- Fase 2, Deep-dive por feature (loop)
+- Fase 3: camadas transversais
+- Fase 4, Decisões estratégicas
+- Saída da entrevista
+
 ## Princípios de condução
 
 - **Um bloco de tema por mensagem.** No máximo 1 a 3 perguntas por vez. Nunca despejar
