@@ -6,6 +6,18 @@ alternativa vira paralisia.
 Exemplos ruins vão em `código` de propósito: o linter ignora trecho de código, então o
 catálogo não se acusa.
 
+## Índice
+
+- Conteúdo (1 a 6)
+- Linguagem (7 a 12)
+- Estilo (13 a 19)
+- Artefato de conversa (20 a 22)
+- Filler (23 a 25)
+- Jargão (26)
+- Fala direta (27 a 31)
+- Documento de referência (32 a 41)
+- Anúncio de trabalho próprio (42 a 45)
+
 ## Conteúdo
 
 1. **Puffery.** `momento decisivo`, `prova do compromisso`, `cenário em evolução`,
