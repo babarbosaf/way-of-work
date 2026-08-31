@@ -6,6 +6,18 @@ alternativa vira paralisia.
 Exemplos ruins vão em `código` de propósito: o linter ignora trecho de código, então o
 catálogo não se acusa.
 
+## Índice
+
+- Conteúdo (1 a 6)
+- Linguagem (7 a 12)
+- Estilo (13 a 19)
+- Artefato de conversa (20 a 22)
+- Filler (23 a 25)
+- Jargão (26)
+- Fala direta (27 a 31)
+- Documento de referência (32 a 41)
+- Anúncio de trabalho próprio (42 a 45)
+
 ## Conteúdo
 
 1. **Puffery.** `momento decisivo`, `prova do compromisso`, `cenário em evolução`,
@@ -60,8 +72,12 @@ catálogo não se acusa.
 ## Filler
 
 23. **Frase de enchimento.** `a fim de` vira "pra". `devido ao fato de que` vira "porque".
-    `é importante notar que` sai inteiro.
-24. **Hedging empilhado.** `poderia potencialmente talvez` vira "pode".
+    `é importante notar que` sai inteiro. `basicamente` ficou fora do linter de propósito:
+    em PT-BR falado ele abre explicação técnica pra quem não acompanhou o detalhe, e nessa
+    posição é sinal pro leitor, não enchimento.
+24. **Hedging empilhado.** `poderia potencialmente talvez` vira "pode". Ressalva que
+    corresponde a dúvida real não entra aqui, porque ela é informação, e apagar ela mente
+    sobre o que se sabe. O vício é a ressalva sobre o que você sabe.
 25. **Conclusão genérica.** `o futuro é promissor`. Escreve o plano ou o número.
 
 ## Jargão
@@ -88,3 +104,70 @@ catálogo não se acusa.
 31. **Palavra comum ganha.** `utilizar` vira "usar", `alavancar` vira "usar",
     `viabilizar` vira "ajudar", `no sentido de` vira "pra". O sinônimo chique raramente é
     mais claro.
+
+## Documento de referência
+
+Regras que saíram das revisões de um `PRD.md` em 2026-08-31, quando o dono
+reescreveu à mão as seções que o agente tinha escrito. Valem pra doc que se lê pra decidir: PRD, ROUTES,
+CONVENTIONS, spec.
+
+32. **Regra fica, causo sai.** `porque falha silenciosa é o modo de morte do que roda por
+    relógio`, `foi reclamação do dono na primeira entrega real`. O enunciado da regra
+    basta; a narrativa do incidente vive no FEEDBACK ou na decisão que a produziu. Doc de
+    referência que carrega causo vira decision log.
+33. **Número medido não é doc de referência.** Placar de comparação, data de medição,
+    percentual de recall: são evidência, e evidência mora na spec ou no script que a
+    produziu. O doc leva a regra que o número justificou, não o número.
+34. **Termo corrente ganha de apelido.** `profiles` e não "papéis"; `workflow` e não
+    "laço"; `edge case` e não "borda". O apelido poético obriga o leitor a traduzir, e
+    some da busca.
+35. **Jargão se glosa na primeira aparição**, inline e curto: `lastro (prova de que a
+    citação foi dita)`. Sigla que aparece três vezes sem definição custa uma pergunta.
+
+36. **Antítese como forma de enunciar.** `pega invenção, não interpretação`,
+    `se mede, não se opina`, `é degrau, não repetição`. O contraste obriga o leitor a
+    entender dois termos e a fronteira entre eles para extrair um fato só. Escreve a
+    afirmação: "a validação de citação evita alucinação". Lista de negativas continua
+    valendo quando a negativa **é** o conteúdo: "não mergeia, não faz push" define a
+    fronteira de um papel.
+37. **Aposto encaixado entre sujeito e verbo.** `O erro mais comum e o mais caro, uma
+    leitura que a fala não sustenta, passa`. Nove palavras separam sujeito do verbo, e o
+    verbo chega quando o leitor já perdeu o fio. Tira o aposto para frase própria, ou
+    reescreve como condição: "Caso se identifique X, faz-se Y".
+38. **Tautologia de remate.** `Por isso o rascunho é rascunho`, `regra é regra`. Soa
+    conclusivo e não afirma nada. Apaga, ou diz o que a frase queria dizer.
+
+39. **A razão entra na mesma frase que a regra**, ligada por `porque`, `pois` ou dois
+    pontos. `A única fonte oficial de grafia é o nome do cadastro, pois o campo de formas
+    faladas mistura erro, apelido e variação`. Razão promovida a frase própria vira
+    aforismo, e aforismo em sequência é o ritmo que denuncia texto de modelo.
+40. **Processo se descreve na impessoal.** `O dono é definido por correspondência exata
+    no cadastro`, `retendo em arquivo separado os itens fora de escopo`. Quem executa é o
+    script, e nomeá-lo em toda frase (`o agente confere`, `ele retém`) transforma
+    especificação em narração. A pessoa volta quando a ação é dela: `alguém aponta`.
+41. **O referente de `onde` e `que` precisa ser o substantivo anterior.** `retendo em
+    arquivo separado os itens fora de escopo, onde novas regras são registradas`: o
+    `onde` mira o arquivo e cai nos itens. Frase nova, ou repete o substantivo.
+
+## Anúncio de trabalho próprio
+
+Regras que saíram da revisão de uma mensagem de canal interno em 2026-08-31, quando o dono
+reescreveu à mão o anúncio que o agente tinha redigido em nome dele. Valem pra mensagem,
+comentário de PR e release note em que quem escreve é também quem fez.
+
+42. **Crédito abre, não fecha.** Trabalho que partiu do trabalho de outra pessoa nomeia
+    essa pessoa na primeira frase. Crédito no penúltimo parágrafo lê como nota de rodapé, e
+    troca o protagonista da mensagem sem que ninguém tenha decidido isso.
+43. **Esforço não legitima entrega.** `o que virou skill foi o que doeu na mão`,
+    `reconstruí o layout do zero`, `calculei a grade no terminal`. Quem lê decide pelo que a
+    coisa faz e pelo compromisso que ela atende, e a narrativa do custo pede crédito por
+    dificuldade. Se a entrega precisa de legitimidade, amarra na meta, no ticket ou no uso.
+44. **Punchline doutrinária fechando parágrafo.** `senão é enfeite`,
+    `parece atual e não é`. Sentença de efeito que resume o que a frase anterior já disse
+    soa como remate de manifesto, e é o ritmo que mais denuncia modelo em texto curto.
+    Parágrafo pode acabar na informação. Parente do 38, que pega a tautologia, e do 39, que
+    pega a razão promovida a frase própria.
+45. **Verbo modesto ganha do verbo de lançamento.** `tentei transformar em skill, e criei`
+    no lugar de `subi uma skill nova`, com a coisa mergeada e rodando. Anúncio que se
+    declara acima do que entregou obriga o leitor a descontar, e o desconto vira
+    desconfiança na mensagem seguinte.

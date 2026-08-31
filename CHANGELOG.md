@@ -46,6 +46,13 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   molde de stack default, exemplos Chutaí com `CONVENTIONS.md` novo
   extraído do PRD.
 
+- **Anúncio de trabalho próprio** (`skills/writing/references/padroes.md`, padrões 42 a
+  45): crédito abre a mensagem em vez de fechar, esforço não legitima entrega, punchline
+  doutrinária fechando parágrafo, e verbo modesto no lugar do verbo de lançamento. Saíram
+  da revisão de um anúncio de canal reescrito à mão, onde o texto do agente passava no
+  linter e as quatro construções sobreviviam. O par 7 de `fixtures/antes-depois.md` é o
+  primeiro de mensagem de chat, e não de doc.
+
 ### Fixed
 
 - **Hook do RTK quebrava em quem clonasse sem o CLI.** `rtk-hook-wrapper.sh` chamava
@@ -64,6 +71,21 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   não tem como executar.
 
 ### Changed
+
+- **Terceiro escopo de brevidade** (`skills/writing/SKILL.md`): mensagem pra uma pessoa num
+  canal não é instrução densa nem texto que se lê de ponta a ponta. Vale a frase conectada,
+  e o fecho que pede ação pode repetir o pedido, porque adesão ganha de economia quando
+  alguém tem que fazer algo depois de ler.
+- **Hedge real sai da conta do vício** (`SKILL.md` na Naturalidade e no self-check 3,
+  padrão 24): ressalva que corresponde a dúvida existente é informação, e apagar ela mente
+  sobre o que se sabe. O vício é a ressalva empilhada sobre o que já se sabe. Por isso
+  `basicamente` fica fora do linter: em PT-BR falado ele abre explicação técnica.
+- **O passo 4 aponta pro arquivo de voz preenchido**, e o `references/voz.md` abre dizendo
+  que é molde. Ler o molde no lugar do preenchido calibra por inferência sem avisar
+  ninguém.
+- **Gate de agnosticismo** (`tests/agnostico.test.sh`): a lista de unidade de negócio ganha
+  dois nomes de projeto, e o `padroes.md` perde as duas citações que nomeavam um projeto
+  real.
 
 - **Worktree e branch** (`git-workflow-and-versioning`): 1 ticket = 1 worktree =
   1 branch = 1 PR, worktree nativo (`claude -w`), SHA congelado na leva, teto de

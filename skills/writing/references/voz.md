@@ -1,5 +1,8 @@
 # Voz, molde de calibração
 
+Este arquivo é o molde, e nunca a calibração. Quem veio calibrar a voz de alguém quer o
+`concept_voz_<slug>.md` preenchido, na base de conhecimento.
+
 Copie este arquivo pra sua base de conhecimento (wiki, repo de notas, o que for) e
 preencha. O nome sugerido é `concept_voz_<seu-slug>.md`, pra casar com o ponteiro do seu
 `AGENTS.md`. Preenchido, ele é a fonte única de voz: os agentes leem daqui, e a lista de
