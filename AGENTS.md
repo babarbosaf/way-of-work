@@ -45,7 +45,8 @@ design (constraints antes do pixel, variantes fora do repo); `/handoff` antes de
 com trabalho aberto. Segunda opinião adversarial (`scripts/peer-review.sh {spec|diff}`) é
 opcional, sob demanda. Recomendada em diff que toca prod ou é caro de reverter
 (`docs/adversarial-evaluator.md`). Autonomia/loops: escada turn→`/goal`→`/loop`→`/schedule`,
-stop-condition de máquina (`docs/autonomy-loops.md`).
+stop-condition de máquina (`docs/autonomy-loops.md`). Skill nova ou editada passa em
+`scripts/check-skill.py`, régua em `docs/skill-authoring.md`.
 
 ## Testes
 
