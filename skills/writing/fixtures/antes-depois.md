@@ -69,3 +69,51 @@ antes: As queries são validadas antes do deploy.
 ```
 
 depois: O hook de pre-commit valida as queries antes do deploy.
+
+## 6. Justificativa colada na regra
+
+Padrão 32. O corte não perde informação: a regra é a mesma, e o porquê já vive na decisão.
+
+```
+antes: **A resposta é sempre a mesma frase**, e isso é requisito, não gentileza: frase
+diferente para quem já tem conta transforma o formulário em oráculo de quem é cliente.
+```
+
+depois: Resposta para quem já tem conta: idêntica à de quem não tem.
+
+## 7. Retórica antes da regra
+
+Padrão 34. Três frases de moldura antes de dizer a única coisa que importa.
+
+```
+antes: **Link no e-mail, e nada mais.** Sem senha, sem SSO, sem código digitado. A
+consequência é dura e assumida: se o e-mail não chega, ninguém entra.
+```
+
+depois: A única forma de login é via magic link.
+
+## 8. Estado atual em doc de estado ideal
+
+Padrão 38. O ponteiro pro código foi pro doc de gaps, e a linha aqui virou a promessa.
+
+```
+antes: A gestão vive em `/settings#members`, hoje um placeholder honesto com o gatilho
+declarado na própria tela (`Configuracoes.tsx:88`).
+```
+
+depois: A gestão vive em `/settings#members`, e a tela lista quem está dentro, com papel e
+estado, mais os convites pendentes.
+
+## 9. Prosa defendendo o que a tabela já afirma
+
+Padrões 39 e 33. A tabela logo abaixo tem a linha `Capa | o nome do relatório sobrevive à
+impressão`, e o fecho só a dramatizava.
+
+```
+antes: A única saída da v0 é o PDF, e ele é o que está na tela: os cards como estão, com
+os filtros aplicados naquele momento, e a capa com o nome do relatório. A folha impressa
+precisa dizer de quem é e de qual relatório saiu, ou ela chega na reunião anônima.
+```
+
+depois: A única saída da v0 é o PDF. Ele funciona como um print da tela: os cards como
+estão, com os filtros aplicados naquele momento, e a capa com o nome do relatório.

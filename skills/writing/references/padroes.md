@@ -6,6 +6,17 @@ alternativa vira paralisia.
 Exemplos ruins vão em `código` de propósito: o linter ignora trecho de código, então o
 catálogo não se acusa.
 
+## Índice
+
+- Conteúdo (1-6)
+- Linguagem (7-12)
+- Estilo (13-19)
+- Artefato de conversa (20-22)
+- Filler (23-25)
+- Jargão (26)
+- Fala direta (27-31)
+- Documento normativo (32-41)
+
 ## Conteúdo
 
 1. **Puffery.** `momento decisivo`, `prova do compromisso`, `cenário em evolução`,
@@ -88,3 +99,59 @@ catálogo não se acusa.
 31. **Palavra comum ganha.** `utilizar` vira "usar", `alavancar` vira "usar",
     `viabilizar` vira "ajudar", `no sentido de` vira "pra". O sinônimo chique raramente é
     mais claro.
+
+## Documento normativo (PRD, spec, guideline)
+
+Padrões que só aparecem em doc que manda alguém fazer alguma coisa. Todos saíram de uma
+revisão do dono num sub-doc de PRD (BIP, 04/set/2026), em que o corte tirou 40% das
+linhas e o doc ficou mais completo.
+
+32. **Justificativa colada na regra.** O tell é a cauda que defende o que a frase acabou
+    de afirmar: `e isso é requisito, não gentileza`, `de propósito`, `a consequência é
+    dura e assumida`, `não é conveniência`. A regra basta. O porquê vive na decisão que a
+    produziu (ADR, DDR, seção de decisões), e repetido no normativo ele só engorda.
+33. **Aforismo no lugar do fato.** `endereço escolhido à mão produz nome-2, nome-final e
+    arrependimento`. Fecha bonito, não é verificável, e não muda o que ninguém faz.
+    Escreve a regra e o número.
+34. **Negrito de abertura como retórica.** `**Um ato só.**`,
+    `**Três papéis, e a distância entre eles é pequena.**` Rótulo em negrito que anuncia
+    tom em vez de nomear o item. Diferente do padrão 16: lá o rótulo repete a linha, aqui
+    ele encena. Começa pela regra.
+35. **Pergunta aberta empilhada no fim da seção.** Bloco de "pontos a definir" com cinco
+    perguntas sem dono nem prazo apodrece, e some da vista. Decide o que dá pra decidir,
+    e o que sobra vira `a definir` na célula exata da tabela, onde quem for implementar
+    esbarra.
+36. **Restrição pendurada na cauda.** O tell é a informação principal chegar depois da
+    vírgula, como aposto: `O workspace nasce pelo convite de fundação, e é o único
+    caminho`. A cauda carrega a regra inteira, e a oração principal só ocupa espaço.
+    Quando a cauda é o que importa, ela vira o sujeito: `O único caminho para o workspace
+    nascer é o convite de fundação`. Vale pra toda variante do rabo: `, e é obrigatório`,
+    `, e não tem exceção`, `, e só ele`. Teste: cobre a cauda com o dedo. Se o que sobra
+    não é a regra, a frase está montada de trás pra frente.
+37. **Data, código de spec e número de decisão em frase normativa.** `(decisão de
+    04/set/2026, spec 2026-011 D-11)`, `revisto em 04/set`, `DDR-0013` no meio de uma
+    regra. Ou a regra vale agora, e a data não muda nada, ou ela não vale, e a frase não
+    deveria estar lá. Rastreabilidade vive no git, na spec e no ADR. A exceção é a seção
+    cujo assunto **é** o histórico (decisões registradas, changelog), onde a data é o
+    conteúdo.
+38. **Estado atual dentro de doc de estado ideal.** `file.tsx:88`, nome de função,
+    `hoje é um placeholder`, num doc cujo cabeçalho promete descrever o alvo. Ponteiro pro
+    código pertence ao doc de gaps ou ao de convenções. Doc que mistura os dois envelhece
+    a cada commit.
+
+39. **Prosa que repete a tabela vizinha.** Em doc que mistura prosa e tabela, a frase que
+    abre ou fecha a tabela reafirmando uma célula dela. `Dois objetos, e o segundo só
+    existe dentro do primeiro`, logo acima de uma tabela cuja coluna já diz `sem teto
+    dentro do relatório`. A tabela é a parte normativa, e a prosa em volta existe pra
+    dizer o que não cabe em célula. Teste: apaga a frase; se nenhuma informação sumiu da
+    tabela, ela não era necessária.
+40. **Negativa que reafirma o positivo.** `um número inteiro deles, nunca uma fração`,
+    `obrigatório, e não opcional`, `só o admin, mais ninguém`. A segunda metade traduz a
+    primeira ao contrário e não acrescenta caso nenhum. A negativa merece o lugar quando
+    exclui algo que o leitor colocaria ali por conta própria, como `o dia é o do fuso do
+    cliente, nunca o do servidor`.
+41. **Regra reafirmada fora da seção dona dela.** `quem criou não ganha poder nenhum
+    sobre o que criou`, escrito na seção de filtros, quando a seção de modelo já
+    estabeleceu que o relatório não tem dono. Cada regra tem uma seção dona, e ecoá-la
+    adiante faz o leitor procurar a diferença que não existe entre as duas formulações.
+    Aponta a seção, ou confia nela.
