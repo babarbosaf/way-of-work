@@ -15,7 +15,7 @@ catálogo não se acusa.
 - Filler (23-25)
 - Jargão (26)
 - Fala direta (27-31)
-- Documento normativo (32-41)
+- Documento normativo (32-42)
 
 ## Conteúdo
 
@@ -155,3 +155,14 @@ linhas e o doc ficou mais completo.
     estabeleceu que o relatório não tem dono. Cada regra tem uma seção dona, e ecoá-la
     adiante faz o leitor procurar a diferença que não existe entre as duas formulações.
     Aponta a seção, ou confia nela.
+
+42. **Frase de efeito no lugar da frase simples.** A antítese que fecha bonito:
+    `prompt_version é auditoria, não chave de cache`, `o gargalo é a latência, não o
+    dinheiro`, `o que ele afirma é determinístico, e o que ele gera é a conversa`,
+    `decisão humana não é desfeita por máquina`. Diferente do padrão 40, onde a
+    segunda metade só traduz a primeira ao contrário: aqui as duas metades dizem
+    coisas diferentes, e ainda assim a forma pesa mais que o conteúdo, porque o
+    leitor precisa desmontar a figura pra achar a instrução. Escreve o que a coisa
+    faz: `o prompt_version serve para auditar; nada o consulta para decidir
+    reprocessar`. Teste: se a frase caberia num slide de abertura, ela não é uma
+    regra ainda.
