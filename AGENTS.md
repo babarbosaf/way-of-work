@@ -1,128 +1,83 @@
 # AGENTS.md, instrução de trabalho de todos os projetos
 
-Fonte única de instrução pro agente (padrão AGENTS.md, lido por Codex/Cursor/
-Copilot/etc.). `CLAUDE.md` é symlink pra este arquivo. A mecânica específica do
-Claude Code (hooks, kill-switches) vive na seção final "Claude Code specifics".
-
-**Escrita:** terse, sem AI slop. Fragmento > frase. Bom português. Doutrina, catálogo
-anti-slop e linter na skill `writing`; rode `check-writing.py` no arquivo antes do commit.
-A calibração de voz (banidos, registro, corpus de imitação) vive num arquivo só, fora
-daqui: preencha `skills/writing/references/voz.md` na sua base de conhecimento e aponte
-pra ele. Lista de banidos cresce por correção ao vivo; hardcodar aqui é garantir que
-ninguém atualiza.
+Fonte única pro agente (padrão AGENTS.md; `CLAUDE.md` é symlink). **Escrita:** terse, sem
+AI slop, fragmento > frase, bom português; doutrina e linter na skill `writing`
+(`check-writing.py` antes do commit), voz calibrada só em `references/voz.md`.
 
 ## Modelo de trabalho
 
-```
-projeto novo    →  /kickoff-project (entrevista → PRD·ROUTES·DESIGN·CONVENTIONS·AGENTS·FEEDBACK)
-feature grande  →  /to-spec (contrato) → /to-tickets (execução) → TDD → ship
-todo o resto    →  direto no código com TDD → ship
-```
+Projeto novo entra por `/kickoff-project`, que entrevista e produz PRD, ROUTES, DESIGN,
+CONVENTIONS, AGENTS e FEEDBACK. Feature grande (várias sessões, muitos arquivos, toca
+contrato ou prod) passa por `/to-spec` e `/to-tickets` antes do TDD; na dúvida, vai
+direto e promove se crescer. Todo o resto vai direto no código, com TDD. Spec aprovada
+sempre vira ticket, e 1 ticket = 1 worktree = 1 branch = 1 PR.
 
-Feature grande = várias sessões, muitos arquivos, toca contrato ou prod. Na
-dúvida, vai direto e promove pra spec se crescer. Spec aprovada sempre vira
-ticket: 1 ticket = 1 worktree = 1 branch = 1 PR, e o ticket é a unidade de
-execução. A spec é descartável: ao shippar, a verdade funcional vai pro PRD.
+**O gap amadurece no doc e executa no tracker.** Buraco entre o que o PRD promete e o que
+existe fica no doc de gaps até haver contexto pra decidir; sem decisão, subir pro board é
+ruído. Com contexto, vira spec (grande) ou ticket direto (pequeno), e o progresso passa a
+morar no tracker. A spec fica desatualizada de propósito nesse meio-tempo; antes de ser
+marcada feita, lista os tickets que a executaram e manda a verdade funcional pro PRD.
 
-**Docs vivos** (política por projeto, no AGENTS.md dele): decisão de produto
-edita PRD; fluxo novo, ROUTES; padrão visual, DESIGN; padrão técnico,
-CONVENTIONS. Decisão técnica cara de reverter vira ADR em `docs/adrs/`.
-Correção/lição do projeto: append no `FEEDBACK.md`, **uma linha por entrada** com o
-gatilho embutido (teto 10; a narrativa do incidente fica na decisão que o produziu, e
-entrada que virou norma é promovida ao doc permanente e apagada). Lição cross-projeto:
-memória (skill `capture-lessons` roteia). Achado colateral: resolve agora ou vira linha
-no `TODOS.md` com contexto, nunca solto na conversa.
+**Docs vivos** (política por projeto, no AGENTS.md dele): produto edita PRD; fluxo,
+ROUTES; visual, DESIGN; técnico, CONVENTIONS; decisão cara de reverter, ADR em
+`docs/adrs/`. Correção do projeto: uma linha no `FEEDBACK.md` com o gatilho embutido
+(teto 10; virou norma, promove ao doc permanente e apaga). Lição cross-projeto: memória
+(`capture-lessons` roteia). Achado colateral: resolve agora ou vira linha no `TODOS.md`,
+nunca solto na conversa.
 
-**Identidade de projeto tem dono.** Mudança que altera o que um projeto **é** (o que
-faz, stack, canal, quem mantém, se morreu) atualiza a página dele na sua base de
-conhecimento na mesma rodada. Quem sabe que mudou é quem mudou: varredura que descobre
-depois sempre chega tarde, e foi assim que uma página descreveu por três meses um agente
-que não existia mais.
+**Identidade de projeto tem dono.** Mudança no que um projeto **é** (o que faz, stack,
+canal, quem mantém, se morreu) atualiza a página dele na base de conhecimento na mesma
+rodada. Quem sabe que mudou é quem mudou; varredura sempre chega tarde.
 
-Cross-cutting: context7 antes de API/lib; `delegate` mecânico/economia; `design-workflow` em
-todo pedido visual, roteado em papercut (fix óbvio, ou linha `[papercut]` no `TODOS.md`) ou
-design (constraints antes do pixel, variantes fora do repo); `/handoff` antes de compactar
-com trabalho aberto. Segunda opinião adversarial (`scripts/peer-review.sh {spec|diff}`) é
-opcional, sob demanda. Recomendada em diff que toca prod ou é caro de reverter
-(`docs/adversarial-evaluator.md`). Autonomia/loops: escada turn→`/goal`→`/loop`→`/schedule`,
-stop-condition de máquina (`docs/autonomy-loops.md`). Skill nova ou editada passa em
-`scripts/check-skill.py`, régua em `docs/skill-authoring.md`.
+**Cross-cutting:** context7 antes de fixar API, assinatura ou versão de lib
+(`docs/research/context7.md`); `delegate` no mecânico; `design-workflow` em todo pedido
+visual, roteado em papercut (fix óbvio, ou linha `[papercut]` no `TODOS.md`) ou design
+(constraints antes do pixel, variantes fora do repo); `/handoff` antes de compactar com
+trabalho aberto; `peer-review.sh {spec|diff}` opcional, recomendado em diff que toca prod
+(`docs/adversarial-evaluator.md`); autonomia em escada turn, `/goal`, `/loop`,
+`/schedule`, com stop-condition de máquina (`docs/autonomy-loops.md`); skill nova passa em
+`scripts/check-skill.py` (`docs/skill-authoring.md`); artefato de fidelidade exige
+reconhecimento do ambiente antes, e CI ou prod não são sonda (`docs/infra-migracao.md`).
 
-## Testes
+## Como construir
 
-1. Comportamento novo nasce com teste: RED antes do código, GREEN mínimo,
-   REFACTOR = simplificar mantendo verde.
-2. Todo bug ganha teste de regressão ANTES da correção; debug para na causa
-   raiz, não no sintoma ("deduplicar no resultado" é sintoma; "query errada" é causa).
-3. Suite verde é pré-condição de commit. "Parece certo" não é done; AC "rodar
-   manualmente" vira script com assert.
-
-## YAGNI extremo
-
-- Abstração só na 3ª repetição (rule of three). Helper extraído na 1ª duplicação = corte.
-- Zero feature especulativa: com agente, adicionar depois é trivial; remover
-  depois que espalhou não é.
-- Antes de escrever helper, procurar função existente (stdlib, lib do projeto, codebase).
-- Diff pequeno > diff completo. Deletar código conta como progresso.
-- Vale pra UI: elemento só quando constraint exige; remover elemento também é progresso.
-- Evoluir > criar: estender artefato existente antes de criar paralelo
-  (`docs/evolve-over-create.md`).
-
-## Antes de propor
-
-**Repo que já existe: o inventário é o primeiro entregável.** O que tem, onde estão os
-buracos, o que sai. Bloco de escolhas antes do mapa faz o dono escolher no escuro.
-
-**Fonte acessível se mede, não se opina.** API, banco ou arquivo na mão: medir primeiro.
-Diagnóstico com número decide; com adjetivo, negocia.
-
-**Operação em lote sobre dado do usuário** (workspace, wiki, drive, prod) tem gate no
-**plano**, não só na execução: desenho do resultado e método na mesa, e espera o ok.
+- **Comportamento novo nasce com teste:** RED antes do código, GREEN mínimo, REFACTOR
+  simplificando com a suíte verde. Bug ganha regressão antes da correção.
+- **Debug para na causa raiz, não no sintoma:** "deduplicar no resultado" é sintoma;
+  "query errada" é causa.
+- **Suite verde é pré-condição de commit.** "Parece certo" não é done, e AC de rodar à
+  mão vira script com assert.
+- **Abstração só na 3ª repetição.** Helper extraído na 1ª duplicação é corte, e antes de
+  escrever um, procurar o que já existe (stdlib, lib do projeto, codebase).
+- **Zero feature especulativa:** adicionar depois é trivial, remover depois que espalhou
+  não é. Vale pra UI: elemento só quando constraint exige.
+- **Diff pequeno > diff completo**, e deletar conta como progresso. Estender artefato
+  existente antes de criar paralelo (`docs/evolve-over-create.md`).
+- **Repo que já existe: o inventário é o primeiro entregável.** O que tem, onde estão os
+  buracos, o que sai. Bloco de escolhas antes do mapa faz o dono escolher no escuro.
+- **Fonte acessível se mede, não se opina.** Com API, banco ou arquivo na mão, medir vem
+  antes de afirmar.
+- **Operação em lote sobre dado do usuário** (workspace, wiki, drive, prod) tem gate no
+  plano, não só na execução: desenho e método na mesa, e espera o ok.
 
 ## Higiene de docs de raiz (AGENTS.md/CLAUDE.md, README.md, PRD…)
 
-Carregam toda sessão; instrução viva, não changelog. Sem histórico (→ ADR/spec/
-FEEDBACK/memória), sem status volátil (→ TODOS/tracker). Child AGENTS.md só
-escreve override próprio. Teste linha-a-linha: "cortar isso faria o agente
-errar?" Não → cortar. Raiz em CAIXA-ALTA = doc único e estável; instância
-(`spec-<slug>`, `adr-NNNN`) em lowercase. Transiente vai pra `_tmp/` (gitignored).
-Escopo se declara pelo que o projeto **É**: nada de tabela de exclusão nem de "isto saiu
-daqui". A negativa que importa vive na decisão que a produziu.
-
-## Coding practices atualizadas (context7)
-
-Antes de escolher API/assinatura/versão de lib, consultar doc atualizada via
-context7 MCP (`use context7`). Ref: `docs/research/context7.md`.
+Carregam toda sessão; instrução viva, não changelog. Sem histórico (vai pra ADR, spec,
+FEEDBACK ou memória), sem status volátil (vai pro TODOS ou tracker). Child AGENTS.md só
+escreve override próprio. Teste linha a linha: cortar isto faria o agente errar? Não,
+corta. Raiz em CAIXA-ALTA é doc único e estável; instância (`spec-<slug>`, `adr-NNNN`) em
+lowercase, e transiente vai pra `_tmp/` (gitignored). Escopo se declara pelo que o projeto
+**É**, sem tabela de exclusão: a negativa que importa vive na decisão que a produziu.
 
 ## Auto-memória
 
-1. Append em `memory/log.md` antes de criar/editar memória (header `## [YYYY-MM-DD] <op> | <basename> (session=<id>)`, com `<op>` em create, update, delete, lint ou ingest).
-2. **Índice hub-first.** Atômica nova referenciada no hub `concept_*` do tema (hubs são índices, não conteúdo), nunca em lista de órfãs no `MEMORY.md`. `MEMORY.md` = só hubs + cross-cutting sem hub natural. Atômica coberta por hub não repete linha (chega por recall). 3+ atômicas sem hub → criar hub.
-3. **Teto do índice.** `MEMORY.md` ≤ ~40 linhas / hubs-only. Estourou = compactar (dobrar órfãs em hub), não relaxar.
-4. Precedência: AGENTS.md > memory; memória conflitante corrigida/arquivada na hora.
-
-## Infra / migração de schema
-
-Antes de artefato de fidelidade (baseline, equivalência, snapshot de prod): reconhecimento completo do ambiente primeiro: versão real do servidor, enumeração dinâmica de objetos, tipos invisíveis a `information_schema`. Não usar CI/prod como sonda de descoberta.
-
-## RTK (economia de tokens)
-
-Proxy sempre-ligado; analytics: `rtk gain`. Detalhes: `docs/rtk.md`.
-
----
+Append em `memory/log.md` antes de criar ou editar memória. Índice hub-first: atômica nova
+entra no hub `concept_*` do tema, e o `MEMORY.md` fica só com hubs, em ~40 linhas.
+AGENTS.md tem precedência sobre memória, e a conflitante se corrige na hora. Mecânica:
+`docs/auto-memoria.md`.
 
 ## Claude Code specifics
 
-Mecânica de enforcement específica do Claude Code. A mensagem de bloqueio do
-hook ensina na hora. Outros harnesses ignoram esta seção.
-
-**Hooks ativos.** Grep-first em Read >200 linhas; no-op flush bloqueado; lembrete
-context7 em import novo/manifesto de dependência (não bloqueia); memória exige
-append em `memory/log.md` antes de criar/editar; guard de tamanho do CLAUDE.md.
-Auto-compact forçado em 400k via env; RTK roda via hook proxy.
-
-**Kill-switches.** `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,
-`CONTEXT7_REMINDER_DISABLED=1`, `MEMORY_HOOK_DISABLED=1`, `CLAUDE_MD_GUARD_DISABLED=1`.
-
-**Comandos.** Dispatch de skill por `/`. O REFACTOR do ciclo de testes usa o builtin
-`/simplify`; em outro harness, é simplificar na mão com a suíte verde.
+Enforcement do Claude Code; outros harnesses ignoram. Hooks bloqueiam sozinhos e a
+mensagem ensina na hora, inclusive o kill-switch de cada um. Mapa dos hooks, dos
+kill-switches e dos comandos: `docs/claude-code.md`.
