@@ -13,8 +13,8 @@
       "invoke": "codex exec --skip-git-repo-check -",
       "worktree_invoke": "codex exec --sandbox workspace-write --full-auto -",
       "prompt_via": "stdin",
-      "default_model": "gpt-5.4",
-      "notes": "modelo configurado em ~/.codex/config.toml; forte em lógica/debug"
+      "default_model": "gpt-5.5",
+      "notes": "modelo configurado em ~/.codex/config.toml; forte em lógica/debug. O modelo precisa ser um que a conta aceita, e conta ChatGPT não aceita a mesma lista que API key: provar com `codex exec --model <m> \"diga ok\"` antes de fixar. Medido em 05/set/2026 numa conta ChatGPT: 5.5, 5.3, 5.1-codex e 5-codex respondem; gpt-5.4 devolve 400 e derruba a cascata inteira em silêncio"
     },
     "agy": {
       "enabled": true,

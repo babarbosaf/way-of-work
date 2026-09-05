@@ -28,6 +28,8 @@ específico: stack, padrões e regras locais. Não re-narrar o modelo compartilh
 
 ## 1. Stack
    O que roda onde, em uma tabela ou lista curta: front, back, banco, deploy, região.
+   Deploy declara o modelo, não só o host: automático por push, ou manual por leva
+   com validação em `localhost` (`git-workflow-and-versioning`, `ci-deploy-flow.md`).
    Segredos: onde vivem e a regra (nunca versionados, server-only quando for o caso).
 
 ## 2. Regras do projeto
