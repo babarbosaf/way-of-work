@@ -78,6 +78,13 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - **Índice no topo** das sete referências acima de 100 linhas em `coaching`,
   `kickoff-project`, `to-spec` e `to-tickets`. Leitura parcial (`head`) via de regra não
   alcança o fim do arquivo, e sem índice o agente não sabe o que deixou de ler.
+- **Anúncio de trabalho próprio** (`skills/writing/references/padroes.md`, padrões 43 a
+  46): crédito abre a mensagem em vez de fechar, esforço não legitima entrega, punchline
+  doutrinária fechando parágrafo, e verbo modesto no lugar do verbo de lançamento. Saíram
+  da revisão de um anúncio de canal reescrito à mão, onde o texto do agente passava no
+  linter e as quatro construções sobreviviam. O par 11 de `fixtures/antes-depois.md` é o
+  primeiro de mensagem de chat, e não de doc, e a numeração dos pares volta a ser
+  contínua (havia dois `## 6.`).
 
 ### Fixed
 
@@ -175,6 +182,21 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   05/set/2026 o gpt-5.4 devolveu 400 nesta conta enquanto 5.5, 5.3, 5.1-codex
   e 5-codex respondiam. A matriz de ranking acompanha, e os nomes de Gemini
   Flash nela voltam a existir na policy (3.5 não existe; é 3.8).
+- **Quarto escopo de brevidade** (`skills/writing/SKILL.md`): mensagem pra uma pessoa num
+  canal não é instrução densa, nem texto que se lê de ponta a ponta, nem leitura de
+  varredura. Vale a frase conectada,
+  e o fecho que pede ação pode repetir o pedido, porque adesão ganha de economia quando
+  alguém tem que fazer algo depois de ler.
+- **Hedge real sai da conta do vício** (`SKILL.md` na Naturalidade e no self-check 3,
+  padrão 24): ressalva que corresponde a dúvida existente é informação, e apagar ela mente
+  sobre o que se sabe. O vício é a ressalva empilhada sobre o que já se sabe. Por isso
+  `basicamente` fica fora do linter: em PT-BR falado ele abre explicação técnica.
+- **O passo 4 aponta pro arquivo de voz preenchido**, e o `references/voz.md` abre dizendo
+  que é molde. Ler o molde no lugar do preenchido calibra por inferência sem avisar
+  ninguém.
+- **Gate de agnosticismo** (`tests/agnostico.test.sh`): a lista de unidade de negócio ganha
+  dois nomes de projeto, e o `padroes.md` perde as duas citações que nomeavam um projeto
+  real.
 
 - **Worktree e branch** (`git-workflow-and-versioning`): 1 ticket = 1 worktree =
   1 branch = 1 PR, worktree nativo (`claude -w`), SHA congelado na leva, teto de

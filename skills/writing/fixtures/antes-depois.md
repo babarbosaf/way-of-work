@@ -70,7 +70,7 @@ antes: As queries são validadas antes do deploy.
 
 depois: O hook de pre-commit valida as queries antes do deploy.
 
-## 6. Justificativa colada na regra
+## 7. Justificativa colada na regra
 
 Padrão 32. O corte não perde informação: a regra é a mesma, e o porquê já vive na decisão.
 
@@ -81,7 +81,7 @@ diferente para quem já tem conta transforma o formulário em oráculo de quem �
 
 depois: Resposta para quem já tem conta: idêntica à de quem não tem.
 
-## 7. Retórica antes da regra
+## 8. Retórica antes da regra
 
 Padrão 34. Três frases de moldura antes de dizer a única coisa que importa.
 
@@ -92,7 +92,7 @@ consequência é dura e assumida: se o e-mail não chega, ninguém entra.
 
 depois: A única forma de login é via magic link.
 
-## 8. Estado atual em doc de estado ideal
+## 9. Estado atual em doc de estado ideal
 
 Padrão 38. O ponteiro pro código foi pro doc de gaps, e a linha aqui virou a promessa.
 
@@ -104,7 +104,7 @@ declarado na própria tela (`Configuracoes.tsx:88`).
 depois: A gestão vive em `/settings#members`, e a tela lista quem está dentro, com papel e
 estado, mais os convites pendentes.
 
-## 9. Prosa defendendo o que a tabela já afirma
+## 10. Prosa defendendo o que a tabela já afirma
 
 Padrões 39 e 33. A tabela logo abaixo tem a linha `Capa | o nome do relatório sobrevive à
 impressão`, e o fecho só a dramatizava.
@@ -117,3 +117,27 @@ precisa dizer de quem é e de qual relatório saiu, ou ela chega na reunião an�
 
 depois: A única saída da v0 é o PDF. Ele funciona como um print da tela: os cards como
 estão, com os filtros aplicados naquele momento, e a capa com o nome do relatório.
+
+## 11. Anúncio em canal: esforço e punchline
+
+Padrões 44 e 45 no mesmo par, de uma mensagem de chat interno. O antes passa no linter e
+ainda assim lê como agente, e é esse o ponto: o mecânico já estava limpo. Nome de cliente e
+de repo trocados por genéricos; a estrutura das frases é a do par real.
+
+```
+antes: O que virou skill foi o que doeu na mão. Reconstruí o layout do zero em vez de
+       reaproveitar o que já existia, calculei a grade do mês no terminal, e só descobri
+       no meio do caminho que o roadmap do cliente estava cinco semanas atrasado.
+
+       Então ela lê o roadmap, os compromissos e o review do mês fechado, monta os slides,
+       e usa farol de três estados escritos por extenso: on track, at risk, off track.
+       Todo at risk tem que dizer o que destrava, senão é enfeite. E ela para de gerar se o
+       ledger estiver velho; deck sobre ledger velho parece atual e não é.
+```
+
+depois: Basicamente, ela lê o roadmap, os compromissos e o review do mês fechado, monta os
+slides, e usa farol de on track, at risk, off track por iniciativa em aberto pra avaliar o
+quão no pace estamos.
+
+O parágrafo do esforço saiu inteiro, e as duas frases de efeito que o autor do antes mais
+gostou saíram com ele. Sobrou o que a skill faz.

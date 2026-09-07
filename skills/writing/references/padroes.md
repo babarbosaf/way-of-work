@@ -16,6 +16,7 @@ catálogo não se acusa.
 - Jargão (26)
 - Fala direta (27-31)
 - Documento normativo (32-42)
+- Anúncio de trabalho próprio (43-46)
 
 ## Conteúdo
 
@@ -71,8 +72,12 @@ catálogo não se acusa.
 ## Filler
 
 23. **Frase de enchimento.** `a fim de` vira "pra". `devido ao fato de que` vira "porque".
-    `é importante notar que` sai inteiro.
-24. **Hedging empilhado.** `poderia potencialmente talvez` vira "pode".
+    `é importante notar que` sai inteiro. `basicamente` ficou fora do linter de propósito:
+    em PT-BR falado ele abre explicação técnica pra quem não acompanhou o detalhe, e nessa
+    posição é sinal pro leitor, não enchimento.
+24. **Hedging empilhado.** `poderia potencialmente talvez` vira "pode". Ressalva que
+    corresponde a dúvida real não entra aqui, porque ela é informação, e apagar ela mente
+    sobre o que se sabe. O vício é a ressalva sobre o que você sabe.
 25. **Conclusão genérica.** `o futuro é promissor`. Escreve o plano ou o número.
 
 ## Jargão
@@ -166,3 +171,26 @@ linhas e o doc ficou mais completo.
     faz: `o prompt_version serve para auditar; nada o consulta para decidir
     reprocessar`. Teste: se a frase caberia num slide de abertura, ela não é uma
     regra ainda.
+
+## Anúncio de trabalho próprio
+
+Padrões que saíram da revisão de uma mensagem de canal interno em 2026-08-31, quando o
+dono reescreveu à mão o anúncio que o agente tinha redigido em nome dele. Valem pra
+mensagem, comentário de PR e release note em que quem escreve é também quem fez.
+
+43. **Crédito abre, não fecha.** Trabalho que partiu do trabalho de outra pessoa nomeia
+    essa pessoa na primeira frase. Crédito no penúltimo parágrafo lê como nota de rodapé, e
+    troca o protagonista da mensagem sem que ninguém tenha decidido isso.
+44. **Esforço não legitima entrega.** `o que virou skill foi o que doeu na mão`,
+    `reconstruí o layout do zero`, `calculei a grade no terminal`. Quem lê decide pelo que a
+    coisa faz e pelo compromisso que ela atende, e a narrativa do custo pede crédito por
+    dificuldade. Se a entrega precisa de legitimidade, amarra na meta, no ticket ou no uso.
+45. **Punchline doutrinária fechando parágrafo.** `senão é enfeite`,
+    `parece atual e não é`. Sentença de efeito que resume o que a frase anterior já disse
+    soa como remate de manifesto, e é o ritmo que mais denuncia modelo em texto curto.
+    Parágrafo pode acabar na informação. Parente do 33, que pega o aforismo, e do 42, que
+    pega a frase de efeito no lugar da frase simples.
+46. **Verbo modesto ganha do verbo de lançamento.** `tentei transformar em skill, e criei`
+    no lugar de `subi uma skill nova`, com a coisa mergeada e rodando. Anúncio que se
+    declara acima do que entregou obriga o leitor a descontar, e o desconto vira
+    desconfiança na mensagem seguinte.

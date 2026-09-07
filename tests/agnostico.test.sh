@@ -92,7 +92,7 @@ if [[ -z "$quebrados" ]]; then ok "link markdown relativo: todos resolvem"
 else fail "link markdown relativo quebrado"; sed 's/^/      /' <<<"$quebrados"; fi
 
 echo "== unidade de negócio =="
-NEGOCIO='comercial nontech|exitlag|holding imob'  # guard-regex
+NEGOCIO='comercial nontech|exitlag|holding imob|xanim|liberdata'  # guard-regex
 regra    "nome de unidade ou cliente" "$NEGOCIO"  # guard-regex
 plantado "nome de unidade ou cliente" "$NEGOCIO" "Roteia pro comercial nontech."  # guard-regex
 
