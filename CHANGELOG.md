@@ -97,6 +97,21 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **Ordem da cascata de `second-opinion`** (`config/model-policy.json`,
+  `model-ranking-matrix.md`): passa a liderar com agy Claude Sonnet 4.6
+  (Thinking), depois Gemini 3.1 Pro (High), e o codex vai pro fim. Dois motivos
+  medidos em 07/set/2026: Claude Opus 4.6 (Thinking) leva 902s e ainda volta
+  rc=2 em headless (Sonnet fecha em 26s, Gemini em 30s), e liderar com o mesmo
+  backend de `review` fazia a segunda opinião sair do modelo que já opinou.
+- **Deploy tem dois modelos** (`git-workflow-and-versioning`,
+  `ci-deploy-flow.md`): automático por push é o default; manual por leva com
+  validação em `localhost` entra quando o host cobra por build. Qual dos dois
+  vale é decisão de projeto e mora no `CONVENTIONS.md` dele.
+- **codex default vai pra gpt-5.5** (`config/model-policy.json`): em
+  05/set/2026 o gpt-5.4 devolveu 400 nesta conta enquanto 5.5, 5.3, 5.1-codex
+  e 5-codex respondiam. A matriz de ranking acompanha, e os nomes de Gemini
+  Flash nela voltam a existir na policy (3.5 não existe; é 3.8).
+
 - **Worktree e branch** (`git-workflow-and-versioning`): 1 ticket = 1 worktree =
   1 branch = 1 PR, worktree nativo (`claude -w`), SHA congelado na leva, teto de
   3 a 5, merge serializado, branch morrendo no merge. Squash-merge cega o

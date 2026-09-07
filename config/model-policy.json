@@ -13,8 +13,8 @@
       "invoke": "codex exec --skip-git-repo-check -",
       "worktree_invoke": "codex exec --sandbox workspace-write --full-auto -",
       "prompt_via": "stdin",
-      "notes": "modelo configurado em ~/.codex/config.toml; forte em lógica/debug. Este backend OSCILA por janela de tempo, e não por nome de modelo, diretório ou plano: medido em 07/set/2026, o mesmo `codex exec --model gpt-5.5` respondeu às 19h06 e devolveu 404 \"does not exist or you do not have access\" às 19h31, mesma conta e mesmo cwd, com os 7 nomes de modelo do CLI acompanhando a janela em bloco. Janela ruim é assunto do cooldown do dispatcher, não da policy. NÃO escreva aqui que o Codex 'não funciona nesta conta' com base em sondagem: a sondagem mede a janela em que ela rodou. `enabled: false` é pra decisão (custo, segurança, política de conta com fonte), nunca pra falha observada.",
-      "default_model": "gpt-5.4"
+      "notes": "modelo configurado em ~/.codex/config.toml; forte em lógica/debug. Este backend OSCILA por janela de tempo, e não por nome de modelo, diretório ou plano: medido em 07/set/2026, o mesmo `codex exec --model gpt-5.5` respondeu às 19h06 e devolveu 404 \"does not exist or you do not have access\" às 19h31, mesma conta e mesmo cwd, com os 7 nomes de modelo do CLI acompanhando a janela em bloco. Janela ruim é assunto do cooldown do dispatcher, não da policy. NÃO escreva aqui que o Codex 'não funciona nesta conta' com base em sondagem: a sondagem mede a janela em que ela rodou. `enabled: false` é pra decisão (custo, segurança, política de conta com fonte), nunca pra falha observada. Erro de classe diferente do 404 de janela: em 05/set/2026 o gpt-5.4 devolveu 400 nesta conta enquanto 5.5, 5.3, 5.1-codex e 5-codex respondiam, e por isso o default é gpt-5.5.",
+      "default_model": "gpt-5.5"
     },
     "agy": {
       "enabled": true,
@@ -98,11 +98,15 @@
     ],
     "second-opinion": [
       {
-        "backend": "codex"
+        "backend": "agy",
+        "model": "Claude Sonnet 4.6 (Thinking)"
       },
       {
         "backend": "agy",
-        "model": "Claude Opus 4.6 (Thinking)"
+        "model": "Gemini 3.1 Pro (High)"
+      },
+      {
+        "backend": "codex"
       }
     ],
     "scan": [
