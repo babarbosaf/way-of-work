@@ -125,6 +125,25 @@
       }
     ]
   },
+  "shunt": {
+    "$comment": "Threshold de leitura como DADO (lido por hooks/shunt_policy.py; nunca hardcode em hook). Dois degraus porque os tiers têm latência diferente: grep local em ms, worker em 10-30s. <=grep_max inline; grep_max..worker_min grep+Read paginado; >worker_min shunt pro worker. Override por env: SHUNT_GREP_MAX, SHUNT_MIN_LINES. Calibrar com bytes_in/bytes_out do delegate.log.",
+    "grep_max": 200,
+    "worker_min": 500,
+    "exempt_suffixes": [
+      ".png",
+      ".jpg",
+      ".jpeg",
+      ".gif",
+      ".pdf",
+      ".ipynb",
+      ".zip",
+      ".woff",
+      ".woff2",
+      ".mp4",
+      ".webp",
+      ".ico"
+    ]
+  },
   "timeouts": {
     "scan": 600,
     "implement": 600,

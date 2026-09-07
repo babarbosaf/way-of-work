@@ -9,18 +9,35 @@ que existe e onde mexer, não pra consultar durante o trabalho.
 
 | Hook | Evento | O que faz | Kill |
 |---|---|---|---|
-| `read_size_guard.py` | PreToolUse, Read | bloqueia Read acima de 200 linhas sem `offset`/`limit` | `READ_GUARD_DISABLED=1` |
+| `read_size_guard.py` | PreToolUse, Read | bloqueia Read grande sem `offset`/`limit` e roteia por degrau | `READ_GUARD_DISABLED=1` |
+| `bash_read_guard.py` | PreToolUse, Bash | mesmo bloqueio pro despejo por `cat`/`head`/`rtk read`; leitura apontada passa | `BASH_READ_GUARD_DISABLED=1` |
 | `noop_flush_guard.py` | PreToolUse, Bash | bloqueia comando no-op usado como flush de resultado | `NOOP_GUARD_DISABLED=1` |
 | `claude_md_size_guard.py` | PreToolUse, Edit/Write | bloqueia edição que estoure o teto de linhas do doc de raiz | `CLAUDE_MD_GUARD_DISABLED=1` |
 | `context7_reminder.py` | PreToolUse, Edit/Write | lembra `use context7` em import novo ou manifesto de dependência; não bloqueia | `CONTEXT7_REMINDER_DISABLED=1` |
 | `memory_log_append.py` | PostToolUse, Edit/Write | exige append em `memory/log.md` antes de criar ou editar memória | `MEMORY_HOOK_DISABLED=1` |
 | `wiki_push_guard.py` | SessionStart | acusa trabalho parado em qualquer repositório do Mac | `WIKI_PUSH_GUARD_DISABLED=1` |
 
-Os cinco primeiros vivem em `~/.claude/settings.json`. O `wiki_push_guard` é registrado
+Todos menos o último vivem em `~/.claude/settings.json`. O `wiki_push_guard` é registrado
 em `$CLAUDE_CONFIG_DIR/settings.json` do perfil que o usa, e só roda nesse perfil.
 
-RTK entra por `scripts/rtk-hook-wrapper.sh`, também em PreToolUse de Bash. Detalhe em
-[rtk.md](rtk.md).
+RTK entra por `scripts/rtk-hook-wrapper.sh`, também em PreToolUse de Bash, **depois** do
+`bash_read_guard` na cadeia. A ordem importa: o guard decide se a leitura entra nesta
+janela antes de o rtk decidir como comprimi-la. Detalhe em [rtk.md](rtk.md).
+
+### Degraus de leitura
+
+Os dois guards de leitura leem o mesmo dado, `.shunt` da `config/model-policy.json`, por
+`hooks/shunt_policy.py`. Nenhum dos dois carrega número próprio.
+
+| Tamanho | Rota |
+|---|---|
+| até `grep_max` (200) | lê inline |
+| `grep_max` a `worker_min` (500) | grep pra achar a seção, depois Read com `offset`+`limit` |
+| acima de `worker_min` | `delegate.sh --task scan`, e o corpus não entra nesta janela |
+
+Override por sessão: `SHUNT_GREP_MAX` e `SHUNT_MIN_LINES`. Calibrar com o `bytes_in`/
+`bytes_out` do `gate/delegate.log`, não por palpite: acima do degrau o worker cobra 10 a
+30s de latência, e abaixo dele o overhead come a economia.
 
 ### Tetos do size guard
 
