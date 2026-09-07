@@ -81,6 +81,15 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Fixed
 
+- **Falha transiente de provider arma cooldown curto, em vez de virar fato na policy.**
+  404, "does not exist or you do not have access", 502/503/504 e "overloaded" passam a
+  armar 10 minutos (`DELEGATE_TRANSIENT_COOLDOWN_MINS`) no pool, com o backend seguindo
+  habilitado. Medido em 07/set/2026: o mesmo `codex exec --model gpt-5.5` respondeu às
+  19h06 e devolveu 404 às 19h31, mesma conta e mesmo diretório, com os 7 nomes de modelo
+  do CLI acompanhando a janela em bloco. Duas rodadas anteriores escreveram essa janela
+  como permanente e apagaram o primeiro degrau de `review`, `second-opinion` e
+  `implement`. A regra agora está escrita na skill: `enabled: false` é pra decisão, nunca
+  pra sondagem.
 - **O timeout de review volta a ser dado da policy.** O `peer-review.sh` cravava
   `--timeout 120` e atropelava `.timeouts.review`. Medido em 07/set/2026: revisão
   adversarial de um diff de 1432 linhas no Gemini 3.1 Pro (High) leva 170s. Estourado o
