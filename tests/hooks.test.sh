@@ -277,6 +277,20 @@ run_hook bash_read_guard.py "$(p_cmd "cat $ENORME")"
 [[ "$OUT" == *"--task scan"* ]] && ok "F4: cat do arquivo inteiro segue virando shunt" \
   || fail "F4: cat inteiro deixou de virar shunt ($OUT)"
 
+# Gêmeo do F3: `head`/`tail` SEM -N não despejam o arquivo, imprimem 10 linhas.
+run_hook bash_read_guard.py "$(p_cmd "head $ENORME")"
+assert_libera_json "F5: head sem -N imprime 10 linhas, não bloqueia"
+run_hook bash_read_guard.py "$(p_cmd "tail $ENORME")"
+assert_libera_json "F5: tail sem -N imprime 10 linhas, não bloqueia"
+run_hook bash_read_guard.py "$(p_cmd "tail -f /tmp/nao-importa-$$.log")"
+assert_libera_json "F5: tail -f não é despejo"
+run_hook bash_read_guard.py "$(p_cmd "head -n50 $ENORME")"
+assert_libera_json "F5: flag colada -n50 é lida como teto"
+run_hook bash_read_guard.py "$(p_cmd "head -n50 $ENORME $A300 $B300 $GRANDE $PEQUENO")"
+assert_bloqueia_json "F5: -n50 em 5 arquivos passa do degrau"
+run_hook bash_read_guard.py "$(p_cmd "cat -n $ENORME")"
+assert_bloqueia_json "F5: cat -n numera, não limita"
+
 echo "== settings.json: o guard roda antes do rtk =="
 ORDEM=$(jq -r '.hooks.PreToolUse[] | select(.matcher=="Bash") | .hooks[].command' "$HERE/../settings.json")
 i_guard=$(grep -n bash_read_guard <<<"$ORDEM" | cut -d: -f1)

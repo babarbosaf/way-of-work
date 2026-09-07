@@ -24,8 +24,11 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import shunt_policy  # noqa: E402
 
-# Comandos que despejam arquivo inteiro no transcript.
-DUMP_CMDS = {"cat", "bat", "less", "more", "head", "tail", "nl", "view"}
+# Comandos de leitura, e quantas linhas cada um imprime SEM flag de teto. O
+# default de `head` e `tail` é 10 linhas, não o arquivo inteiro: tratá-los como
+# despejo bloqueava `tail arquivo.log` e `tail -f`, que não custam quase nada.
+DUMP_CMDS = {"cat": None, "bat": None, "less": None, "more": None,
+             "nl": None, "view": None, "head": 10, "tail": 10}
 # Consumidores que reduzem: se o despejo vai pra um deles, a leitura é apontada.
 FILTERS = {"grep", "rg", "egrep", "fgrep", "ag", "ack", "jq", "yq", "wc", "awk",
            "sed", "sort", "uniq", "cut", "head", "tail", "python3", "python",
@@ -124,6 +127,8 @@ def scan_statement(stmt, cfg, exempt):
 
         if cap is None:
             cap = cap_from_flags(rest)
+        if cap is None:
+            cap = DUMP_CMDS.get(name)
         paths, total = effective_lines([a for a in rest if not a.startswith("-")], cap, exempt)
         if paths:
             return paths, total
