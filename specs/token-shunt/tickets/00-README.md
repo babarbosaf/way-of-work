@@ -15,3 +15,4 @@ arquivo ou contrato consumido).
 | 05 | S | `--reference`, e obrigatório no boilerplate |
 | 06 | S | `bytes_in`/`bytes_out` no log |
 | 07 | S | subtrair o rewrite de `cat` do rtk |
+| 08 | S | timeout de review volta pra policy (achado na revisão) |

@@ -145,10 +145,11 @@
     ]
   },
   "timeouts": {
+    "$comment": "Segundos por task-type; --timeout só pra override pontual, e nenhum consumidor crava número próprio. review=300 medido: diff de 1432 linhas no Gemini 3.1 Pro (High) leva 170s, e os 180 anteriores não davam margem.",
     "scan": 600,
     "implement": 600,
     "boilerplate": 300,
-    "review": 180,
+    "review": 300,
     "second-opinion": 180
   },
   "finding_routing": {

@@ -97,6 +97,16 @@ for line in open(sys.argv[1]):
         json.loads(line)
 PY
 
+echo "T: o timeout de review é dado da policy, não número cravado aqui"
+if grep -qE 'delegate_args=\(.*--timeout' "$HERE/../scripts/peer-review.sh"; then
+  fail "peer-review crava --timeout e atropela .timeouts.review da policy"
+else
+  ok "peer-review deixa o timeout pra policy"
+fi
+[[ $(jq -r '.timeouts.review' "$HERE/../config/model-policy.json") -ge 300 ]] \
+  && ok "policy dá pelo menos 300s pra review (medido: 170s num diff de 1432 linhas)" \
+  || fail "timeouts.review abaixo da margem medida"
+
 echo
 echo "== $PASS passed, $FAIL failed =="
 [[ $FAIL -eq 0 ]]
