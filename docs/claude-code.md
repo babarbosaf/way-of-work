@@ -17,7 +17,7 @@ que existe e onde mexer, não pra consultar durante o trabalho.
 | `wiki_push_guard.py` | SessionStart | acusa trabalho parado em qualquer repositório do Mac | `WIKI_PUSH_GUARD_DISABLED=1` |
 
 Os cinco primeiros vivem em `~/.claude/settings.json`. O `wiki_push_guard` é registrado
-em `~/.claude-maracaja/settings.json`, e só roda nesse perfil.
+em `$CLAUDE_CONFIG_DIR/settings.json` do perfil que o usa, e só roda nesse perfil.
 
 RTK entra por `scripts/rtk-hook-wrapper.sh`, também em PreToolUse de Bash. Detalhe em
 [rtk.md](rtk.md).
