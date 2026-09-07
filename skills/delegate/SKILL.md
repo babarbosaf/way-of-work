@@ -198,6 +198,17 @@ cai pra fallback interno mais barato (nunca opus/fable sem pedido explícito).
 
 ## Falhas e higiene
 
+- **Falha observada nunca edita a policy.** Provider que devolve 404, "does not
+  exist or you do not have access", 502/503/504 ou "overloaded" está numa janela
+  ruim, e janela ruim passa: o dispatcher arma um **cooldown curto** (10 min,
+  `DELEGATE_TRANSIENT_COOLDOWN_MINS`) e o backend segue habilitado. Medido em
+  07/set/2026: o mesmo `codex exec --model gpt-5.5` respondeu às 19h06 e deu 404
+  às 19h31, mesma conta e mesmo diretório, com os 7 nomes de modelo do CLI
+  acompanhando a janela em bloco. Duas rodadas anteriores escreveram essa mesma
+  janela na policy como fato permanente ("esta conta não tem Codex"), e o efeito
+  foi apagar o primeiro degrau de `review`, `second-opinion` e `implement`.
+  `enabled: false` é pra **decisão** (custo, segurança, política de conta com
+  fonte), nunca pra sondagem. Sondagem mede a hora em que rodou.
 - Worker indisponível/rate-limited entra em cooldown automático (60 min), o
   dispatcher já pula pro próximo da cascata (ordem da matriz); não gerencie
   cooldown manualmente. Cooldown é por **pool** (`backend:pool`, ex.

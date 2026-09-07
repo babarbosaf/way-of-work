@@ -266,6 +266,41 @@ assert_contains "linha de falha ainda é JSONL válido" "$falha" "unavailable"
 [[ $(jq -r '.bytes_out // 0' <<<"$falha") -eq 0 ]] && ok "falha não inventa bytes_out" || fail "falha inventou bytes_out ($falha)"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 
+echo "T: 404 de provider é janela ruim, não backend morto — cooldown curto"
+cat > "$MOCKBIN/codex" <<'EOF'
+#!/usr/bin/env bash
+case "${MOCK_CODEX:-ok}" in
+  ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
+  ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
+  notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
+  fail) echo "erro interno"; exit 1 ;;
+  absent) exit 127 ;;
+esac
+EOF
+chmod +x "$MOCKBIN/codex"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+out=$(MOCK_CODEX=notfound run --task second-opinion -)
+assert_eq "404 no 1o degrau: cascata desce e a task fecha" "$?" "0"
+assert_contains "caiu pro agy" "$out" "agy-resposta"
+[[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] && ok "404 arma cooldown (janela ruim não se paga a cada chamada)" \
+  || fail "404 não armou cooldown"
+assert_contains "stderr nomeia a janela, não o backend morto" "$(cat "$TMP/err")" "transiente"
+# cooldown de transiente é CURTO: janela ruim de provider passa sozinha
+# expira pela mesma conta que o cooldown_remaining faz (COOLDOWN_MINS=60)
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex")
+rem=$(( armed + 60*60 - $(date +%s) ))
+[[ $rem -gt 0 && $rem -le 600 ]] && ok "cooldown de transiente expira em <=10min, não nos 60 do rate limit" \
+  || fail "cooldown de transiente não é curto (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=ratelimit run --task second-opinion - >/dev/null
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex" 2>/dev/null || echo 0)
+rem=$(( armed + 60*60 - $(date +%s) ))
+[[ $rem -gt 600 ]] && ok "rate limit real mantém o cooldown longo" || fail "rate limit perdeu o cooldown longo (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+# o backend segue habilitado: 404 não é decisão de policy
+[[ "$(jq -r '.backends.codex.enabled' "$DELEGATE_POLICY")" == "true" ]] \
+  && ok "404 não desabilita o backend na policy" || fail "backend foi desabilitado"
+
 echo ""
 echo "== $PASS passed, $FAIL failed =="
 [[ $FAIL -eq 0 ]]

@@ -49,6 +49,10 @@ fi
 INBOX="${DELEGATE_INBOX:-$HOME/.claude/inbox.md}"
 LOG="$GATE_DIR/delegate.log"
 COOLDOWN_MINS="${PEER_COOLDOWN_MINS:-60}"
+# Falha transiente de provider (modelo 404, sem acesso) não é o mesmo bicho que
+# rate limit: passa em minutos, não em uma hora. Cooldown curto tira o custo de
+# ficar batendo numa janela ruim sem esconder o backend quando ela passa.
+TRANSIENT_COOLDOWN_MINS="${DELEGATE_TRANSIENT_COOLDOWN_MINS:-10}"
 mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
 
 die() { echo "delegate: $*" >&2; exit 1; }
@@ -85,9 +89,20 @@ cooldown_remaining() { # backend → 0 + segundos restantes se ativo; 1 se livre
     rm -f "$f"; return 1
 }
 arm_cooldown()   { date +%s > "$GATE_DIR/cooldown.$1"; }
+# Transiente arma com o relógio adiantado, pra expirar em TRANSIENT_COOLDOWN_MINS
+# usando o mesmo cooldown_remaining de sempre (um mecanismo, não dois).
+arm_transient_cooldown() { echo $(( $(date +%s) - (COOLDOWN_MINS - TRANSIENT_COOLDOWN_MINS)*60 )) > "$GATE_DIR/cooldown.$1"; }
 clear_cooldown() { rm -f "$GATE_DIR/cooldown.$1"; }
 
 is_ratelimit() { grep -qiE "(rate.?limit|too many requests|status.*429|quota.*(exceeded|reached)|usage limit|limit reached|out of (credits|tokens)|insufficient_quota|RESOURCE_EXHAUSTED)" "$1"; }
+
+# Janela ruim de provider, e não backend morto. Medido em 07/set/2026: o mesmo
+# `codex exec --model gpt-5.5` respondeu às 19h06 e devolveu 404 "does not exist
+# or you do not have access" às 19h31, no mesmo diretório e na mesma conta; os 7
+# nomes de modelo do CLI acompanharam a janela em bloco. Esse sinal NUNCA vira
+# `enabled: false` na policy: um fato que depende da hora não é decisão de
+# roteamento, e desabilitar apaga um tier que funciona parte do tempo.
+is_transient() { grep -qiE "(does not exist or you do not have access|model .* not (found|supported)|status 404|502 bad gateway|503 service unavailable|504 gateway timeout|overloaded_error|temporarily unavailable)" "$1"; }
 
 # --- args ---
 TASK="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
@@ -295,6 +310,11 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
         if is_ratelimit "$TMP_OUT"; then
             arm_cooldown "$pkey"
             echo "⚠️  $pkey rate-limited — cooldown armado (${COOLDOWN_MINS}min)" >&2
+            return 3
+        fi
+        if is_transient "$TMP_OUT"; then
+            arm_transient_cooldown "$pkey"
+            echo "⚠️  $pkey em falha transiente de provider — cooldown curto armado (${TRANSIENT_COOLDOWN_MINS}min). O backend segue habilitado: janela ruim passa sozinha, e nunca vira enabled:false na policy." >&2
             return 3
         fi
         echo "⚠️  $backend falhou (rc=$rc):" >&2; cat "$TMP_OUT" >&2
