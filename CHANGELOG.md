@@ -81,6 +81,18 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Fixed
 
+- **O timeout de review volta a ser dado da policy.** O `peer-review.sh` cravava
+  `--timeout 120` e atropelava `.timeouts.review`. Medido em 07/set/2026: revisão
+  adversarial de um diff de 1432 linhas no Gemini 3.1 Pro (High) leva 170s. Estourado o
+  timeout, a cascata se esgota e a sessão come a review inline, que é o fallback mais caro
+  do sistema; no `gate/delegate.log` isso aconteceu em 90 de 212 chamadas de `review`,
+  42%. O valor na policy sobe pra 300, com margem sobre o medido.
+- **Quatro bugs de parsing no `bash_read_guard`**, achados pela revisão adversarial da
+  própria leva: `;`, `&&` e `||` separam comandos, então filtro num deles não libera mais
+  o despejo do vizinho (e heredoc/redirect valem só pro comando em que aparecem); e o
+  `-N` de `head`/`tail` e a faixa de `sed -n` são teto **por arquivo**, então
+  `head -n 150 a b` conta 300 linhas e `sed -n '1,300p'` num arquivo de 900 roteia pelas
+  300 da faixa, não pelas 900 do arquivo.
 - **`tests/agnostico.test.sh` volta ao verde**: três ocorrências de identidade do dono
   estavam no `main`, em `docs/auto-memoria.md`, `docs/claude-code.md` e
   `skills/writing/references/voz.md`. Perfil de config agora é `$CLAUDE_CONFIG_DIR`, e o
