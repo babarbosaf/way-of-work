@@ -52,12 +52,20 @@ cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
 
 run() { echo "prompt de teste" | bash "$DELEGATE" "$@" 2>"$TMP/err"; }
 
-echo "T: journey one-shot (boilerplate → agy GPT-OSS primeiro na policy)"
+# A task sai da policy, não do hardcode: a ordem da cascata muda por medição, e
+# um `--task` cravado faria estes testes testarem roteamento em vez do que querem.
+CODEX_FIRST_TASK=$(jq -r '.tasks | to_entries[] | select(.value[0].backend == "codex") | .key' "$DELEGATE_POLICY" | head -1)
+[[ -n "$CODEX_FIRST_TASK" ]] && ok "policy tem task que lidera com codex (senão os testes de 1o degrau são vácuo)" \
+  || fail "nenhuma task lidera com codex: os testes de 1o degrau não têm como exercitá-lo"
+
+echo "T: journey one-shot (boilerplate → 1o modelo da cascata na policy)"
+BOIL_MODEL=$(jq -r '.tasks.boilerplate[0].model' "$DELEGATE_POLICY")
+BOIL_POOL=$(jq -r --arg m "$BOIL_MODEL" '.backends.agy.pools | to_entries[] | select(.value | index($m)) | .key' "$DELEGATE_POLICY")
 out=$(run --task boilerplate -)
 assert_eq "exit 0" "$?" "0"
 assert_contains "resposta do agy no stdout" "$out" "agy-resposta"
-assert_contains "modelo da policy passado ao agy" "$out" "GPT-OSS 120B (Medium)"
-grep -q '"pool":"agy:claude_gpt"' "$DELEGATE_GATE_DIR/delegate.log" && ok "pool registrado no log" || fail "pool registrado no log"
+assert_contains "modelo da policy passado ao agy" "$out" "$BOIL_MODEL"
+grep -q "\"pool\":\"agy:$BOIL_POOL\"" "$DELEGATE_GATE_DIR/delegate.log" && ok "pool registrado no log" || fail "pool registrado no log"
 [[ -f "$DELEGATE_GATE_DIR/delegate.log" ]] && ok "log JSONL criado" || fail "log JSONL criado"
 
 echo "T: cascata (scan com codex em falha → agy)"
@@ -82,7 +90,7 @@ assert_contains "chegou no codex, não parou na 1a entrada" "$out" "codex-respos
 echo "T: claude_api — fora da cascata automática; --model explícito mas fora do escopo é pulado"
 # fixtura com scope próprio, desacoplada da policy pública (que é genérica)
 jq '.backends.claude_api.scope_pattern = "scopetest"' "$DELEGATE_POLICY" > "$TMP/p2" && mv "$TMP/p2" "$DELEGATE_POLICY"
-MOCK_CODEX=fail MOCK_AGY=fail run --task second-opinion --model claude_api - >/dev/null; rc=$?
+MOCK_CODEX=fail MOCK_AGY=fail run --task "$CODEX_FIRST_TASK" --model claude_api - >/dev/null; rc=$?
 assert_eq "exit 2 fora do escopo" "$rc" "2"
 assert_contains "aviso de escopo" "$(cat "$TMP/err")" "restrito a projetos 'scopetest'"
 
@@ -102,7 +110,7 @@ assert_contains "aviso de chave ausente" "$(cat "$TMP/err")" "sem DELEGATE_ANTHR
 cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
 
 echo "T: claude_api não entra sozinho na cascata automática (second-opinion sem --model)"
-MOCK_CODEX=fail MOCK_AGY=fail run --task second-opinion - >/dev/null; rc=$?
+MOCK_CODEX=fail MOCK_AGY=fail run --task "$CODEX_FIRST_TASK" - >/dev/null; rc=$?
 assert_eq "exit 2 — cascata grátis esgotada, claude_api não é tentado" "$rc" "2"
 
 echo "T: journey fallback (todos rate-limited → exit 2 + a sessão assume)"
@@ -170,6 +178,54 @@ assert_eq "exit 0 mesmo sujo" "$rc" "0"
 assert_contains "aviso de sujeira no stderr" "$(cat "$TMP/err")" "alterações não commitadas"
 git -C "$REPO" checkout -q -- f.txt
 
+echo "T: worktree — {worktree} substituído no comando e caminho absoluto injetado no prompt"
+# Regressão real: o agy não começa no cwd, e sem o caminho escrito o worker sai
+# caçando a raiz do repo e escreve na ÁRVORE PRINCIPAL. O mock grava o argv que
+# recebeu, que é onde o --add-dir e o prompt (prompt_via=arg) aparecem.
+export AGY_ARGV_DUMP="$TMP/agy-argv.txt"
+cat > "$MOCKBIN/agy" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$AGY_ARGV_DUMP"
+echo mudanca > worker-agy.txt
+echo "agy-worktree-ok"; exit 0
+EOF
+chmod +x "$MOCKBIN/agy"
+out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO" --model agy - 2>"$TMP/err"); rc=$?
+assert_eq "exit 0" "$rc" "0"
+argv=$(cat "$AGY_ARGV_DUMP" 2>/dev/null)
+grep -q '{worktree}' <<<"$argv" && fail "placeholder {worktree} não sobrou no comando" || ok "placeholder {worktree} não sobrou no comando"
+assert_contains "--add-dir aponta pra worktree" "$argv" "\.delegate-wt"
+assert_contains "prompt abre com o diretório de trabalho" "$argv" "^Diretório de trabalho: /"
+grep -q 'Diretório de trabalho: .*/\.\./' <<<"$argv" && fail "caminho do prompt normalizado (sem /../)" || ok "caminho do prompt normalizado (sem /../)"
+[[ ! -f "$REPO/worker-agy.txt" ]] && ok "árvore principal intocada" || fail "árvore principal intocada"
+
+echo "T: one-shot não recebe o preâmbulo de worktree"
+: > "$AGY_ARGV_DUMP"
+run --task boilerplate - >/dev/null
+grep -q 'Diretório de trabalho:' "$AGY_ARGV_DUMP" && fail "one-shot sem preâmbulo de worktree" || ok "one-shot sem preâmbulo de worktree"
+
+echo "T: trunk do project.yaml com comentário inline resolve como base"
+mkdir -p "$REPO/.claude"
+printf 'repo:\n  trunk: main  # tronco de integração\n' > "$REPO/.claude/project.yaml"
+git -C "$REPO" add .claude && git -C "$REPO" commit -qm project-yaml
+out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO" --model agy - 2>"$TMP/err"); rc=$?
+assert_eq "exit 0 com comentário no trunk" "$rc" "0"
+assert_contains "base é o trunk limpo" "$out" "^base: main @"
+rm -rf "$REPO/.claude"; git -C "$REPO" add -u .claude; git -C "$REPO" commit -qm sem-project-yaml
+
+# mock agy volta ao padrão pros testes seguintes
+cat > "$MOCKBIN/agy" <<'EOF'
+#!/usr/bin/env bash
+case "${MOCK_AGY:-ok}" in
+  ok) echo "agy-resposta:$*"; exit 0 ;;
+  ratelimit) echo "quota exceeded"; exit 1 ;;
+  fail) echo "erro interno agy"; exit 1 ;;
+  empty) exit 0 ;;
+  drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
+esac
+EOF
+chmod +x "$MOCKBIN/agy"
+
 echo "T: journey peer-review consome delegate (contrato 0/2 preservado)"
 cat > "$MOCKBIN/codex" <<'EOF'
 #!/usr/bin/env bash
@@ -199,6 +255,107 @@ assert_contains "deep-merge preserva backends da base" "$eff" '"agy"'
 rm -f "$TMP/policy.local.json"
 eff2=$(bash "$HERE/../scripts/model-policy-effective.sh" "$DELEGATE_POLICY")
 assert_eq "sem local → efetiva idêntica à base" "$eff2" "$(cat "$DELEGATE_POLICY")"
+
+echo "T: bulk-read — --paths + --question montam o prompt no lugar do heredoc"
+run_nostdin() { bash "$DELEGATE" "$@" 2>"$TMP/err" </dev/null; }
+A="$TMP/alfa.md"; printf 'conteudo-alfa\n' > "$A"
+B="$TMP/beta.md"; printf 'conteudo-beta\n' > "$B"
+out=$(run_nostdin --task scan --paths "$A" "$B" --question "o que isso faz")
+assert_eq "sugar: exit 0" "$?" "0"
+assert_contains "pergunta chega ao worker" "$out" "o que isso faz"
+assert_contains "arquivo A em tag com o path" "$out" "path=.$A."
+assert_contains "arquivo B em tag com o path" "$out" "path=.$B."
+assert_contains "conteudo de A chega ao worker" "$out" "conteudo-alfa"
+assert_contains "conteudo de B chega ao worker" "$out" "conteudo-beta"
+assert_contains "contrato de saida em bullets" "$out" "bullets"
+assert_contains "contrato proibe prosa" "$out" "prosa"
+# footer de 3 seções pede verify e lista de arquivos tocados: em bulk one-shot
+# isso é output token pago por relato de tarefa que não roda nem toca arquivo
+[[ "$out" != *"Contrato de report"* ]] && ok "bulk one-shot não paga o footer de report" \
+  || fail "bulk one-shot recebeu o footer de report"
+out_hd=$(run --task scan -)
+[[ "$out_hd" == *"Contrato de report"* ]] && ok "heredoc mantém o footer de report" \
+  || fail "heredoc perdeu o footer de report"
+
+run_nostdin --task scan --paths "$A" >/dev/null; rc=$?
+assert_eq "--paths sem --question é erro de uso" "$rc" "1"
+assert_contains "mensagem cita --question" "$(cat "$TMP/err")" "question"
+run_nostdin --task scan --question "q" >/dev/null; rc=$?
+assert_eq "--question sem --paths é erro de uso" "$rc" "1"
+run_nostdin --task scan --paths "$TMP/nao-existe.md" --question "q" >/dev/null; rc=$?
+assert_eq "path inexistente morre antes do worker" "$rc" "1"
+assert_contains "mensagem cita o path que não existe" "$(cat "$TMP/err")" "nao-existe"
+
+echo "T: heredoc puro segue idêntico (sem quebra pra chamador antigo)"
+out=$(run --task scan -)
+assert_eq "heredoc: exit 0" "$?" "0"
+assert_contains "prompt do stdin chega ao worker" "$out" "prompt de teste"
+
+echo "T: boilerplate sem --reference não sai (lição do code-write)"
+run_nostdin --task boilerplate --paths "$A" --question "gera teste" >/dev/null; rc=$?
+assert_eq "boilerplate em modo novo sem --reference: exit 1" "$rc" "1"
+assert_contains "mensagem cita --reference" "$(cat "$TMP/err")" "reference"
+out=$(run_nostdin --task boilerplate --paths "$A" --question "gera teste" --reference "$B")
+assert_eq "boilerplate com --reference: exit 0" "$?" "0"
+assert_contains "referência vai em tag própria" "$out" "reference path=.$B."
+assert_contains "conteúdo da referência chega ao worker" "$out" "conteudo-beta"
+run_nostdin --task boilerplate --paths "$A" --question "q" --reference "$TMP/nope.md" >/dev/null; rc=$?
+assert_eq "--reference inexistente morre antes do worker" "$rc" "1"
+out=$(run --task boilerplate -)
+assert_eq "boilerplate por heredoc continua válido" "$?" "0"
+out=$(run_nostdin --task scan --paths "$A" --question "q")
+assert_eq "scan sem --reference continua válido" "$?" "0"
+
+echo "T: o log grava tamanho, e o threshold para de ser opinião"
+: > "$DELEGATE_GATE_DIR/delegate.log"
+run_nostdin --task scan --paths "$A" "$B" --question "quanto pesa" >/dev/null
+last=$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")
+jq -e '.bytes_in | numbers' <<<"$last" >/dev/null && ok "bytes_in é número" || fail "bytes_in é número ($last)"
+jq -e '.bytes_out | numbers' <<<"$last" >/dev/null && ok "bytes_out é número" || fail "bytes_out é número ($last)"
+[[ $(jq -r '.bytes_in' <<<"$last") -gt 0 ]] && ok "bytes_in maior que zero" || fail "bytes_in maior que zero ($last)"
+[[ $(jq -r '.bytes_out' <<<"$last") -gt 0 ]] && ok "bytes_out maior que zero" || fail "bytes_out maior que zero ($last)"
+: > "$DELEGATE_GATE_DIR/delegate.log"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=fail MOCK_AGY=fail run --task scan - >/dev/null 2>&1
+falha=$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")
+assert_contains "linha de falha ainda é JSONL válido" "$falha" "unavailable"
+[[ $(jq -r '.bytes_out // 0' <<<"$falha") -eq 0 ]] && ok "falha não inventa bytes_out" || fail "falha inventou bytes_out ($falha)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: 404 de provider é janela ruim, não backend morto — cooldown curto"
+cat > "$MOCKBIN/codex" <<'EOF'
+#!/usr/bin/env bash
+case "${MOCK_CODEX:-ok}" in
+  ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
+  ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
+  notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
+  fail) echo "erro interno"; exit 1 ;;
+  absent) exit 127 ;;
+esac
+EOF
+chmod +x "$MOCKBIN/codex"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+out=$(MOCK_CODEX=notfound run --task "$CODEX_FIRST_TASK" -)
+assert_eq "404 no 1o degrau: cascata desce e a task fecha" "$?" "0"
+assert_contains "caiu pro agy" "$out" "agy-resposta"
+[[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] && ok "404 arma cooldown (janela ruim não se paga a cada chamada)" \
+  || fail "404 não armou cooldown"
+assert_contains "stderr nomeia a janela, não o backend morto" "$(cat "$TMP/err")" "transiente"
+# cooldown de transiente é CURTO: janela ruim de provider passa sozinha
+# expira pela mesma conta que o cooldown_remaining faz (COOLDOWN_MINS=60)
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex")
+rem=$(( armed + 60*60 - $(date +%s) ))
+[[ $rem -gt 0 && $rem -le 600 ]] && ok "cooldown de transiente expira em <=10min, não nos 60 do rate limit" \
+  || fail "cooldown de transiente não é curto (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=ratelimit run --task "$CODEX_FIRST_TASK" - >/dev/null
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex" 2>/dev/null || echo 0)
+rem=$(( armed + 60*60 - $(date +%s) ))
+[[ $rem -gt 600 ]] && ok "rate limit real mantém o cooldown longo" || fail "rate limit perdeu o cooldown longo (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+# o backend segue habilitado: 404 não é decisão de policy
+[[ "$(jq -r '.backends.codex.enabled' "$DELEGATE_POLICY")" == "true" ]] \
+  && ok "404 não desabilita o backend na policy" || fail "backend foi desabilitado"
 
 echo ""
 echo "== $PASS passed, $FAIL failed =="

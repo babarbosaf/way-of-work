@@ -303,7 +303,13 @@ DELEGATE="$HOME/.claude/scripts/delegate.sh"
 DG_ERR=$(mktemp)
 trap 'rm -f "$PROMPT_FILE" "$TMP_OUT" "$DG_ERR"' EXIT
 
-delegate_args=(--task review --timeout 120)
+# Sem --timeout: quem manda é `.timeouts.review` da policy. O 120 cravado aqui
+# atropelava a policy e era a causa dos 42% de `unavailable` em review no
+# `gate/delegate.log` (90 de 212). Medido em 07/set/2026: revisão de um diff de
+# 1432 linhas no Gemini 3.1 Pro (High) leva 170s. Estourado o timeout, a cascata
+# se esgota e a sessão come a review inline, que é o fallback mais caro do
+# sistema inteiro.
+delegate_args=(--task review)
 [[ "$MODEL" != "auto" ]] && delegate_args+=(--model "$MODEL")
 
 USED_REVIEWER=""

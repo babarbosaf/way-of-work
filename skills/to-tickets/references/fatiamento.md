@@ -1,5 +1,15 @@
 # Fatiamento, paralelismo e red flags do plano
 
+## Conteúdo
+
+- Tracer bullet, não camada
+- Ownership de arquivo
+- Quando não paralelizar
+- Refactor mecânico de blast radius alto
+- Ordem e tamanho
+- Red flags do plano
+- Red flags do build
+
 ## Tracer bullet, não camada
 
 Slice é um caminho **estreito e completo** por todas as camadas que a mudança

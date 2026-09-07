@@ -14,12 +14,22 @@ cmd=$(echo "$payload" | python3 -c "import sys,json; print(json.load(sys.stdin).
 
 # Bypass para comandos que quebram com HEREDOC ou não geram output compressível
 # Checa tanto o comando extraído quanto o payload bruto (para quando o JSON parse falha)
+#
+# Leitura de arquivo (cat/head/tail/less/more/bat) também é bypass, e por medida:
+# `rtk read` no nível default devolve os mesmos bytes (AGENTS.md 5223 -> 5222; o
+# delegate.sh 19432 CRESCE pra 19550 no --level aggressive, porque o filtro volta
+# vazio e o rtk cai pro bruto mais uma linha de warning). O rewrite creditava
+# 6914 chamadas a 25.3% no `rtk gain`, o pior percentual da tabela no maior
+# volume, e criava a impressão de que o caminho estava coberto. Quem manda nesse
+# caminho agora é hooks/bash_read_guard.py, que roteia pro worker. O rtk fica no
+# que ele mede bem: saída de comando (test 85.8%, git diff 96.2%, lint 94.2%).
+BYPASS='^[[:space:]]*(git[[:space:]]+commit|git[[:space:]]+push|gh[[:space:]]+pr[[:space:]]+create|cat|bat|less|more|head|tail)([[:space:]]|$)'
 if [[ -n "$cmd" ]]; then
-    if echo "$cmd" | grep -qE '^\s*(git\s+commit|git\s+push|gh\s+pr\s+create)'; then
+    if echo "$cmd" | grep -qE "$BYPASS"; then
         exit 0
     fi
 else
-    if echo "$payload" | grep -qE '"command"\s*:\s*"(git commit|git push|gh pr create)'; then
+    if echo "$payload" | grep -qE '"command"[[:space:]]*:[[:space:]]*"(git commit|git push|gh pr create|cat |bat |less |more |head |tail )'; then
         exit 0
     fi
 fi

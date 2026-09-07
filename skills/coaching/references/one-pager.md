@@ -14,6 +14,15 @@ PRD: referenciar a seção, não recontar.
 
 ---
 
+## Conteúdo
+
+- Pedido
+- Núcleo
+- Sondagem
+- Sondagem A2: [título]
+- Blocos por gatilho
+- Comunicação durante a sessão
+
 ## Pedido
 
 Declarado no topo do arquivo, em uma linha, e em voz alta na sessão junto com o trilho.

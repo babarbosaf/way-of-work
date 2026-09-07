@@ -8,6 +8,15 @@ Projeto sem tracker (`backend: none`), então cada um é um arquivo em
 
 ---
 
+## Conteúdo
+
+- `01-category-dtr.md`
+- `02-category-pdv.md`
+- `03-backfill.md`
+- `04-scenario-reconciliacao.md`
+- Por que assim
+- Rastreabilidade
+
 ## `01-category-dtr.md`
 
 ```markdown

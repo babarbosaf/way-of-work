@@ -6,6 +6,14 @@ que vão trabalhar no projeto. São escritos por último, depois dos quatro docu
 porque referenciam todos eles. Os três precisam viver na raiz do projeto, senão os
 agentes não os carregam.
 
+## Conteúdo
+
+- CLAUDE.md
+- AGENTS.md
+- FEEDBACK.md
+- AAAA-MM-DD: <resumo curto>
+- Convenções
+
 ## CLAUDE.md
 
 Mínimo por desenho. Não duplica conteúdo: apenas aponta para o AGENTS.md, que é a fonte

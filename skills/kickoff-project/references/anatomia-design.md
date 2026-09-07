@@ -5,6 +5,20 @@ Descreve o design system. Exemplo canônico em `exemplos/DESIGN.md` (Chutaí, "N
 O design se DERIVA das telas que as rotas definiram. Só se sabe quais patterns de componente
 o produto precisa depois de saber quais telas existem. Escrever este documento por último.
 
+## Conteúdo
+
+- Função
+- Estrutura
+- Identidade (seção 1)
+- Constraints (seção 2)
+- Tokens (seção 3)
+- Patterns de componente (seção 4)
+- Showcase (dentro da seção 9)
+- Guarda-corpos (seções 7 e 11)
+- Convenções
+- Quando já existe um design system
+- Como derivar das rotas
+
 ## Função
 
 É o que garante consistência visual e mata a refação. Um bom design system faz três coisas:

@@ -20,6 +20,17 @@ prd: docs/prd/medallion-core.md#dimensoes
 
 # Category derivada de section
 
+## Conteúdo
+
+- Problema
+- Como fica
+- Decisões
+- Critérios de aceite
+- Fora de escopo
+- Rollback
+- Slices
+- O que não está aqui, de propósito
+
 ## Problema
 
 `dim_product.category` está NULL nos 4197 produtos. Toda quebra de receita ou

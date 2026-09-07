@@ -7,6 +7,28 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Shunt de leitura: o corpus vai pro worker grátis, e só a resposta volta.** Modo
+  bulk no `delegate.sh` (`--paths` mais `--question`), que monta pergunta, corpus em tag
+  `<file path="...">` e contrato de saída em bullets. Medido end-to-end contra worker
+  real: 53.422 bytes de corpus viraram 8.000 bytes de resposta, 85% a menos entrando na
+  janela, em 42s. A fricção de montar heredoc à mão era o que mantinha esse caminho
+  desligado: no `gate/delegate.log`, 211 chamadas de `review` (que o `peer-review.sh`
+  dispara sozinho) contra 22 de `scan` e 3 de `boilerplate`. Desenho e medição em
+  `docs/research/token-shunt.md`; tickets em `specs/token-shunt/tickets/`.
+- **`--reference` obrigatório no boilerplate em modo bulk.** Sem arquivo de padrão a
+  seguir, o worker gera código sem contexto que não encaixa em nada, e revisar custa mais
+  que escrever à mão.
+- **`hooks/bash_read_guard.py`**: o despejo de arquivo grande por Bash (`cat`, `head`,
+  `tail`, `less`, `bat`, `rtk read`) apanha igual à leitura por `Read`, e roteia pro
+  worker acima do degrau. Leitura apontada continua livre: pipe que filtra, `head -N`
+  dentro do teto, redirect pra arquivo. Kill: `BASH_READ_GUARD_DISABLED=1`.
+- **`.shunt` na `model-policy.json` e `hooks/shunt_policy.py`**: threshold de leitura sai
+  de dentro do hook e vira dado, em dois degraus (`grep_max` 200, `worker_min` 500),
+  porque os dois tiers têm latência muito diferente (grep local em ms, worker em 10 a
+  30s). Override por sessão: `SHUNT_GREP_MAX`, `SHUNT_MIN_LINES`.
+- **`bytes_in`/`bytes_out` no `gate/delegate.log`.** Sem tamanho, "quanto o shunt
+  economizou" não tem resposta e o degrau se calibra por palpite.
+
 - **`to-spec` e `to-tickets`** substituem `spec-and-plan` (arquivada em
   `skills/_archive/`). A spec fundia contrato, design e execução num arquivo só;
   agora a spec guarda o contrato e as decisões `D-NN`, e o ticket guarda o que um
@@ -46,15 +68,72 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   molde de stack default, exemplos Chutaí com `CONVENTIONS.md` novo
   extraído do PRD.
 
-- **Anúncio de trabalho próprio** (`skills/writing/references/padroes.md`, padrões 42 a
-  45): crédito abre a mensagem em vez de fechar, esforço não legitima entrega, punchline
+- **Régua de autoria de skill** (`docs/skill-authoring.md`) e o lint que a aplica
+  (`scripts/check-skill.py`, 23 asserts em `tests/skill-lint.test.sh`). Mede o que decide
+  discovery e progressive disclosure: frontmatter que permite escolher a skill, corpo do
+  `SKILL.md` até 500 linhas, referência a um nível do `SKILL.md`, índice no topo de
+  referência acima de 100 linhas, link relativo que resolve. Bloqueante trava o gate;
+  aviso só informa. Amostra de artefato (`references/exemplos/`, `fixtures/`) fica fora da
+  régua de índice e de navegação, porque é molde e entrada de teste, não referência.
+- **Índice no topo** das sete referências acima de 100 linhas em `coaching`,
+  `kickoff-project`, `to-spec` e `to-tickets`. Leitura parcial (`head`) via de regra não
+  alcança o fim do arquivo, e sem índice o agente não sabe o que deixou de ler.
+- **Anúncio de trabalho próprio** (`skills/writing/references/padroes.md`, padrões 43 a
+  46): crédito abre a mensagem em vez de fechar, esforço não legitima entrega, punchline
   doutrinária fechando parágrafo, e verbo modesto no lugar do verbo de lançamento. Saíram
   da revisão de um anúncio de canal reescrito à mão, onde o texto do agente passava no
-  linter e as quatro construções sobreviviam. O par 7 de `fixtures/antes-depois.md` é o
-  primeiro de mensagem de chat, e não de doc.
+  linter e as quatro construções sobreviviam. O par 11 de `fixtures/antes-depois.md` é o
+  primeiro de mensagem de chat, e não de doc, e a numeração dos pares volta a ser
+  contínua (havia dois `## 6.`).
 
 ### Fixed
 
+- **Falha transiente de provider arma cooldown curto, em vez de virar fato na policy.**
+  404, "does not exist or you do not have access", 502/503/504 e "overloaded" passam a
+  armar 10 minutos (`DELEGATE_TRANSIENT_COOLDOWN_MINS`) no pool, com o backend seguindo
+  habilitado. Medido em 07/set/2026: o mesmo `codex exec --model gpt-5.5` respondeu às
+  19h06 e devolveu 404 às 19h31, mesma conta e mesmo diretório, com os 7 nomes de modelo
+  do CLI acompanhando a janela em bloco. Duas rodadas anteriores escreveram essa janela
+  como permanente e apagaram o primeiro degrau de `review`, `second-opinion` e
+  `implement`. A regra agora está escrita na skill: `enabled: false` é pra decisão, nunca
+  pra sondagem.
+- **O timeout de review volta a ser dado da policy.** O `peer-review.sh` cravava
+  `--timeout 120` e atropelava `.timeouts.review`. Medido em 07/set/2026: revisão
+  adversarial de um diff de 1432 linhas no Gemini 3.1 Pro (High) leva 170s. Estourado o
+  timeout, a cascata se esgota e a sessão come a review inline, que é o fallback mais caro
+  do sistema; no `gate/delegate.log` isso aconteceu em 90 de 212 chamadas de `review`,
+  42%. O valor na policy sobe pra 300, com margem sobre o medido.
+- **Quatro bugs de parsing no `bash_read_guard`**, achados pela revisão adversarial da
+  própria leva: `;`, `&&` e `||` separam comandos, então filtro num deles não libera mais
+  o despejo do vizinho (e heredoc/redirect valem só pro comando em que aparecem); e o
+  `-N` de `head`/`tail` e a faixa de `sed -n` são teto **por arquivo**, então
+  `head -n 150 a b` conta 300 linhas e `sed -n '1,300p'` num arquivo de 900 roteia pelas
+  300 da faixa, não pelas 900 do arquivo.
+- **`tests/agnostico.test.sh` volta ao verde**: três ocorrências de identidade do dono
+  estavam no `main`, em `docs/auto-memoria.md`, `docs/claude-code.md` e
+  `skills/writing/references/voz.md`. Perfil de config agora é `$CLAUDE_CONFIG_DIR`, e o
+  exemplo de voz não nomeia ninguém.
+- **Worker de worktree escrevia na árvore principal do dono.** O modo worktree
+  contava com o sandbox do CLI pra confinar a escrita, e no agy isso é falso: o
+  `--sandbox` restringe terminal, não sistema de arquivos, e o agy nem começa no
+  cwd (abre na pasta de artefato dele). Uma delegação real deixou o working tree
+  do dono meio editado, com um arquivo que compilava e quebraria em runtime.
+  Agora são três mecanismos juntos, e nenhum sozinho resolve: `cd` na worktree,
+  `--add-dir {worktree}` (placeholder novo, substituído pelo caminho absoluto) e
+  o caminho escrito no começo do prompt. O `--sandbox` sai do
+  `agy.worktree_invoke`, porque era ele que bloqueava a escrita legítima. O
+  protocolo de integração da skill ganhou o passo 0, `git status` na árvore
+  principal, que é onde um worker fugido aparece.
+- **`trunk` do `project.yaml` com comentário inline não resolvia.** `trunk: main
+  # tronco` virava o ref literal `main  # tronco` e o dispatcher morria em
+  `--base não resolve`. O awk agora corta comentário e espaço à direita.
+- **Timeout do agy caía antes da task terminar.** O `--print-timeout` do agy tem
+  default de 5 min, então task de implementação morria no meio sem erro
+  atribuível. A policy passa 15 min em one-shot e 30 min em worktree.
+- **Nomes de modelo do agy estavam desatualizados na policy.** A cascata pedia
+  `Gemini 3.5 Flash`, que o CLI não oferece mais; conferidos contra `agy models`
+  e atualizados pra 3.8/3.7/3.6. `boilerplate` passa a preferir Gemini antes de
+  GPT-OSS 120B, que é o menos confiável em respeitar o diretório de trabalho.
 - **Hook do RTK quebrava em quem clonasse sem o CLI.** `rtk-hook-wrapper.sh` chamava
   `rtk` sem guarda, e o hook está ligado em todo `PreToolUse:Bash`: medido rc=127 e
   `command not found` a cada comando. Agora sai limpo sem o binário, e `docs/rtk.md`
@@ -72,8 +151,40 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
-- **Terceiro escopo de brevidade** (`skills/writing/SKILL.md`): mensagem pra uma pessoa num
-  canal não é instrução densa nem texto que se lê de ponta a ponta. Vale a frase conectada,
+- **O bloqueio de leitura roteia, em vez de ensinar a paginar.** Os dois guards passam a
+  devolver o comando colável do degrau: entre `grep_max` e `worker_min`, grep mais `Read`
+  paginado; acima de `worker_min`, o `delegate.sh --task scan` com os paths já
+  preenchidos. Paginar reduz o pico e mantém os tokens na janela cara; rotear troca de
+  janela.
+- **Leitura de arquivo sai do rewrite do rtk.** `cat`, `head`, `tail`, `less`, `more` e
+  `bat` viram bypass no `rtk-hook-wrapper.sh`. Medido em bytes: `AGENTS.md` 5223 vira 5222
+  no `-l minimal` e no `-l aggressive`; `delegate.sh` 19432 **cresce** pra 19550 no
+  `aggressive`, porque o filtro devolve vazio e o rtk cai pro bruto mais uma linha de
+  warning. O default do rewrite era `-l none`, que é 0%, e o `rtk gain` creditava 6914
+  chamadas a 25.3% a esse comando: o pior percentual da tabela no maior volume, escondendo
+  que o caminho estava descoberto. O rtk fica onde mede bem, na saída de comando.
+- **Bulk one-shot não recebe o footer de report de 3 seções**, que pede verify e lista de
+  arquivos tocados numa tarefa que não roda nem toca arquivo.
+- **Ordem da cascata de `second-opinion`** (`config/model-policy.json`,
+  `model-ranking-matrix.md`): passa a liderar com agy Claude Sonnet 4.6
+  (Thinking), depois Gemini 3.1 Pro (High), e o codex vai pro fim. Dois motivos
+  medidos em 07/set/2026: Claude Opus 4.6 (Thinking) leva 902s e ainda volta
+  rc=2 em headless (Sonnet fecha em 26s, Gemini em 30s), e liderar com o mesmo
+  backend de `review` fazia a segunda opinião sair do modelo que já opinou.
+  Pelo mesmo motivo Opus sai do 3º de `review` na matriz de ranking, e o teste
+  de cooldown transiente passa a derivar a task da policy em vez de cravar
+  `--task second-opinion`, que testava roteamento sem querer.
+- **Deploy tem dois modelos** (`git-workflow-and-versioning`,
+  `ci-deploy-flow.md`): automático por push é o default; manual por leva com
+  validação em `localhost` entra quando o host cobra por build. Qual dos dois
+  vale é decisão de projeto e mora no `CONVENTIONS.md` dele.
+- **codex default vai pra gpt-5.5** (`config/model-policy.json`): em
+  05/set/2026 o gpt-5.4 devolveu 400 nesta conta enquanto 5.5, 5.3, 5.1-codex
+  e 5-codex respondiam. A matriz de ranking acompanha, e os nomes de Gemini
+  Flash nela voltam a existir na policy (3.5 não existe; é 3.8).
+- **Quarto escopo de brevidade** (`skills/writing/SKILL.md`): mensagem pra uma pessoa num
+  canal não é instrução densa, nem texto que se lê de ponta a ponta, nem leitura de
+  varredura. Vale a frase conectada,
   e o fecho que pede ação pode repetir o pedido, porque adesão ganha de economia quando
   alguém tem que fazer algo depois de ler.
 - **Hedge real sai da conta do vício** (`SKILL.md` na Naturalidade e no self-check 3,

@@ -34,7 +34,7 @@ houver, porque banido sem alternativa vira paralisia.
 
 | banido | por quê | no lugar |
 |---|---|---|
-| | | |
+| "·" separando palavras ou itens | o dono lê como cara de IA (02/set/2026) | vírgula, ponto, ou quebra de linha |
 
 Regra de crescimento: entra por correção real, nunca por suspeita. Se você nunca viu o
 termo sair no output, ele não pertence aqui. Lista inflada deixa de ser lida.

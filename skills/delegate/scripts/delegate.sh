@@ -5,6 +5,15 @@
 #               [--model <backend>] [--worktree <repo-dir>] [--continue <slug>]
 #               [--timeout N] [--gc <repo-dir>] -
 #
+#   Modo bulk (o script monta o prompt, sem heredoc):
+#   delegate.sh --task scan --paths <f1> <f2>... --question "<pergunta>"
+#   delegate.sh --task boilerplate --paths <f>... --question "<spec>" --reference <f>
+#
+#   --paths/--question andam sempre juntos; um sem o outro é erro de uso. Em
+#   --task boilerplate o --reference é obrigatório nesse modo: sem padrão a
+#   seguir, o worker gera código que não encaixa em nada e a revisão custa mais
+#   que escrever à mão.
+#
 #   --continue <slug>: reusa a worktree/branch delegate/<slug> já criada (não
 #   remonta prompt do zero; a mensagem que vem pelo stdin vira um follow-up
 #   commitado na mesma branch). Slug inexistente → erro claro, nunca cria nova
@@ -40,14 +49,24 @@ fi
 INBOX="${DELEGATE_INBOX:-$HOME/.claude/inbox.md}"
 LOG="$GATE_DIR/delegate.log"
 COOLDOWN_MINS="${PEER_COOLDOWN_MINS:-60}"
+# Falha transiente de provider (modelo 404, sem acesso) não é o mesmo bicho que
+# rate limit: passa em minutos, não em uma hora. Cooldown curto tira o custo de
+# ficar batendo numa janela ruim sem esconder o backend quando ela passa.
+TRANSIENT_COOLDOWN_MINS="${DELEGATE_TRANSIENT_COOLDOWN_MINS:-10}"
 mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
 
 die() { echo "delegate: $*" >&2; exit 1; }
 
-log_usage() { # task backend status detail pool — jq escapa os campos (JSONL sempre válido)
+log_usage() { # task backend status detail pool [bytes_in] [bytes_out]
+    # bytes_* existem pra calibrar o threshold do shunt (config .shunt) com
+    # número em vez de palpite: sem tamanho, "quanto o scan economizou" não tem
+    # resposta. jq escapa os campos (JSONL sempre válido).
+    local bin bout
+    bin=$(tr -dc '0-9' <<<"${6:-0}"); bout=$(tr -dc '0-9' <<<"${7:-0}")
     jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg task "$1" --arg backend "$2" \
         --arg status "$3" --arg detail "${4:-}" --arg pool "${5:-}" \
-        '{ts:$ts,task:$task,backend:$backend,status:$status,detail:$detail,pool:$pool}' >> "$LOG"
+        --argjson bytes_in "${bin:-0}" --argjson bytes_out "${bout:-0}" \
+        '{ts:$ts,task:$task,backend:$backend,status:$status,detail:$detail,pool:$pool,bytes_in:$bytes_in,bytes_out:$bytes_out}' >> "$LOG"
 }
 
 # --- pool: só rótulo pro log de auditoria; prioridade real vem da ordem da cascata na policy ---
@@ -70,15 +89,31 @@ cooldown_remaining() { # backend → 0 + segundos restantes se ativo; 1 se livre
     rm -f "$f"; return 1
 }
 arm_cooldown()   { date +%s > "$GATE_DIR/cooldown.$1"; }
+# Transiente arma com o relógio adiantado, pra expirar em TRANSIENT_COOLDOWN_MINS
+# usando o mesmo cooldown_remaining de sempre (um mecanismo, não dois).
+arm_transient_cooldown() { echo $(( $(date +%s) - (COOLDOWN_MINS - TRANSIENT_COOLDOWN_MINS)*60 )) > "$GATE_DIR/cooldown.$1"; }
 clear_cooldown() { rm -f "$GATE_DIR/cooldown.$1"; }
 
 is_ratelimit() { grep -qiE "(rate.?limit|too many requests|status.*429|quota.*(exceeded|reached)|usage limit|limit reached|out of (credits|tokens)|insufficient_quota|RESOURCE_EXHAUSTED)" "$1"; }
 
+# Janela ruim de provider, e não backend morto. Medido em 07/set/2026: o mesmo
+# `codex exec --model gpt-5.5` respondeu às 19h06 e devolveu 404 "does not exist
+# or you do not have access" às 19h31, no mesmo diretório e na mesma conta; os 7
+# nomes de modelo do CLI acompanharam a janela em bloco. Esse sinal NUNCA vira
+# `enabled: false` na policy: um fato que depende da hora não é decisão de
+# roteamento, e desabilitar apaga um tier que funciona parte do tempo.
+is_transient() { grep -qiE "(does not exist or you do not have access|model .* not (found|supported)|status 404|502 bad gateway|503 service unavailable|504 gateway timeout|overloaded_error|temporarily unavailable)" "$1"; }
+
 # --- args ---
 TASK="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
+QUESTION="" REFERENCE="" PATHS=()
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --task) TASK="$2"; shift 2 ;;
+        --question) QUESTION="$2"; shift 2 ;;
+        --reference) REFERENCE="$2"; shift 2 ;;
+        # variádico: consome até a próxima flag (ou o '-' do modo heredoc)
+        --paths) shift; while [[ $# -gt 0 && "$1" != -* ]]; do PATHS+=("$1"); shift; done ;;
         --model) FORCE_MODEL="$2"; shift 2 ;;
         --worktree) WORKTREE="$2"; shift 2 ;;
         --continue) CONTINUE_SLUG="$2"; shift 2 ;;
@@ -105,6 +140,24 @@ fi
 [[ -n "$TASK" ]] || die "uso: delegate.sh --task <type> [--model B] [--worktree DIR] [--continue SLUG] - < prompt"
 [[ -z "$TIMEOUT" || "$TIMEOUT" =~ ^[0-9]+$ ]] || die "--timeout deve ser inteiro em segundos (recebido: '$TIMEOUT')"
 
+# --- modo bulk: o script monta o prompt em vez de cobrar heredoc do chamador ---
+# Existe porque a fricção matava o shunt: no log, 211 chamadas de review (que o
+# peer-review.sh dispara sozinho) contra 22 de scan e 3 de boilerplate. O que
+# dependia de montar heredoc à mão não era chamado.
+BULK=0
+if [[ ${#PATHS[@]} -gt 0 || -n "$QUESTION" ]]; then
+    BULK=1
+    [[ ${#PATHS[@]} -gt 0 ]] || die "--question exige --paths <arquivo>... (as duas flags andam juntas)"
+    [[ -n "$QUESTION" ]] || die "--paths exige --question \"<pergunta>\" (as duas flags andam juntas)"
+    for _p in "${PATHS[@]}"; do
+        [[ -f "$_p" ]] || die "--paths: arquivo não existe: $_p"
+    done
+    [[ -z "$REFERENCE" || -f "$REFERENCE" ]] || die "--reference: arquivo não existe: $REFERENCE"
+    if [[ "$TASK" == "boilerplate" && -z "$REFERENCE" ]]; then
+        die "--task boilerplate exige --reference <arquivo>: sem padrão a seguir, o worker gera código sem contexto que não encaixa no projeto"
+    fi
+fi
+
 # --- policy load (inválida → fallback default RUIDOSO) ---
 # Degradação troca a ORIGEM dos dados, não o caminho: uma DEFAULT_POLICY mínima
 # embutida roda pelo mesmo jq de sempre (zero conhecimento de backend em case/if).
@@ -122,8 +175,8 @@ if ! jq -e . "$POLICY" >/dev/null 2>&1; then
               "invoke": "codex exec --skip-git-repo-check -",
               "worktree_invoke": "codex exec --sandbox workspace-write --full-auto -"},
     "agy":   {"enabled": true, "prompt_via": "arg", "model_flag": "--model",
-              "invoke": "agy -p",
-              "worktree_invoke": "agy -p --sandbox --dangerously-skip-permissions"}
+              "invoke": "agy --sandbox --dangerously-skip-permissions --mode plan --print-timeout 15m -p",
+              "worktree_invoke": "agy --dangerously-skip-permissions --add-dir {worktree} --print-timeout 30m -p"}
   },
   "tasks": {"_any": [{"backend": "codex"}, {"backend": "agy"}]}
 }
@@ -142,7 +195,36 @@ else TIMEOUT_CMD=""; fi
 
 PROMPT_FILE=$(mktemp); TMP_OUT=$(mktemp)
 trap 'rm -f "$PROMPT_FILE" "$TMP_OUT"' EXIT
-cat > "$PROMPT_FILE"   # stdin
+abs_path() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$PWD" "$1" ;; esac; }
+
+build_bulk_prompt() { # pergunta + corpus em tag XML + contrato de saída
+    printf 'Pergunta: %s\n\n' "$QUESTION"
+    printf 'Responda usando SÓ o conteúdo dos arquivos abaixo. Cada arquivo vem\n'
+    printf 'delimitado por tag, com o caminho absoluto no atributo path.\n\n'
+    if [[ -n "$REFERENCE" ]]; then
+        printf '<reference path="%s">\n' "$(abs_path "$REFERENCE")"
+        cat "$REFERENCE"
+        printf '\n</reference>\n\n'
+        printf 'A tag reference é o padrão a seguir: mesma estrutura, mesmas\n'
+        printf 'convenções, mesmo estilo. Não invente padrão novo.\n\n'
+    fi
+    local f
+    for f in "${PATHS[@]}"; do
+        printf '<file path="%s">\n' "$(abs_path "$f")"
+        cat "$f"
+        printf '\n</file>\n'
+    done
+    printf '\n---\nFormato da resposta: bullets estruturados, sem prosa, sem preâmbulo,\n'
+    printf 'sem saudação e sem repetir a pergunta. Cite path e linha quando afirmar\n'
+    printf 'algo sobre o código. O que os arquivos não respondem, diga que não\n'
+    printf 'responde, em vez de inferir.\n'
+}
+
+if [[ "$BULK" == "1" ]]; then
+    build_bulk_prompt > "$PROMPT_FILE"
+else
+    cat > "$PROMPT_FILE"   # stdin
+fi
 
 # --- validação do prompt: falha alto em vez de delegar lixo silenciosamente ---
 if [[ ! -s "$PROMPT_FILE" ]] || ! grep -qE '[^[:space:]]' "$PROMPT_FILE"; then
@@ -153,8 +235,13 @@ if head -c 200 "$PROMPT_FILE" | grep -qE '^\{"backend"'; then
 fi
 
 # --- contrato de report: todo worker recebe o footer, não só a tarefa ---
-REPORT_FOOTER=$'\n\n---\nContrato de report obrigatório ao final da resposta:\n1. Rode a verificação declarada na task e cole o output (comando + resultado).\n2. Liste os arquivos tocados (paths absolutos).\n3. Declare explicitamente o que NÃO foi feito (escopo cortado, TODO deixado, etc).\nResposta sem essas 3 seções é considerada incompleta.'
-printf '%s' "$REPORT_FOOTER" >> "$PROMPT_FILE"
+# Bulk one-shot não recebe o footer: ele pede 3 seções de relato numa tarefa que
+# não roda verify nem toca arquivo, e output token de worker também custa tempo
+# de leitura aqui. O contrato de saída do bulk é o de bullets, montado acima.
+if [[ "$BULK" != "1" || -n "$WORKTREE" ]]; then
+    REPORT_FOOTER=$'\n\n---\nContrato de report obrigatório ao final da resposta:\n1. Rode a verificação declarada na task e cole o output (comando + resultado).\n2. Liste os arquivos tocados (paths absolutos).\n3. Declare explicitamente o que NÃO foi feito (escopo cortado, TODO deixado, etc).\nResposta sem essas 3 seções é considerada incompleta.'
+    printf '%s' "$REPORT_FOOTER" >> "$PROMPT_FILE"
+fi
 
 backend_field() { # backend field → valor da policy (ou vazio)
     jq -r --arg b "$1" --arg f "$2" '.backends[$b][$f] // empty' "$POLICY"
@@ -193,6 +280,11 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     if [[ -n "$WORKTREE" ]]; then
         cmd=$(backend_field "$backend" worktree_invoke)
         [[ -n "$cmd" ]] || { echo "▶ $backend sem worktree_invoke (sandbox) — inelegível pra worktree" >&2; return 4; }
+        # {worktree} vira o caminho absoluto da worktree. Existe porque `cd` não
+        # basta em todo worker: o agy não começa no cwd e seu --sandbox restringe
+        # terminal, não sistema de arquivos, então sem passar o caminho ele sai
+        # caçando a raiz do repo e escreve na árvore principal.
+        cmd="${cmd//\{worktree\}/$WT_DIR}"
     else
         cmd=$(backend_field "$backend" invoke)
         [[ -n "$cmd" ]] || return 4
@@ -223,6 +315,11 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
         if is_ratelimit "$TMP_OUT"; then
             arm_cooldown "$pkey"
             echo "⚠️  $pkey rate-limited — cooldown armado (${COOLDOWN_MINS}min)" >&2
+            return 3
+        fi
+        if is_transient "$TMP_OUT"; then
+            arm_transient_cooldown "$pkey"
+            echo "⚠️  $pkey em falha transiente de provider — cooldown curto armado (${TRANSIENT_COOLDOWN_MINS}min). O backend segue habilitado: janela ruim passa sozinha, e nunca vira enabled:false na policy." >&2
             return 3
         fi
         echo "⚠️  $backend falhou (rc=$rc):" >&2; cat "$TMP_OUT" >&2
@@ -266,7 +363,7 @@ if [[ -n "$WORKTREE" ]]; then
         # base da worktree: --base explícito > repo.trunk do project.yaml > HEAD atual. NUNCA origin/main implícito.
         base_ref="$BASE_REF"
         if [[ -z "$base_ref" && -f "$WORKTREE/.claude/project.yaml" ]]; then
-            base_ref=$(awk '/^repo:/{f=1;next} f && /^[^ ]/{f=0} f && /trunk:/{gsub(/^[ \t]*trunk:[ \t]*/,""); gsub(/["\x27]/,""); print; exit}' "$WORKTREE/.claude/project.yaml")
+            base_ref=$(awk '/^repo:/{f=1;next} f && /^[^ ]/{f=0} f && /trunk:/{gsub(/^[ \t]*trunk:[ \t]*/,""); sub(/[ \t]*#.*$/,""); gsub(/["\x27]/,""); sub(/[ \t]+$/,""); print; exit}' "$WORKTREE/.claude/project.yaml")
         fi
         [[ -n "$base_ref" ]] || base_ref="HEAD"
         git -C "$WORKTREE" rev-parse --verify -q "$base_ref" >/dev/null || die "--base '$base_ref' não resolve em $WORKTREE"
@@ -278,6 +375,18 @@ if [[ -n "$WORKTREE" ]]; then
         git -C "$WORKTREE" worktree add -q -b "$WT_BRANCH" "$WT_DIR" "$base_ref" || die "falha ao criar worktree (base=$base_ref)"
         WT_FRESH=1
     fi
+fi
+
+# O caminho da worktree entra no PROMPT, e não só no `cd` e no --add-dir. Motivo
+# medido: o agy não começa no cwd, ele abre na pasta de artefato dele. Sem o
+# caminho escrito, o worker sai caçando a raiz do repo, acha a árvore principal
+# e escreve lá. Foi assim que uma delegação deixou o working tree do dono meio
+# editado. O `cd` normaliza o `/../` do WT_DIR pra ele servir os três consumidores
+# (prompt, --add-dir da policy, mensagens de erro) com o mesmo caminho.
+if [[ -n "$WT_DIR" ]]; then
+    WT_DIR=$(cd "$WT_DIR" && pwd)
+    { printf 'Diretório de trabalho: %s\n\nEsse é o caminho absoluto da sua worktree. Leia e escreva SÓ dentro dele, sempre pelo caminho absoluto. Se os arquivos da task não estiverem aí, pare e diga isso: não procure o repositório em outro lugar do disco, e nunca escreva fora desse diretório.\n\n---\n\n' "$WT_DIR"; cat "$PROMPT_FILE"; } > "$PROMPT_FILE.wt"
+    mv "$PROMPT_FILE.wt" "$PROMPT_FILE"
 fi
 
 # --model forçado tem que existir na cascata da task OU ser um backend
@@ -337,7 +446,8 @@ if run_cascade; then
     else
         cat "$TMP_OUT"
     fi
-    log_usage "$TASK" "$USED" "ok" "${WT_BRANCH:+branch=$WT_BRANCH}" "$USED_POOL"
+    log_usage "$TASK" "$USED" "ok" "${WT_BRANCH:+branch=$WT_BRANCH}" "$USED_POOL" \
+        "$(wc -c < "$PROMPT_FILE")" "$(wc -c < "$TMP_OUT")"
     exit 0
 fi
 

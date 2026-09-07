@@ -42,10 +42,13 @@ pra instrução densa: AGENTS.md, checklist, bullet de doc, item de tabela. Text
 alguém lê de ponta a ponta (README, corpo de PR, post) pede frase conectada, senão cai
 em parataxe, que é justamente um dos padrões do catálogo.
 
-Mensagem pra uma pessoa num canal é o terceiro escopo, e nenhum dos dois anteriores
-descreve ela. Vale a frase conectada do texto longo, mas o fecho que pede ação pode
-repetir o pedido, porque adesão ganha de economia quando alguém tem que fazer algo depois
-de ler.
+Um terceiro caso, que é leitura de varredura: status report, pauta de reunião, canvas.
+Quem abre procura um número e um dono, não lê do começo ao fim. Ali bullet ganha de
+parágrafo conectado, e a regra anti-parataxe não se aplica.
+
+O quarto é mensagem pra uma pessoa num canal, e nenhum dos três anteriores descreve ela.
+Vale a frase conectada do texto longo, mas o fecho que pede ação pode repetir o pedido,
+porque adesão ganha de economia quando alguém tem que fazer algo depois de ler.
 
 O plugin `caveman` é opcional e aplica a brevidade no output em runtime. Instala por
 `claude plugin install` e liga por `CAVEMAN_DEFAULT_MODE`. Dado o requisito de bom
@@ -103,6 +106,8 @@ Tirar padrão é metade do trabalho. Texto sem voz denuncia máquina do mesmo je
 3. Hedging em vez de posição? Escolha o lado, e deixe a dúvida real declarada como dúvida.
 4. Travessão, parêntese explicativo ou dois-pontos conector no trecho? Remova.
 5. Passiva sem ator? Nomeie quem age.
+5b. A cauda depois da vírgula carrega a regra? Ela é o sujeito, reescreva a partir dela.
+5c. Data, código de spec ou número de decisão dentro de frase normativa? Remova.
 6. Dado que você não mediu? Remova ou marque como hipótese.
 7. Soa como resposta genérica de IA? Reescreva até não soar.
 
