@@ -7,6 +7,28 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Shunt de leitura: o corpus vai pro worker grátis, e só a resposta volta.** Modo
+  bulk no `delegate.sh` (`--paths` mais `--question`), que monta pergunta, corpus em tag
+  `<file path="...">` e contrato de saída em bullets. Medido end-to-end contra worker
+  real: 53.422 bytes de corpus viraram 8.000 bytes de resposta, 85% a menos entrando na
+  janela, em 42s. A fricção de montar heredoc à mão era o que mantinha esse caminho
+  desligado: no `gate/delegate.log`, 211 chamadas de `review` (que o `peer-review.sh`
+  dispara sozinho) contra 22 de `scan` e 3 de `boilerplate`. Desenho e medição em
+  `docs/research/token-shunt.md`; tickets em `specs/token-shunt/tickets/`.
+- **`--reference` obrigatório no boilerplate em modo bulk.** Sem arquivo de padrão a
+  seguir, o worker gera código sem contexto que não encaixa em nada, e revisar custa mais
+  que escrever à mão.
+- **`hooks/bash_read_guard.py`**: o despejo de arquivo grande por Bash (`cat`, `head`,
+  `tail`, `less`, `bat`, `rtk read`) apanha igual à leitura por `Read`, e roteia pro
+  worker acima do degrau. Leitura apontada continua livre: pipe que filtra, `head -N`
+  dentro do teto, redirect pra arquivo. Kill: `BASH_READ_GUARD_DISABLED=1`.
+- **`.shunt` na `model-policy.json` e `hooks/shunt_policy.py`**: threshold de leitura sai
+  de dentro do hook e vira dado, em dois degraus (`grep_max` 200, `worker_min` 500),
+  porque os dois tiers têm latência muito diferente (grep local em ms, worker em 10 a
+  30s). Override por sessão: `SHUNT_GREP_MAX`, `SHUNT_MIN_LINES`.
+- **`bytes_in`/`bytes_out` no `gate/delegate.log`.** Sem tamanho, "quanto o shunt
+  economizou" não tem resposta e o degrau se calibra por palpite.
+
 - **`to-spec` e `to-tickets`** substituem `spec-and-plan` (arquivada em
   `skills/_archive/`). A spec fundia contrato, design e execução num arquivo só;
   agora a spec guarda o contrato e as decisões `D-NN`, e o ticket guarda o que um
@@ -59,6 +81,10 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Fixed
 
+- **`tests/agnostico.test.sh` volta ao verde**: três ocorrências de identidade do dono
+  estavam no `main`, em `docs/auto-memoria.md`, `docs/claude-code.md` e
+  `skills/writing/references/voz.md`. Perfil de config agora é `$CLAUDE_CONFIG_DIR`, e o
+  exemplo de voz não nomeia ninguém.
 - **Hook do RTK quebrava em quem clonasse sem o CLI.** `rtk-hook-wrapper.sh` chamava
   `rtk` sem guarda, e o hook está ligado em todo `PreToolUse:Bash`: medido rc=127 e
   `command not found` a cada comando. Agora sai limpo sem o binário, e `docs/rtk.md`
@@ -76,6 +102,20 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **O bloqueio de leitura roteia, em vez de ensinar a paginar.** Os dois guards passam a
+  devolver o comando colável do degrau: entre `grep_max` e `worker_min`, grep mais `Read`
+  paginado; acima de `worker_min`, o `delegate.sh --task scan` com os paths já
+  preenchidos. Paginar reduz o pico e mantém os tokens na janela cara; rotear troca de
+  janela.
+- **Leitura de arquivo sai do rewrite do rtk.** `cat`, `head`, `tail`, `less`, `more` e
+  `bat` viram bypass no `rtk-hook-wrapper.sh`. Medido em bytes: `AGENTS.md` 5223 vira 5222
+  no `-l minimal` e no `-l aggressive`; `delegate.sh` 19432 **cresce** pra 19550 no
+  `aggressive`, porque o filtro devolve vazio e o rtk cai pro bruto mais uma linha de
+  warning. O default do rewrite era `-l none`, que é 0%, e o `rtk gain` creditava 6914
+  chamadas a 25.3% a esse comando: o pior percentual da tabela no maior volume, escondendo
+  que o caminho estava descoberto. O rtk fica onde mede bem, na saída de comando.
+- **Bulk one-shot não recebe o footer de report de 3 seções**, que pede verify e lista de
+  arquivos tocados numa tarefa que não roda nem toca arquivo.
 - **Worktree e branch** (`git-workflow-and-versioning`): 1 ticket = 1 worktree =
   1 branch = 1 PR, worktree nativo (`claude -w`), SHA congelado na leva, teto de
   3 a 5, merge serializado, branch morrendo no merge. Squash-merge cega o
