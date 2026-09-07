@@ -52,12 +52,20 @@ cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
 
 run() { echo "prompt de teste" | bash "$DELEGATE" "$@" 2>"$TMP/err"; }
 
-echo "T: journey one-shot (boilerplate → agy GPT-OSS primeiro na policy)"
+# A task sai da policy, não do hardcode: a ordem da cascata muda por medição, e
+# um `--task` cravado faria estes testes testarem roteamento em vez do que querem.
+CODEX_FIRST_TASK=$(jq -r '.tasks | to_entries[] | select(.value[0].backend == "codex") | .key' "$DELEGATE_POLICY" | head -1)
+[[ -n "$CODEX_FIRST_TASK" ]] && ok "policy tem task que lidera com codex (senão os testes de 1o degrau são vácuo)" \
+  || fail "nenhuma task lidera com codex: os testes de 1o degrau não têm como exercitá-lo"
+
+echo "T: journey one-shot (boilerplate → 1o modelo da cascata na policy)"
+BOIL_MODEL=$(jq -r '.tasks.boilerplate[0].model' "$DELEGATE_POLICY")
+BOIL_POOL=$(jq -r --arg m "$BOIL_MODEL" '.backends.agy.pools | to_entries[] | select(.value | index($m)) | .key' "$DELEGATE_POLICY")
 out=$(run --task boilerplate -)
 assert_eq "exit 0" "$?" "0"
 assert_contains "resposta do agy no stdout" "$out" "agy-resposta"
-assert_contains "modelo da policy passado ao agy" "$out" "GPT-OSS 120B (Medium)"
-grep -q '"pool":"agy:claude_gpt"' "$DELEGATE_GATE_DIR/delegate.log" && ok "pool registrado no log" || fail "pool registrado no log"
+assert_contains "modelo da policy passado ao agy" "$out" "$BOIL_MODEL"
+grep -q "\"pool\":\"agy:$BOIL_POOL\"" "$DELEGATE_GATE_DIR/delegate.log" && ok "pool registrado no log" || fail "pool registrado no log"
 [[ -f "$DELEGATE_GATE_DIR/delegate.log" ]] && ok "log JSONL criado" || fail "log JSONL criado"
 
 echo "T: cascata (scan com codex em falha → agy)"
@@ -82,7 +90,7 @@ assert_contains "chegou no codex, não parou na 1a entrada" "$out" "codex-respos
 echo "T: claude_api — fora da cascata automática; --model explícito mas fora do escopo é pulado"
 # fixtura com scope próprio, desacoplada da policy pública (que é genérica)
 jq '.backends.claude_api.scope_pattern = "scopetest"' "$DELEGATE_POLICY" > "$TMP/p2" && mv "$TMP/p2" "$DELEGATE_POLICY"
-MOCK_CODEX=fail MOCK_AGY=fail run --task second-opinion --model claude_api - >/dev/null; rc=$?
+MOCK_CODEX=fail MOCK_AGY=fail run --task "$CODEX_FIRST_TASK" --model claude_api - >/dev/null; rc=$?
 assert_eq "exit 2 fora do escopo" "$rc" "2"
 assert_contains "aviso de escopo" "$(cat "$TMP/err")" "restrito a projetos 'scopetest'"
 
@@ -102,7 +110,7 @@ assert_contains "aviso de chave ausente" "$(cat "$TMP/err")" "sem DELEGATE_ANTHR
 cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
 
 echo "T: claude_api não entra sozinho na cascata automática (second-opinion sem --model)"
-MOCK_CODEX=fail MOCK_AGY=fail run --task second-opinion - >/dev/null; rc=$?
+MOCK_CODEX=fail MOCK_AGY=fail run --task "$CODEX_FIRST_TASK" - >/dev/null; rc=$?
 assert_eq "exit 2 — cascata grátis esgotada, claude_api não é tentado" "$rc" "2"
 
 echo "T: journey fallback (todos rate-limited → exit 2 + a sessão assume)"
@@ -169,6 +177,54 @@ out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO
 assert_eq "exit 0 mesmo sujo" "$rc" "0"
 assert_contains "aviso de sujeira no stderr" "$(cat "$TMP/err")" "alterações não commitadas"
 git -C "$REPO" checkout -q -- f.txt
+
+echo "T: worktree — {worktree} substituído no comando e caminho absoluto injetado no prompt"
+# Regressão real: o agy não começa no cwd, e sem o caminho escrito o worker sai
+# caçando a raiz do repo e escreve na ÁRVORE PRINCIPAL. O mock grava o argv que
+# recebeu, que é onde o --add-dir e o prompt (prompt_via=arg) aparecem.
+export AGY_ARGV_DUMP="$TMP/agy-argv.txt"
+cat > "$MOCKBIN/agy" <<'EOF'
+#!/usr/bin/env bash
+printf '%s\n' "$@" > "$AGY_ARGV_DUMP"
+echo mudanca > worker-agy.txt
+echo "agy-worktree-ok"; exit 0
+EOF
+chmod +x "$MOCKBIN/agy"
+out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO" --model agy - 2>"$TMP/err"); rc=$?
+assert_eq "exit 0" "$rc" "0"
+argv=$(cat "$AGY_ARGV_DUMP" 2>/dev/null)
+grep -q '{worktree}' <<<"$argv" && fail "placeholder {worktree} não sobrou no comando" || ok "placeholder {worktree} não sobrou no comando"
+assert_contains "--add-dir aponta pra worktree" "$argv" "\.delegate-wt"
+assert_contains "prompt abre com o diretório de trabalho" "$argv" "^Diretório de trabalho: /"
+grep -q 'Diretório de trabalho: .*/\.\./' <<<"$argv" && fail "caminho do prompt normalizado (sem /../)" || ok "caminho do prompt normalizado (sem /../)"
+[[ ! -f "$REPO/worker-agy.txt" ]] && ok "árvore principal intocada" || fail "árvore principal intocada"
+
+echo "T: one-shot não recebe o preâmbulo de worktree"
+: > "$AGY_ARGV_DUMP"
+run --task boilerplate - >/dev/null
+grep -q 'Diretório de trabalho:' "$AGY_ARGV_DUMP" && fail "one-shot sem preâmbulo de worktree" || ok "one-shot sem preâmbulo de worktree"
+
+echo "T: trunk do project.yaml com comentário inline resolve como base"
+mkdir -p "$REPO/.claude"
+printf 'repo:\n  trunk: main  # tronco de integração\n' > "$REPO/.claude/project.yaml"
+git -C "$REPO" add .claude && git -C "$REPO" commit -qm project-yaml
+out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO" --model agy - 2>"$TMP/err"); rc=$?
+assert_eq "exit 0 com comentário no trunk" "$rc" "0"
+assert_contains "base é o trunk limpo" "$out" "^base: main @"
+rm -rf "$REPO/.claude"; git -C "$REPO" add -u .claude; git -C "$REPO" commit -qm sem-project-yaml
+
+# mock agy volta ao padrão pros testes seguintes
+cat > "$MOCKBIN/agy" <<'EOF'
+#!/usr/bin/env bash
+case "${MOCK_AGY:-ok}" in
+  ok) echo "agy-resposta:$*"; exit 0 ;;
+  ratelimit) echo "quota exceeded"; exit 1 ;;
+  fail) echo "erro interno agy"; exit 1 ;;
+  empty) exit 0 ;;
+  drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
+esac
+EOF
+chmod +x "$MOCKBIN/agy"
 
 echo "T: journey peer-review consome delegate (contrato 0/2 preservado)"
 cat > "$MOCKBIN/codex" <<'EOF'
@@ -279,7 +335,7 @@ esac
 EOF
 chmod +x "$MOCKBIN/codex"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
-out=$(MOCK_CODEX=notfound run --task second-opinion -)
+out=$(MOCK_CODEX=notfound run --task "$CODEX_FIRST_TASK" -)
 assert_eq "404 no 1o degrau: cascata desce e a task fecha" "$?" "0"
 assert_contains "caiu pro agy" "$out" "agy-resposta"
 [[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] && ok "404 arma cooldown (janela ruim não se paga a cada chamada)" \
@@ -292,7 +348,7 @@ rem=$(( armed + 60*60 - $(date +%s) ))
 [[ $rem -gt 0 && $rem -le 600 ]] && ok "cooldown de transiente expira em <=10min, não nos 60 do rate limit" \
   || fail "cooldown de transiente não é curto (rem=${rem}s)"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
-MOCK_CODEX=ratelimit run --task second-opinion - >/dev/null
+MOCK_CODEX=ratelimit run --task "$CODEX_FIRST_TASK" - >/dev/null
 armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex" 2>/dev/null || echo 0)
 rem=$(( armed + 60*60 - $(date +%s) ))
 [[ $rem -gt 600 ]] && ok "rate limit real mantém o cooldown longo" || fail "rate limit perdeu o cooldown longo (rem=${rem}s)"

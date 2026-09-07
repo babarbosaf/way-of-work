@@ -125,11 +125,21 @@ Restrições: edite apenas os arquivos da task; rode os testes se existirem.
 EOF
 ```
 
-O worker roda com sandbox nativo do CLI, confinado a uma worktree em branch
-`delegate/<slug>`; a branch de trabalho nunca é tocada. O output reporta
-`branch:`, `worktree:` e o diff stat.
+O worker roda numa worktree em branch `delegate/<slug>`; a branch de trabalho
+nunca é tocada. O output reporta `branch:`, `worktree:` e o diff stat.
+
+**A confinação é a worktree, e não o sandbox do worker.** O `--sandbox` do agy
+restringe terminal, não sistema de arquivos, e o agy não começa no cwd: ele abre
+na pasta de artefato dele. Um worker que não sabe onde está sai caçando a raiz do
+repo, acha a **árvore principal** e escreve lá. Foi assim que uma delegação
+deixou o working tree do dono meio editado, com um arquivo que compilava e
+quebraria em runtime. Por isso o `delegate.sh` faz três coisas juntas: `cd` na
+worktree, `--add-dir {worktree}` no comando, e o caminho absoluto escrito no
+começo do prompt. Nenhuma das três sozinha resolve.
 
 **Protocolo de integração (obrigatório, nunca pular):**
+0. `git status` na **árvore principal**. Worker que escapou aparece aqui, e
+   descobrir isso depois de rodar teste custa muito mais.
 1. `git diff main...delegate/<slug>`, revisar o diff inteiro; qualquer arquivo
    fora do escopo da task = rejeitar a branch.
 2. Rodar o `verify_cmd`/testes da task na worktree.
@@ -219,8 +229,8 @@ cai pra fallback interno mais barato (nunca opus/fable sem pedido explícito).
   stdout vazio (falha silenciosa do provider, mesmo tratamento do rate
   limit: cooldown, cascata desce, nunca desabilita o pool na policy porque
   tier costuma resetar sozinho, ex. semanal).
-- **Sandbox read-only:** o worker roda confinado, comando que escreve fora do
-  repo (`uv sync` grava `~/.cache/uv`, instalar deps, fetch de rede) falha com
+- **Sandbox read-only** (one-shot, e worktree no codex): comando que escreve fora
+  do repo (`uv sync` grava `~/.cache/uv`, instalar deps, fetch de rede) falha com
   `Operation not permitted (os error 1)`, não erro real da task. Não delegar
   gate/CI que sincroniza (retorna FAIL espúrio); rodar inline. Delegar só
   leitura/análise sobre conteúdo já no repo (scan, review, second-opinion).
