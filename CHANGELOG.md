@@ -59,6 +59,27 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Fixed
 
+- **Worker de worktree escrevia na árvore principal do dono.** O modo worktree
+  contava com o sandbox do CLI pra confinar a escrita, e no agy isso é falso: o
+  `--sandbox` restringe terminal, não sistema de arquivos, e o agy nem começa no
+  cwd (abre na pasta de artefato dele). Uma delegação real deixou o working tree
+  do dono meio editado, com um arquivo que compilava e quebraria em runtime.
+  Agora são três mecanismos juntos, e nenhum sozinho resolve: `cd` na worktree,
+  `--add-dir {worktree}` (placeholder novo, substituído pelo caminho absoluto) e
+  o caminho escrito no começo do prompt. O `--sandbox` sai do
+  `agy.worktree_invoke`, porque era ele que bloqueava a escrita legítima. O
+  protocolo de integração da skill ganhou o passo 0, `git status` na árvore
+  principal, que é onde um worker fugido aparece.
+- **`trunk` do `project.yaml` com comentário inline não resolvia.** `trunk: main
+  # tronco` virava o ref literal `main  # tronco` e o dispatcher morria em
+  `--base não resolve`. O awk agora corta comentário e espaço à direita.
+- **Timeout do agy caía antes da task terminar.** O `--print-timeout` do agy tem
+  default de 5 min, então task de implementação morria no meio sem erro
+  atribuível. A policy passa 15 min em one-shot e 30 min em worktree.
+- **Nomes de modelo do agy estavam desatualizados na policy.** A cascata pedia
+  `Gemini 3.5 Flash`, que o CLI não oferece mais; conferidos contra `agy models`
+  e atualizados pra 3.8/3.7/3.6. `boilerplate` passa a preferir Gemini antes de
+  GPT-OSS 120B, que é o menos confiável em respeitar o diretório de trabalho.
 - **Hook do RTK quebrava em quem clonasse sem o CLI.** `rtk-hook-wrapper.sh` chamava
   `rtk` sem guarda, e o hook está ligado em todo `PreToolUse:Bash`: medido rc=127 e
   `command not found` a cada comando. Agora sai limpo sem o binário, e `docs/rtk.md`
@@ -75,6 +96,21 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   não tem como executar.
 
 ### Changed
+
+- **Ordem da cascata de `second-opinion`** (`config/model-policy.json`,
+  `model-ranking-matrix.md`): passa a liderar com agy Claude Sonnet 4.6
+  (Thinking), depois Gemini 3.1 Pro (High), e o codex vai pro fim. Dois motivos
+  medidos em 07/set/2026: Claude Opus 4.6 (Thinking) leva 902s e ainda volta
+  rc=2 em headless (Sonnet fecha em 26s, Gemini em 30s), e liderar com o mesmo
+  backend de `review` fazia a segunda opinião sair do modelo que já opinou.
+- **Deploy tem dois modelos** (`git-workflow-and-versioning`,
+  `ci-deploy-flow.md`): automático por push é o default; manual por leva com
+  validação em `localhost` entra quando o host cobra por build. Qual dos dois
+  vale é decisão de projeto e mora no `CONVENTIONS.md` dele.
+- **codex default vai pra gpt-5.5** (`config/model-policy.json`): em
+  05/set/2026 o gpt-5.4 devolveu 400 nesta conta enquanto 5.5, 5.3, 5.1-codex
+  e 5-codex respondiam. A matriz de ranking acompanha, e os nomes de Gemini
+  Flash nela voltam a existir na policy (3.5 não existe; é 3.8).
 
 - **Worktree e branch** (`git-workflow-and-versioning`): 1 ticket = 1 worktree =
   1 branch = 1 PR, worktree nativo (`claude -w`), SHA congelado na leva, teto de

@@ -1,7 +1,7 @@
 {
   "$comment": "SPEC-2026-002. Hierarquia tarefa→worker como DADO. delegate.sh lê daqui; nunca hardcode em script. Validação: jq . model-policy.json. Regra D-01: cost=free antes de cost=session; Claude Code (session) nunca aparece como backend — é o fallback implícito quando a cascata esgota (exit 2). Atualização: editar direto; git é o histórico.",
-  "version": 1,
-  "updated": "2026-07-08",
+  "version": 2,
+  "updated": "2026-09-07",
   "backends": {
     "codex": {
       "enabled": true,
@@ -13,8 +13,8 @@
       "invoke": "codex exec --skip-git-repo-check -",
       "worktree_invoke": "codex exec --sandbox workspace-write --full-auto -",
       "prompt_via": "stdin",
-      "default_model": "gpt-5.5",
-      "notes": "modelo configurado em ~/.codex/config.toml; forte em lógica/debug. O modelo precisa ser um que a conta aceita, e conta ChatGPT não aceita a mesma lista que API key: provar com `codex exec --model <m> \"diga ok\"` antes de fixar. Medido em 05/set/2026 numa conta ChatGPT: 5.5, 5.3, 5.1-codex e 5-codex respondem; gpt-5.4 devolve 400 e derruba a cascata inteira em silêncio"
+      "notes": "modelo configurado em ~/.codex/config.toml; forte em lógica/debug. Este backend OSCILA por janela de tempo, e não por nome de modelo, diretório ou plano: medido em 07/set/2026, o mesmo `codex exec --model gpt-5.5` respondeu às 19h06 e devolveu 404 \"does not exist or you do not have access\" às 19h31, mesma conta e mesmo cwd, com os 7 nomes de modelo do CLI acompanhando a janela em bloco. Janela ruim é assunto do cooldown do dispatcher, não da policy. NÃO escreva aqui que o Codex 'não funciona nesta conta' com base em sondagem: a sondagem mede a janela em que ela rodou. `enabled: false` é pra decisão (custo, segurança, política de conta com fonte), nunca pra falha observada. Erro de classe diferente do 404 de janela: em 05/set/2026 o gpt-5.4 devolveu 400 nesta conta enquanto 5.5, 5.3, 5.1-codex e 5-codex respondiam, e por isso o default é gpt-5.5.",
+      "default_model": "gpt-5.5"
     },
     "agy": {
       "enabled": true,
@@ -23,26 +23,38 @@
         "oneshot",
         "worktree"
       ],
-      "invoke": "agy -p",
-      "worktree_invoke": "agy -p --sandbox --dangerously-skip-permissions",
+      "invoke": "agy --sandbox --dangerously-skip-permissions --mode plan --print-timeout 15m -p",
+      "worktree_invoke": "agy --dangerously-skip-permissions --add-dir {worktree} --print-timeout 30m -p",
       "prompt_via": "arg",
       "model_flag": "--model",
       "models": [
-        "Gemini 3.5 Flash (Low)",
-        "Gemini 3.5 Flash (Medium)",
-        "Gemini 3.5 Flash (High)",
+        "Gemini 3.8 Flash (Low)",
+        "Gemini 3.8 Flash (Medium)",
+        "Gemini 3.8 Flash (High)",
+        "Gemini 3.7 Flash (Low)",
+        "Gemini 3.7 Flash (Medium)",
+        "Gemini 3.7 Flash (High)",
+        "Gemini 3.6 Flash (Low)",
+        "Gemini 3.6 Flash (Medium)",
+        "Gemini 3.6 Flash (High)",
         "Gemini 3.1 Pro (Low)",
         "Gemini 3.1 Pro (High)",
         "Claude Sonnet 4.6 (Thinking)",
         "Claude Opus 4.6 (Thinking)",
         "GPT-OSS 120B (Medium)"
       ],
-      "notes": "multi-provider; Sonnet/Opus de graça saem daqui, nunca da sessão Claude (D-01)",
+      "notes": "multi-provider; Sonnet/Opus de graça saem daqui, nunca da sessão Claude (D-01). Nomes conferidos com `agy models` em 2026-09-07. O agy NÃO começa no cwd: ele abre na pasta de artefato dele, então o caminho absoluto precisa ir no prompt (o delegate.sh injeta) além do --add-dir. GPT-OSS 120B é o menos confiável nisso: prefira Gemini ou Claude em task que escreve arquivo.",
       "pools": {
         "gemini": [
-          "Gemini 3.5 Flash (Low)",
-          "Gemini 3.5 Flash (Medium)",
-          "Gemini 3.5 Flash (High)",
+          "Gemini 3.8 Flash (Low)",
+          "Gemini 3.8 Flash (Medium)",
+          "Gemini 3.8 Flash (High)",
+          "Gemini 3.7 Flash (Low)",
+          "Gemini 3.7 Flash (Medium)",
+          "Gemini 3.7 Flash (High)",
+          "Gemini 3.6 Flash (Low)",
+          "Gemini 3.6 Flash (Medium)",
+          "Gemini 3.6 Flash (High)",
           "Gemini 3.1 Pro (Low)",
           "Gemini 3.1 Pro (High)"
         ],
@@ -86,17 +98,21 @@
     ],
     "second-opinion": [
       {
-        "backend": "codex"
+        "backend": "agy",
+        "model": "Claude Sonnet 4.6 (Thinking)"
       },
       {
         "backend": "agy",
-        "model": "Claude Opus 4.6 (Thinking)"
+        "model": "Gemini 3.1 Pro (High)"
+      },
+      {
+        "backend": "codex"
       }
     ],
     "scan": [
       {
         "backend": "agy",
-        "model": "Gemini 3.5 Flash (High)"
+        "model": "Gemini 3.8 Flash (High)"
       },
       {
         "backend": "agy",
@@ -107,6 +123,10 @@
       }
     ],
     "boilerplate": [
+      {
+        "backend": "agy",
+        "model": "Gemini 3.8 Flash (High)"
+      },
       {
         "backend": "agy",
         "model": "GPT-OSS 120B (Medium)"
