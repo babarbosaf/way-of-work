@@ -59,6 +59,27 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Fixed
 
+- **Worker de worktree escrevia na árvore principal do dono.** O modo worktree
+  contava com o sandbox do CLI pra confinar a escrita, e no agy isso é falso: o
+  `--sandbox` restringe terminal, não sistema de arquivos, e o agy nem começa no
+  cwd (abre na pasta de artefato dele). Uma delegação real deixou o working tree
+  do dono meio editado, com um arquivo que compilava e quebraria em runtime.
+  Agora são três mecanismos juntos, e nenhum sozinho resolve: `cd` na worktree,
+  `--add-dir {worktree}` (placeholder novo, substituído pelo caminho absoluto) e
+  o caminho escrito no começo do prompt. O `--sandbox` sai do
+  `agy.worktree_invoke`, porque era ele que bloqueava a escrita legítima. O
+  protocolo de integração da skill ganhou o passo 0, `git status` na árvore
+  principal, que é onde um worker fugido aparece.
+- **`trunk` do `project.yaml` com comentário inline não resolvia.** `trunk: main
+  # tronco` virava o ref literal `main  # tronco` e o dispatcher morria em
+  `--base não resolve`. O awk agora corta comentário e espaço à direita.
+- **Timeout do agy caía antes da task terminar.** O `--print-timeout` do agy tem
+  default de 5 min, então task de implementação morria no meio sem erro
+  atribuível. A policy passa 15 min em one-shot e 30 min em worktree.
+- **Nomes de modelo do agy estavam desatualizados na policy.** A cascata pedia
+  `Gemini 3.5 Flash`, que o CLI não oferece mais; conferidos contra `agy models`
+  e atualizados pra 3.8/3.7/3.6. `boilerplate` passa a preferir Gemini antes de
+  GPT-OSS 120B, que é o menos confiável em respeitar o diretório de trabalho.
 - **Hook do RTK quebrava em quem clonasse sem o CLI.** `rtk-hook-wrapper.sh` chamava
   `rtk` sem guarda, e o hook está ligado em todo `PreToolUse:Bash`: medido rc=127 e
   `command not found` a cada comando. Agora sai limpo sem o binário, e `docs/rtk.md`
