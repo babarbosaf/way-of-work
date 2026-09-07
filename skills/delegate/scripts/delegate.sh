@@ -122,8 +122,8 @@ if ! jq -e . "$POLICY" >/dev/null 2>&1; then
               "invoke": "codex exec --skip-git-repo-check -",
               "worktree_invoke": "codex exec --sandbox workspace-write --full-auto -"},
     "agy":   {"enabled": true, "prompt_via": "arg", "model_flag": "--model",
-              "invoke": "agy -p",
-              "worktree_invoke": "agy -p --sandbox --dangerously-skip-permissions"}
+              "invoke": "agy --sandbox --dangerously-skip-permissions --mode plan --print-timeout 15m -p",
+              "worktree_invoke": "agy --dangerously-skip-permissions --add-dir {worktree} --print-timeout 30m -p"}
   },
   "tasks": {"_any": [{"backend": "codex"}, {"backend": "agy"}]}
 }
@@ -193,6 +193,11 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     if [[ -n "$WORKTREE" ]]; then
         cmd=$(backend_field "$backend" worktree_invoke)
         [[ -n "$cmd" ]] || { echo "▶ $backend sem worktree_invoke (sandbox) — inelegível pra worktree" >&2; return 4; }
+        # {worktree} vira o caminho absoluto da worktree. Existe porque `cd` não
+        # basta em todo worker: o agy não começa no cwd e seu --sandbox restringe
+        # terminal, não sistema de arquivos, então sem passar o caminho ele sai
+        # caçando a raiz do repo e escreve na árvore principal.
+        cmd="${cmd//\{worktree\}/$WT_DIR}"
     else
         cmd=$(backend_field "$backend" invoke)
         [[ -n "$cmd" ]] || return 4
@@ -266,7 +271,7 @@ if [[ -n "$WORKTREE" ]]; then
         # base da worktree: --base explícito > repo.trunk do project.yaml > HEAD atual. NUNCA origin/main implícito.
         base_ref="$BASE_REF"
         if [[ -z "$base_ref" && -f "$WORKTREE/.claude/project.yaml" ]]; then
-            base_ref=$(awk '/^repo:/{f=1;next} f && /^[^ ]/{f=0} f && /trunk:/{gsub(/^[ \t]*trunk:[ \t]*/,""); gsub(/["\x27]/,""); print; exit}' "$WORKTREE/.claude/project.yaml")
+            base_ref=$(awk '/^repo:/{f=1;next} f && /^[^ ]/{f=0} f && /trunk:/{gsub(/^[ \t]*trunk:[ \t]*/,""); sub(/[ \t]*#.*$/,""); gsub(/["\x27]/,""); sub(/[ \t]+$/,""); print; exit}' "$WORKTREE/.claude/project.yaml")
         fi
         [[ -n "$base_ref" ]] || base_ref="HEAD"
         git -C "$WORKTREE" rev-parse --verify -q "$base_ref" >/dev/null || die "--base '$base_ref' não resolve em $WORKTREE"
@@ -278,6 +283,18 @@ if [[ -n "$WORKTREE" ]]; then
         git -C "$WORKTREE" worktree add -q -b "$WT_BRANCH" "$WT_DIR" "$base_ref" || die "falha ao criar worktree (base=$base_ref)"
         WT_FRESH=1
     fi
+fi
+
+# O caminho da worktree entra no PROMPT, e não só no `cd` e no --add-dir. Motivo
+# medido: o agy não começa no cwd, ele abre na pasta de artefato dele. Sem o
+# caminho escrito, o worker sai caçando a raiz do repo, acha a árvore principal
+# e escreve lá. Foi assim que uma delegação deixou o working tree do dono meio
+# editado. O `cd` normaliza o `/../` do WT_DIR pra ele servir os três consumidores
+# (prompt, --add-dir da policy, mensagens de erro) com o mesmo caminho.
+if [[ -n "$WT_DIR" ]]; then
+    WT_DIR=$(cd "$WT_DIR" && pwd)
+    { printf 'Diretório de trabalho: %s\n\nEsse é o caminho absoluto da sua worktree. Leia e escreva SÓ dentro dele, sempre pelo caminho absoluto. Se os arquivos da task não estiverem aí, pare e diga isso: não procure o repositório em outro lugar do disco, e nunca escreva fora desse diretório.\n\n---\n\n' "$WT_DIR"; cat "$PROMPT_FILE"; } > "$PROMPT_FILE.wt"
+    mv "$PROMPT_FILE.wt" "$PROMPT_FILE"
 fi
 
 # --model forçado tem que existir na cascata da task OU ser um backend
