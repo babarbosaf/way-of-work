@@ -9,7 +9,7 @@ linha**, capacidade sobrando é desperdício de quota.
 | atividade | 1º | 2º | 3º | 4º | fallback sessão |
 |---|---|---|---|---|---|
 | `implement` (código autocontido) | codex gpt-5.5 | agy Claude Sonnet 4.6 (Thinking) | agy Gemini 3.1 Pro (High) |. | Sonnet medium |
-| `review` (spec/diff adversarial) | codex gpt-5.5 | agy Gemini 3.1 Pro (High) | agy Claude Opus 4.6 (Thinking) |. | Sonnet medium |
+| `review` (spec/diff adversarial) | codex gpt-5.5 | agy Gemini 3.1 Pro (High) | agy Claude Sonnet 4.6 (Thinking) |. | Sonnet medium |
 | `second-opinion` (arquitetura, debug travado) | agy Claude Sonnet 4.6 (Thinking) | agy Gemini 3.1 Pro (High) | codex gpt-5.5 |. | Opus high (pedido explícito) |
 | `scan` (varredura, sumarização) | agy Gemini 3.8 Flash (High) | agy GPT-OSS 120B (Medium) | agy Gemini 3.1 Pro (Low) | codex gpt-5.3 | Haiku low |
 | `boilerplate` (testes mecânicos, scaffolding, conversão) | agy GPT-OSS 120B (Medium) | agy Gemini 3.8 Flash (Medium) | codex gpt-5.3 | codex gpt-5.5 | Haiku low |
@@ -27,13 +27,16 @@ Notas de operação:
   `gemini` costuma ter folga, em empate de capacidade, preferir a coluna
   Gemini.
 - codex default é gpt-5.5 (`~/.codex/config.toml`); 5.3 é override pontual de
-  config. **gpt-5.4 não entra**: conta ChatGPT devolve 400 nele, e a cascata cai
-  em silêncio. O modelo se prova com `codex exec --model <m> "diga ok"`.
+  config. **gpt-5.4 está fora**: em 05/set/2026 esta conta devolveu 400 nele
+  enquanto os outros respondiam, e a cascata caía em silêncio. É sondagem, então
+  vale pra data: o modelo se prova com `codex exec --model <m> "diga ok"` antes
+  de voltar pra linha.
 - **`second-opinion` não lidera com o mesmo backend de `review`**, senão a segunda
   opinião sai do modelo que já opinou. E Claude Opus 4.6 (Thinking) saiu da linha:
   medido em 07/set/2026, ele leva 902s e ainda volta rc=2 em headless, enquanto
   Sonnet 4.6 (Thinking) fecha a mesma pergunta em 26s e Gemini 3.1 Pro (High) em 30s.
-  Opus continua no fallback de sessão, sob pedido explícito.
+  Opus continua no fallback de sessão, sob pedido explícito, e pelo mesmo motivo
+  sai também do 3º de `review`.
 - A cascata automática por task-type continua em `model-policy.json`; esta
   matriz não a substitui, alimenta escolhas manuais. Promover mudança daqui
   pra policy = editar `model-policy.json` direto (git é o histórico).

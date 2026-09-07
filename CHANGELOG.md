@@ -7,6 +7,28 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Shunt de leitura: o corpus vai pro worker grátis, e só a resposta volta.** Modo
+  bulk no `delegate.sh` (`--paths` mais `--question`), que monta pergunta, corpus em tag
+  `<file path="...">` e contrato de saída em bullets. Medido end-to-end contra worker
+  real: 53.422 bytes de corpus viraram 8.000 bytes de resposta, 85% a menos entrando na
+  janela, em 42s. A fricção de montar heredoc à mão era o que mantinha esse caminho
+  desligado: no `gate/delegate.log`, 211 chamadas de `review` (que o `peer-review.sh`
+  dispara sozinho) contra 22 de `scan` e 3 de `boilerplate`. Desenho e medição em
+  `docs/research/token-shunt.md`; tickets em `specs/token-shunt/tickets/`.
+- **`--reference` obrigatório no boilerplate em modo bulk.** Sem arquivo de padrão a
+  seguir, o worker gera código sem contexto que não encaixa em nada, e revisar custa mais
+  que escrever à mão.
+- **`hooks/bash_read_guard.py`**: o despejo de arquivo grande por Bash (`cat`, `head`,
+  `tail`, `less`, `bat`, `rtk read`) apanha igual à leitura por `Read`, e roteia pro
+  worker acima do degrau. Leitura apontada continua livre: pipe que filtra, `head -N`
+  dentro do teto, redirect pra arquivo. Kill: `BASH_READ_GUARD_DISABLED=1`.
+- **`.shunt` na `model-policy.json` e `hooks/shunt_policy.py`**: threshold de leitura sai
+  de dentro do hook e vira dado, em dois degraus (`grep_max` 200, `worker_min` 500),
+  porque os dois tiers têm latência muito diferente (grep local em ms, worker em 10 a
+  30s). Override por sessão: `SHUNT_GREP_MAX`, `SHUNT_MIN_LINES`.
+- **`bytes_in`/`bytes_out` no `gate/delegate.log`.** Sem tamanho, "quanto o shunt
+  economizou" não tem resposta e o degrau se calibra por palpite.
+
 - **`to-spec` e `to-tickets`** substituem `spec-and-plan` (arquivada em
   `skills/_archive/`). A spec fundia contrato, design e execução num arquivo só;
   agora a spec guarda o contrato e as decisões `D-NN`, e o ticket guarda o que um
@@ -59,6 +81,31 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Fixed
 
+- **Falha transiente de provider arma cooldown curto, em vez de virar fato na policy.**
+  404, "does not exist or you do not have access", 502/503/504 e "overloaded" passam a
+  armar 10 minutos (`DELEGATE_TRANSIENT_COOLDOWN_MINS`) no pool, com o backend seguindo
+  habilitado. Medido em 07/set/2026: o mesmo `codex exec --model gpt-5.5` respondeu às
+  19h06 e devolveu 404 às 19h31, mesma conta e mesmo diretório, com os 7 nomes de modelo
+  do CLI acompanhando a janela em bloco. Duas rodadas anteriores escreveram essa janela
+  como permanente e apagaram o primeiro degrau de `review`, `second-opinion` e
+  `implement`. A regra agora está escrita na skill: `enabled: false` é pra decisão, nunca
+  pra sondagem.
+- **O timeout de review volta a ser dado da policy.** O `peer-review.sh` cravava
+  `--timeout 120` e atropelava `.timeouts.review`. Medido em 07/set/2026: revisão
+  adversarial de um diff de 1432 linhas no Gemini 3.1 Pro (High) leva 170s. Estourado o
+  timeout, a cascata se esgota e a sessão come a review inline, que é o fallback mais caro
+  do sistema; no `gate/delegate.log` isso aconteceu em 90 de 212 chamadas de `review`,
+  42%. O valor na policy sobe pra 300, com margem sobre o medido.
+- **Quatro bugs de parsing no `bash_read_guard`**, achados pela revisão adversarial da
+  própria leva: `;`, `&&` e `||` separam comandos, então filtro num deles não libera mais
+  o despejo do vizinho (e heredoc/redirect valem só pro comando em que aparecem); e o
+  `-N` de `head`/`tail` e a faixa de `sed -n` são teto **por arquivo**, então
+  `head -n 150 a b` conta 300 linhas e `sed -n '1,300p'` num arquivo de 900 roteia pelas
+  300 da faixa, não pelas 900 do arquivo.
+- **`tests/agnostico.test.sh` volta ao verde**: três ocorrências de identidade do dono
+  estavam no `main`, em `docs/auto-memoria.md`, `docs/claude-code.md` e
+  `skills/writing/references/voz.md`. Perfil de config agora é `$CLAUDE_CONFIG_DIR`, e o
+  exemplo de voz não nomeia ninguém.
 - **Worker de worktree escrevia na árvore principal do dono.** O modo worktree
   contava com o sandbox do CLI pra confinar a escrita, e no agy isso é falso: o
   `--sandbox` restringe terminal, não sistema de arquivos, e o agy nem começa no
@@ -97,12 +144,29 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **O bloqueio de leitura roteia, em vez de ensinar a paginar.** Os dois guards passam a
+  devolver o comando colável do degrau: entre `grep_max` e `worker_min`, grep mais `Read`
+  paginado; acima de `worker_min`, o `delegate.sh --task scan` com os paths já
+  preenchidos. Paginar reduz o pico e mantém os tokens na janela cara; rotear troca de
+  janela.
+- **Leitura de arquivo sai do rewrite do rtk.** `cat`, `head`, `tail`, `less`, `more` e
+  `bat` viram bypass no `rtk-hook-wrapper.sh`. Medido em bytes: `AGENTS.md` 5223 vira 5222
+  no `-l minimal` e no `-l aggressive`; `delegate.sh` 19432 **cresce** pra 19550 no
+  `aggressive`, porque o filtro devolve vazio e o rtk cai pro bruto mais uma linha de
+  warning. O default do rewrite era `-l none`, que é 0%, e o `rtk gain` creditava 6914
+  chamadas a 25.3% a esse comando: o pior percentual da tabela no maior volume, escondendo
+  que o caminho estava descoberto. O rtk fica onde mede bem, na saída de comando.
+- **Bulk one-shot não recebe o footer de report de 3 seções**, que pede verify e lista de
+  arquivos tocados numa tarefa que não roda nem toca arquivo.
 - **Ordem da cascata de `second-opinion`** (`config/model-policy.json`,
   `model-ranking-matrix.md`): passa a liderar com agy Claude Sonnet 4.6
   (Thinking), depois Gemini 3.1 Pro (High), e o codex vai pro fim. Dois motivos
   medidos em 07/set/2026: Claude Opus 4.6 (Thinking) leva 902s e ainda volta
   rc=2 em headless (Sonnet fecha em 26s, Gemini em 30s), e liderar com o mesmo
   backend de `review` fazia a segunda opinião sair do modelo que já opinou.
+  Pelo mesmo motivo Opus sai do 3º de `review` na matriz de ranking, e o teste
+  de cooldown transiente passa a derivar a task da policy em vez de cravar
+  `--task second-opinion`, que testava roteamento sem querer.
 - **Deploy tem dois modelos** (`git-workflow-and-versioning`,
   `ci-deploy-flow.md`): automático por push é o default; manual por leva com
   validação em `localhost` entra quando o host cobra por build. Qual dos dois

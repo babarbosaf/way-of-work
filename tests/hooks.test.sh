@@ -144,6 +144,180 @@ assert_rc "arquivo fora de memory/ não é assunto" 0
 run_hook memory_log_append.py "$(p_mem "$ALVO")" HOME="$FAKE_HOME" MEMORY_HOOK_DISABLED=1 CLAUDE_CONFIG_DIR="$FAKE_HOME/.claude"
 assert_rc "kill switch libera" 0
 
+echo "== shunt_policy: threshold é dado, não número mágico =="
+sp() { # env... → imprime JSON da config efetiva
+  local fo fe; fo=$(mktemp); fe=$(mktemp)
+  env "$@" python3 "$H/shunt_policy.py" >"$fo" 2>"$fe"; RC=$?
+  OUT=$(cat "$fo"); ERR=$(cat "$fe"); rm -f "$fo" "$fe"
+}
+assert_json_num() { # label campo valor
+  [[ "$(jq -r ".$2" <<<"$OUT" 2>/dev/null)" == "$3" ]] && ok "$1" || fail "$1 (obtido: $OUT)"
+}
+[[ -f "$H/shunt_policy.py" ]] && ok "helper existe em disco" || fail "hooks/shunt_policy.py não existe"
+sp SHUNT_NOOP=1
+assert_rc "helper roda como script e sai 0" 0
+assert_json_num "grep_max vem da policy do repo" grep_max 200
+assert_json_num "worker_min vem da policy do repo" worker_min 500
+sp SHUNT_GREP_MAX=77
+assert_json_num "SHUNT_GREP_MAX sobrescreve" grep_max 77
+sp SHUNT_MIN_LINES=999
+assert_json_num "SHUNT_MIN_LINES sobrescreve worker_min" worker_min 999
+LIXO="$TMP/policy-lixo.json"; echo '{nao é json' > "$LIXO"
+sp SHUNT_POLICY="$LIXO"
+assert_rc "policy corrompida não propaga exceção" 0
+assert_json_num "policy corrompida cai no default" grep_max 200
+sp SHUNT_POLICY="$TMP/nao-existe.json"
+assert_json_num "policy ausente cai no default" worker_min 500
+
+echo "== read_size_guard: o bloqueio roteia por degrau =="
+ENORME="$TMP/enorme.md"; seq 1 900 > "$ENORME"
+run_hook read_size_guard.py "$(p_read "$GRANDE")"
+assert_bloqueia_json "250 linhas (entre os degraus) bloqueia"
+[[ "$OUT" == *"offset"* ]] && ok "entre os degraus, rota é Read paginado" \
+  || fail "entre os degraus sem rota de paginação ($OUT)"
+[[ "$OUT" != *"--task scan"* ]] && ok "entre os degraus não manda pro worker" \
+  || fail "entre os degraus mandou pro worker ($OUT)"
+run_hook read_size_guard.py "$(p_read "$ENORME")"
+assert_bloqueia_json "900 linhas bloqueia"
+[[ "$OUT" == *"--task scan"* ]] && ok "acima do worker_min, rota é delegate scan" \
+  || fail "acima do worker_min sem rota pro worker ($OUT)"
+[[ "$OUT" == *"$ENORME"* ]] && ok "comando sugerido traz o path real" \
+  || fail "comando sugerido sem o path ($OUT)"
+run_hook read_size_guard.py "$(p_read "$ENORME")" SHUNT_MIN_LINES=2000
+assert_bloqueia_json "worker_min alto rebaixa 900 linhas pra paginação"
+[[ "$OUT" != *"--task scan"* ]] && ok "threshold por env muda a rota" \
+  || fail "threshold por env não mudou a rota ($OUT)"
+
+echo "== bash_read_guard: despejo por Bash apanha igual ao Read =="
+# Sem esta linha, hook ausente deixa todo assert_libera_json passar por stdout vazio.
+[[ -f "$H/bash_read_guard.py" ]] && ok "hook existe em disco" || fail "hook bash_read_guard.py não existe"
+p_cmd() { python3 -c 'import json,sys; print(json.dumps({"tool_name":"Bash","tool_input":{"command":sys.argv[1]}}))' "$1"; }
+run_hook bash_read_guard.py "$(p_cmd "cat $GRANDE")"
+assert_bloqueia_json "cat de arquivo grande bloqueia"
+run_hook bash_read_guard.py "$(p_cmd "cat $PEQUENO")"
+assert_libera_json "cat de arquivo pequeno libera"
+run_hook bash_read_guard.py "$(p_cmd "cat $GRANDE | grep foo")"
+assert_libera_json "cat grande com pipe que filtra libera"
+run_hook bash_read_guard.py "$(p_cmd "cat $GRANDE | rg foo")"
+assert_libera_json "pipe pro rg libera"
+run_hook bash_read_guard.py "$(p_cmd "cat $GRANDE | wc -l")"
+assert_libera_json "pipe pro wc libera"
+run_hook bash_read_guard.py "$(p_cmd "head -50 $GRANDE")"
+assert_libera_json "head -50 é paginação, libera"
+run_hook bash_read_guard.py "$(p_cmd "head -400 $ENORME")"
+assert_bloqueia_json "head -400 passa do grep_max, bloqueia"
+run_hook bash_read_guard.py "$(p_cmd "tail -20 $GRANDE")"
+assert_libera_json "tail -20 libera"
+run_hook bash_read_guard.py "$(p_cmd "sed -n '1,40p' $GRANDE")"
+assert_libera_json "sed -n com range pequeno libera"
+run_hook bash_read_guard.py "$(p_cmd "cat $GRANDE > /tmp/copia.md")"
+assert_libera_json "redirect não entra no transcript, libera"
+run_hook bash_read_guard.py "$(p_cmd "rtk read $GRANDE")"
+assert_bloqueia_json "rtk read é o mesmo despejo com outro nome"
+run_hook bash_read_guard.py "$(p_cmd "cat $PEQUENO $GRANDE")"
+assert_bloqueia_json "soma das linhas passa do degrau"
+run_hook bash_read_guard.py "$(p_cmd "cat")"
+assert_libera_json "cat sem argumento não é leitura de arquivo"
+run_hook bash_read_guard.py "$(p_cmd "cat $IMAGEM")"
+assert_libera_json "imagem é isenta"
+run_hook bash_read_guard.py "$(p_cmd "cat $TMP/nao-existe.md")"
+assert_libera_json "arquivo inexistente libera"
+run_hook bash_read_guard.py "$(p_cmd "git status")"
+assert_libera_json "comando que não lê arquivo não é assunto"
+run_hook bash_read_guard.py '{nao é json'
+assert_libera_json "payload inválido não quebra sessão"
+run_hook bash_read_guard.py "$(p_cmd "cat $GRANDE")" BASH_READ_GUARD_DISABLED=1
+assert_libera_json "kill switch libera"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME")"
+[[ "$OUT" == *"--task scan"* ]] && ok "acima do worker_min roteia pro worker" \
+  || fail "sem rota pro worker ($OUT)"
+
+echo "== bash_read_guard: achados da revisão adversarial (regressão) =="
+# F1: `;` não é pipe — filtro em outro comando não filtra o despejo do primeiro
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME ; grep foo $PEQUENO")"
+assert_bloqueia_json "F1: filtro depois de ';' não libera o despejo anterior"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME && grep foo $PEQUENO")"
+assert_bloqueia_json "F1: filtro depois de '&&' também não libera"
+run_hook bash_read_guard.py "$(p_cmd "grep foo $PEQUENO ; cat $ENORME")"
+assert_bloqueia_json "F1: ordem invertida não muda nada"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME | grep foo ; echo fim")"
+assert_libera_json "F1: pipe de verdade no mesmo comando ainda libera"
+
+# F2: heredoc em OUTRO comando não libera o despejo
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME ; sh <<EOF")"
+assert_bloqueia_json "F2: heredoc em comando vizinho não libera o despejo"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME ; cp a b > /dev/null")"
+assert_bloqueia_json "F2: redirect em comando vizinho não libera o despejo"
+run_hook bash_read_guard.py "$(p_cmd "cat <<'EOF'")"
+assert_libera_json "F2: heredoc puro segue liberado"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME > /tmp/x.md")"
+assert_libera_json "F2: redirect no próprio comando segue liberado"
+
+# F3: -N em head/tail é teto POR ARQUIVO, não teto do comando
+A300="$TMP/a300.md"; seq 1 300 > "$A300"
+B300="$TMP/b300.md"; seq 1 300 > "$B300"
+run_hook bash_read_guard.py "$(p_cmd "head -n 150 $A300 $B300")"
+assert_bloqueia_json "F3: 150 linhas em 2 arquivos são 300, e passam do degrau"
+run_hook bash_read_guard.py "$(p_cmd "head -n 150 $A300")"
+assert_libera_json "F3: as mesmas 150 num arquivo só liberam"
+run_hook bash_read_guard.py "$(p_cmd "head -20 $A300 $B300 $PEQUENO")"
+assert_libera_json "F3: 20 por arquivo em 3 arquivos segue abaixo do degrau"
+run_hook bash_read_guard.py "$(p_cmd "head -n 500 $PEQUENO")"
+assert_libera_json "F3: teto acima do arquivo conta o arquivo, não o teto"
+
+# F4: leitura de faixa roteia pelo tamanho da FAIXA, não do arquivo
+run_hook bash_read_guard.py "$(p_cmd "sed -n '1,300p' $ENORME")"
+assert_bloqueia_json "F4: faixa de 300 acima do grep_max bloqueia"
+[[ "$OUT" != *"--task scan"* ]] && ok "F4: faixa de 300 roteia pra paginação, não pro worker" \
+  || fail "F4: faixa de 300 mandou pro worker ($OUT)"
+run_hook bash_read_guard.py "$(p_cmd "head -n 300 $ENORME")"
+[[ "$OUT" != *"--task scan"* ]] && ok "F4: head -300 num arquivo de 900 não vira shunt" \
+  || fail "F4: head -300 virou shunt ($OUT)"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME")"
+[[ "$OUT" == *"--task scan"* ]] && ok "F4: cat do arquivo inteiro segue virando shunt" \
+  || fail "F4: cat inteiro deixou de virar shunt ($OUT)"
+
+# Gêmeo do F3: `head`/`tail` SEM -N não despejam o arquivo, imprimem 10 linhas.
+run_hook bash_read_guard.py "$(p_cmd "head $ENORME")"
+assert_libera_json "F5: head sem -N imprime 10 linhas, não bloqueia"
+run_hook bash_read_guard.py "$(p_cmd "tail $ENORME")"
+assert_libera_json "F5: tail sem -N imprime 10 linhas, não bloqueia"
+run_hook bash_read_guard.py "$(p_cmd "tail -f /tmp/nao-importa-$$.log")"
+assert_libera_json "F5: tail -f não é despejo"
+run_hook bash_read_guard.py "$(p_cmd "head -n50 $ENORME")"
+assert_libera_json "F5: flag colada -n50 é lida como teto"
+run_hook bash_read_guard.py "$(p_cmd "head -n50 $ENORME $A300 $B300 $GRANDE $PEQUENO")"
+assert_bloqueia_json "F5: -n50 em 5 arquivos passa do degrau"
+run_hook bash_read_guard.py "$(p_cmd "cat -n $ENORME")"
+assert_bloqueia_json "F5: cat -n numera, não limita"
+
+echo "== settings.json: o guard roda antes do rtk =="
+ORDEM=$(jq -r '.hooks.PreToolUse[] | select(.matcher=="Bash") | .hooks[].command' "$HERE/../settings.json")
+i_guard=$(grep -n bash_read_guard <<<"$ORDEM" | cut -d: -f1)
+i_rtk=$(grep -n rtk-hook-wrapper <<<"$ORDEM" | cut -d: -f1)
+if [[ -n "$i_guard" && -n "$i_rtk" && "$i_guard" -lt "$i_rtk" ]]; then
+  ok "bash_read_guard registrado antes do rtk-hook-wrapper"
+else
+  fail "ordem dos hooks de Bash não põe o guard antes do rtk"
+fi
+
+echo "== rtk-hook-wrapper: leitura de arquivo sai do rewrite =="
+W="$HERE/../scripts/rtk-hook-wrapper.sh"
+wrap() { OUT=$(printf '%s' "$1" | bash "$W" 2>/dev/null); RC=$?; }
+wrap "$(p_cmd "cat $GRANDE")"
+[[ -z "$OUT" ]] && ok "cat não é mais reescrito pro rtk read" || fail "cat ainda reescrito ($OUT)"
+wrap "$(p_cmd "head -20 $GRANDE")"
+[[ -z "$OUT" ]] && ok "head não é reescrito" || fail "head ainda reescrito ($OUT)"
+wrap "$(p_cmd 'git commit -m x')"
+[[ -z "$OUT" ]] && ok "git commit segue bypassado" || fail "git commit foi reescrito ($OUT)"
+if command -v rtk >/dev/null 2>&1; then
+  wrap "$(p_cmd 'git status')"
+  [[ "$OUT" == *"rtk git status"* ]] && ok "git status segue reescrito pro rtk" \
+    || fail "git status deixou de ser reescrito ($OUT)"
+else
+  ok "rtk ausente: rewrite de git status não testável nesta máquina (skip)"
+fi
+
 echo
 echo "== $PASS passed, $FAIL failed =="
 [[ $FAIL -eq 0 ]]

@@ -1,7 +1,7 @@
 # Auto-memória
 
 Mecânica do que o `AGENTS.md` resume em quatro regras. A memória vive por projeto, em
-`~/.claude-maracaja/projects/<slug>/memory/`.
+`$CLAUDE_CONFIG_DIR/projects/<slug>/memory/`.
 
 ## O log vem antes
 
