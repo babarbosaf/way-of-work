@@ -200,6 +200,72 @@ rm -f "$TMP/policy.local.json"
 eff2=$(bash "$HERE/../scripts/model-policy-effective.sh" "$DELEGATE_POLICY")
 assert_eq "sem local → efetiva idêntica à base" "$eff2" "$(cat "$DELEGATE_POLICY")"
 
+echo "T: bulk-read — --paths + --question montam o prompt no lugar do heredoc"
+run_nostdin() { bash "$DELEGATE" "$@" 2>"$TMP/err" </dev/null; }
+A="$TMP/alfa.md"; printf 'conteudo-alfa\n' > "$A"
+B="$TMP/beta.md"; printf 'conteudo-beta\n' > "$B"
+out=$(run_nostdin --task scan --paths "$A" "$B" --question "o que isso faz")
+assert_eq "sugar: exit 0" "$?" "0"
+assert_contains "pergunta chega ao worker" "$out" "o que isso faz"
+assert_contains "arquivo A em tag com o path" "$out" "path=.$A."
+assert_contains "arquivo B em tag com o path" "$out" "path=.$B."
+assert_contains "conteudo de A chega ao worker" "$out" "conteudo-alfa"
+assert_contains "conteudo de B chega ao worker" "$out" "conteudo-beta"
+assert_contains "contrato de saida em bullets" "$out" "bullets"
+assert_contains "contrato proibe prosa" "$out" "prosa"
+# footer de 3 seções pede verify e lista de arquivos tocados: em bulk one-shot
+# isso é output token pago por relato de tarefa que não roda nem toca arquivo
+[[ "$out" != *"Contrato de report"* ]] && ok "bulk one-shot não paga o footer de report" \
+  || fail "bulk one-shot recebeu o footer de report"
+out_hd=$(run --task scan -)
+[[ "$out_hd" == *"Contrato de report"* ]] && ok "heredoc mantém o footer de report" \
+  || fail "heredoc perdeu o footer de report"
+
+run_nostdin --task scan --paths "$A" >/dev/null; rc=$?
+assert_eq "--paths sem --question é erro de uso" "$rc" "1"
+assert_contains "mensagem cita --question" "$(cat "$TMP/err")" "question"
+run_nostdin --task scan --question "q" >/dev/null; rc=$?
+assert_eq "--question sem --paths é erro de uso" "$rc" "1"
+run_nostdin --task scan --paths "$TMP/nao-existe.md" --question "q" >/dev/null; rc=$?
+assert_eq "path inexistente morre antes do worker" "$rc" "1"
+assert_contains "mensagem cita o path que não existe" "$(cat "$TMP/err")" "nao-existe"
+
+echo "T: heredoc puro segue idêntico (sem quebra pra chamador antigo)"
+out=$(run --task scan -)
+assert_eq "heredoc: exit 0" "$?" "0"
+assert_contains "prompt do stdin chega ao worker" "$out" "prompt de teste"
+
+echo "T: boilerplate sem --reference não sai (lição do code-write)"
+run_nostdin --task boilerplate --paths "$A" --question "gera teste" >/dev/null; rc=$?
+assert_eq "boilerplate em modo novo sem --reference: exit 1" "$rc" "1"
+assert_contains "mensagem cita --reference" "$(cat "$TMP/err")" "reference"
+out=$(run_nostdin --task boilerplate --paths "$A" --question "gera teste" --reference "$B")
+assert_eq "boilerplate com --reference: exit 0" "$?" "0"
+assert_contains "referência vai em tag própria" "$out" "reference path=.$B."
+assert_contains "conteúdo da referência chega ao worker" "$out" "conteudo-beta"
+run_nostdin --task boilerplate --paths "$A" --question "q" --reference "$TMP/nope.md" >/dev/null; rc=$?
+assert_eq "--reference inexistente morre antes do worker" "$rc" "1"
+out=$(run --task boilerplate -)
+assert_eq "boilerplate por heredoc continua válido" "$?" "0"
+out=$(run_nostdin --task scan --paths "$A" --question "q")
+assert_eq "scan sem --reference continua válido" "$?" "0"
+
+echo "T: o log grava tamanho, e o threshold para de ser opinião"
+: > "$DELEGATE_GATE_DIR/delegate.log"
+run_nostdin --task scan --paths "$A" "$B" --question "quanto pesa" >/dev/null
+last=$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")
+jq -e '.bytes_in | numbers' <<<"$last" >/dev/null && ok "bytes_in é número" || fail "bytes_in é número ($last)"
+jq -e '.bytes_out | numbers' <<<"$last" >/dev/null && ok "bytes_out é número" || fail "bytes_out é número ($last)"
+[[ $(jq -r '.bytes_in' <<<"$last") -gt 0 ]] && ok "bytes_in maior que zero" || fail "bytes_in maior que zero ($last)"
+[[ $(jq -r '.bytes_out' <<<"$last") -gt 0 ]] && ok "bytes_out maior que zero" || fail "bytes_out maior que zero ($last)"
+: > "$DELEGATE_GATE_DIR/delegate.log"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=fail MOCK_AGY=fail run --task scan - >/dev/null 2>&1
+falha=$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")
+assert_contains "linha de falha ainda é JSONL válido" "$falha" "unavailable"
+[[ $(jq -r '.bytes_out // 0' <<<"$falha") -eq 0 ]] && ok "falha não inventa bytes_out" || fail "falha inventou bytes_out ($falha)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
 echo ""
 echo "== $PASS passed, $FAIL failed =="
 [[ $FAIL -eq 0 ]]

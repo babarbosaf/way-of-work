@@ -5,8 +5,9 @@ description: >-
   via ~/.claude/scripts/delegate.sh, guiado por ~/.claude/config/model-policy.json.
   Invoque SEMPRE que: for executar task de spec marcada com `delega: <task-type>`;
   precisar de varredura de codebase grande, segunda opinião de lógica/arquitetura,
-  boilerplate/testes mecânicos ou review extra; ou quando uma tarefa mecânica de
-  >10 min não exigir o contexto da sessão. Invoque também quando o usuário
+  boilerplate/testes mecânicos ou review extra; quando o `read_size_guard` ou o
+  `bash_read_guard` bloquearem uma leitura e mandarem pro worker; ou quando uma
+  tarefa mecânica de >10 min não exigir o contexto da sessão. Invoque também quando o usuário
   pedir economia de consumo ("modo economia", "economiza", "otimiza o consumo",
   "tô perto do limite"), ativa o modo economia da sessão. Não invoque para:
   decisão de arquitetura, integração de código na branch principal, ou tarefa
@@ -60,6 +61,47 @@ Montagem do prompt do worker, ele não tem o contexto da sessão, então inclua:
 
 Exit codes: `0` ok (resposta no stdout) · `2` cascata esgotada → **você assume
 a tarefa inline** e segue; nunca re-tente em loop.
+
+## Modo bulk, o script monta o prompt
+
+Pergunta sobre arquivo grande não precisa de heredoc, e não deve precisar: a
+fricção de montar o prompt à mão é o que mantinha esse caminho desligado (no
+`gate/delegate.log`, 211 chamadas de `review`, que o `peer-review.sh` dispara
+sozinho, contra 22 de `scan` e 3 de `boilerplate`).
+
+```bash
+~/.claude/scripts/delegate.sh --task scan \
+  --paths src/Service.py src/Handler.py \
+  --question "o que esse serviço faz, e quem chama o Handler?"
+```
+
+O script monta pergunta, corpus em tag `<file path="...">` e o contrato de saída
+(bullets, sem prosa, com path e linha). **O corpus não entra na sua janela**, só
+a resposta. `--paths` e `--question` andam juntos; um sem o outro é erro de uso,
+e path inexistente morre antes de invocar worker.
+
+Em `--task boilerplate` esse modo exige `--reference`:
+
+```bash
+~/.claude/scripts/delegate.sh --task boilerplate \
+  --paths src/user_service.py \
+  --reference tests/test_order_service.py \
+  --question "escreva os testes de user_service seguindo esse padrão"
+```
+
+Sem arquivo de referência o worker gera código sem contexto, que não encaixa em
+nada, e revisar custa mais que escrever à mão. O modo heredoc não mudou, e
+`delega: boilerplate` de spec antiga continua valendo.
+
+**Quando o degrau manda pro worker:** os guards de leitura (`read_size_guard`,
+`bash_read_guard`) bloqueiam acima de `.shunt.worker_min` da policy e já
+devolvem o comando pronto, com os paths preenchidos. Colar é a rota certa. Abaixo
+do degrau, a rota é grep mais Read paginado, e não o worker: a delegação cobra 10
+a 30s de latência, que abaixo da linha come a economia.
+
+**O que o shunt não faz:** editar. O worker não devolve número de linha
+confiável, então achar a seção é dele e mexer nela é seu. E raciocínio denso
+continua aqui: sumário barato acha onde, não acha por quê.
 
 ## Modo worktree (tasks de spec)
 
@@ -176,7 +218,9 @@ cai pra fallback interno mais barato (nunca opus/fable sem pedido explícito).
 - Aviso de "policy inválida" no stderr = modo degradado ruidoso; corrigir a
   policy (`jq . model-policy.json`) é prioridade sobre a tarefa em curso.
 - Kill switch: `DELEGATE_DISABLED=1`.
-- Log de uso (metadados): `~/.claude/gate/delegate.log`.
+- Log de uso (metadados): `~/.claude/gate/delegate.log`, com `bytes_in`/`bytes_out`
+  por chamada. É com ele que o degrau do `.shunt` se calibra; sem tamanho, o
+  threshold é palpite.
 - **Eval de conformidade real** (sem mock, contra os CLIs de verdade):
   `scripts/smoke_backends.sh [--task <type>]`, sonda cada modelo/pool
   habilitado na policy com prompt trivial, confirma resposta não-vazia, e já
