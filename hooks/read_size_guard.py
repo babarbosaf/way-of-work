@@ -50,7 +50,7 @@ def main():
         print(json.dumps({
             "decision": "block",
             "reason": shunt_policy.block_reason(
-                line_count, [str(Path(file_path).resolve())], cfg),
+                line_count, [os.path.abspath(file_path)], cfg),
         }, ensure_ascii=False))
 
     sys.exit(0)

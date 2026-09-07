@@ -30,8 +30,12 @@ DUMP_CMDS = {"cat", "bat", "less", "more", "head", "tail", "nl", "view"}
 FILTERS = {"grep", "rg", "egrep", "fgrep", "ag", "ack", "jq", "yq", "wc", "awk",
            "sed", "sort", "uniq", "cut", "head", "tail", "python3", "python",
            "xargs", "diff", "comm", "tr", "fzf", "column", "rtk"}
-SPLIT = re.compile(r"\|\||&&|[|;\n]")
+# Dois níveis, e a diferença é o bug que a revisão adversarial pegou: `;`, `&&` e
+# `||` separam COMANDOS independentes, então filtro num deles não filtra o
+# despejo do vizinho. Só `|` encadeia saída.
+STMT = re.compile(r"\|\||&&|[;\n]")
 NUMFLAG = re.compile(r"^-(\d+)$")
+REDIRECT = re.compile(r"(?<![0-9<>])>>?\s*\S")
 
 
 def block(reason):
@@ -64,6 +68,68 @@ def cap_from_flags(argv):
     return None
 
 
+def effective_lines(files, cap, exempt):
+    """Linhas que o comando realmente despeja. `cap` de head/tail/sed é teto POR
+    ARQUIVO, não do comando: `head -n 150 a b` imprime 300 linhas."""
+    paths, total = [], 0
+    for arg in files:
+        if Path(arg).suffix.lower() in exempt:
+            continue
+        lines = shunt_policy.count_lines(arg)
+        if lines is None:
+            continue
+        paths.append(os.path.abspath(arg))
+        total += min(cap, lines) if cap is not None else lines
+    return paths, total
+
+
+def scan_statement(stmt, cfg, exempt):
+    """(paths, linhas) do despejo deste comando, ou None quando não há despejo."""
+    # Redirect e heredoc mandam a saída pro disco, não pro transcript — e valem
+    # só pra ESTE comando, não pra linha inteira.
+    if REDIRECT.search(stmt) or "<<" in stmt:
+        return None
+
+    stages = [x.strip() for x in stmt.split("|") if x.strip()]
+    if not stages:
+        return None
+    try:
+        parsed = [shlex.split(x) for x in stages]
+    except ValueError:
+        return None
+
+    # Despejo consumido por filtro é leitura apontada.
+    consumers = {Path(a[0]).name for a in parsed[1:] if a}
+    if consumers & FILTERS:
+        return None
+
+    for argv in parsed:
+        if not argv:
+            continue
+        name = Path(argv[0]).name
+        rest = argv[1:]
+        cap = None
+        if name == "rtk":
+            if not rest or rest[0] != "read":
+                continue
+            rest = rest[1:]
+        elif name == "sed":
+            if "-n" not in rest:
+                continue
+            cap = sed_span(rest)
+            if cap is None:
+                continue
+        elif name not in DUMP_CMDS:
+            continue
+
+        if cap is None:
+            cap = cap_from_flags(rest)
+        paths, total = effective_lines([a for a in rest if not a.startswith("-")], cap, exempt)
+        if paths:
+            return paths, total
+    return None
+
+
 def main():
     if os.environ.get("BASH_READ_GUARD_DISABLED") == "1":
         sys.exit(0)
@@ -77,73 +143,15 @@ def main():
     if not command.strip():
         sys.exit(0)
 
-    # Redirect manda a saída pro disco, não pro transcript. Heredoc idem.
-    if re.search(r"(?<![0-9<>])>>?\s*\S", command) or "<<" in command:
-        sys.exit(0)
-
-    segments = [s.strip() for s in SPLIT.split(command) if s.strip()]
-    if not segments:
-        sys.exit(0)
-
-    # Despejo consumido por filtro é leitura apontada: libera.
-    consumers = set()
-    for seg in segments[1:]:
-        try:
-            argv = shlex.split(seg)
-        except ValueError:
-            sys.exit(0)
-        if argv:
-            consumers.add(Path(argv[0]).name)
-    if consumers & FILTERS:
-        sys.exit(0)
-
     cfg = shunt_policy.load()
     exempt = set(cfg.get("exempt_suffixes") or [])
 
-    for seg in segments:
-        try:
-            argv = shlex.split(seg)
-        except ValueError:
-            sys.exit(0)
-        if not argv:
+    for stmt in (x.strip() for x in STMT.split(command)):
+        if not stmt:
             continue
-        name = Path(argv[0]).name
-        rest = argv[1:]
-        if name == "rtk":
-            if not rest or rest[0] != "read":
-                continue
-            rest = rest[1:]
-        elif name == "sed":
-            if "-n" not in rest:
-                continue
-            span = sed_span(rest)
-            if span is None or span <= cfg["grep_max"]:
-                continue
-        elif name not in DUMP_CMDS:
-            continue
-
-        # `-N`/`-n N` dentro do teto é paginação declarada, não despejo.
-        cap = cap_from_flags(rest)
-        if cap is not None and cap <= cfg["grep_max"]:
-            continue
-
-        paths, total = [], 0
-        for arg in rest:
-            if arg.startswith("-"):
-                continue
-            if Path(arg).suffix.lower() in exempt:
-                continue
-            lines = shunt_policy.count_lines(arg)
-            if lines is None:
-                continue
-            paths.append(str(Path(arg).resolve()))
-            total += lines
-        if not paths:
-            continue
-        if cap is not None and cap < total:
-            total = cap
-        if shunt_policy.route(total, cfg) != "inline":
-            block(shunt_policy.block_reason(total, paths, cfg))
+        found = scan_statement(stmt, cfg, exempt)
+        if found and shunt_policy.route(found[1], cfg) != "inline":
+            block(shunt_policy.block_reason(found[1], found[0], cfg))
 
     sys.exit(0)
 

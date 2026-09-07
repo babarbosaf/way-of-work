@@ -232,6 +232,51 @@ run_hook bash_read_guard.py "$(p_cmd "cat $ENORME")"
 [[ "$OUT" == *"--task scan"* ]] && ok "acima do worker_min roteia pro worker" \
   || fail "sem rota pro worker ($OUT)"
 
+echo "== bash_read_guard: achados da revisão adversarial (regressão) =="
+# F1: `;` não é pipe — filtro em outro comando não filtra o despejo do primeiro
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME ; grep foo $PEQUENO")"
+assert_bloqueia_json "F1: filtro depois de ';' não libera o despejo anterior"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME && grep foo $PEQUENO")"
+assert_bloqueia_json "F1: filtro depois de '&&' também não libera"
+run_hook bash_read_guard.py "$(p_cmd "grep foo $PEQUENO ; cat $ENORME")"
+assert_bloqueia_json "F1: ordem invertida não muda nada"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME | grep foo ; echo fim")"
+assert_libera_json "F1: pipe de verdade no mesmo comando ainda libera"
+
+# F2: heredoc em OUTRO comando não libera o despejo
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME ; sh <<EOF")"
+assert_bloqueia_json "F2: heredoc em comando vizinho não libera o despejo"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME ; cp a b > /dev/null")"
+assert_bloqueia_json "F2: redirect em comando vizinho não libera o despejo"
+run_hook bash_read_guard.py "$(p_cmd "cat <<'EOF'")"
+assert_libera_json "F2: heredoc puro segue liberado"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME > /tmp/x.md")"
+assert_libera_json "F2: redirect no próprio comando segue liberado"
+
+# F3: -N em head/tail é teto POR ARQUIVO, não teto do comando
+A300="$TMP/a300.md"; seq 1 300 > "$A300"
+B300="$TMP/b300.md"; seq 1 300 > "$B300"
+run_hook bash_read_guard.py "$(p_cmd "head -n 150 $A300 $B300")"
+assert_bloqueia_json "F3: 150 linhas em 2 arquivos são 300, e passam do degrau"
+run_hook bash_read_guard.py "$(p_cmd "head -n 150 $A300")"
+assert_libera_json "F3: as mesmas 150 num arquivo só liberam"
+run_hook bash_read_guard.py "$(p_cmd "head -20 $A300 $B300 $PEQUENO")"
+assert_libera_json "F3: 20 por arquivo em 3 arquivos segue abaixo do degrau"
+run_hook bash_read_guard.py "$(p_cmd "head -n 500 $PEQUENO")"
+assert_libera_json "F3: teto acima do arquivo conta o arquivo, não o teto"
+
+# F4: leitura de faixa roteia pelo tamanho da FAIXA, não do arquivo
+run_hook bash_read_guard.py "$(p_cmd "sed -n '1,300p' $ENORME")"
+assert_bloqueia_json "F4: faixa de 300 acima do grep_max bloqueia"
+[[ "$OUT" != *"--task scan"* ]] && ok "F4: faixa de 300 roteia pra paginação, não pro worker" \
+  || fail "F4: faixa de 300 mandou pro worker ($OUT)"
+run_hook bash_read_guard.py "$(p_cmd "head -n 300 $ENORME")"
+[[ "$OUT" != *"--task scan"* ]] && ok "F4: head -300 num arquivo de 900 não vira shunt" \
+  || fail "F4: head -300 virou shunt ($OUT)"
+run_hook bash_read_guard.py "$(p_cmd "cat $ENORME")"
+[[ "$OUT" == *"--task scan"* ]] && ok "F4: cat do arquivo inteiro segue virando shunt" \
+  || fail "F4: cat inteiro deixou de virar shunt ($OUT)"
+
 echo "== settings.json: o guard roda antes do rtk =="
 ORDEM=$(jq -r '.hooks.PreToolUse[] | select(.matcher=="Bash") | .hooks[].command' "$HERE/../settings.json")
 i_guard=$(grep -n bash_read_guard <<<"$ORDEM" | cut -d: -f1)
