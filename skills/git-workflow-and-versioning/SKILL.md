@@ -136,7 +136,9 @@ prod) vai direto no trunk, branch nesse caso é atrito sem ganho de proteção.
 Custo de isolamento é proporcional ao blast radius da tarefa, não constante.
 
 No trilho de spec a tarefa é o ticket, e a branch leva o número dele
-(`t<NN>-<slug>`): **1 ticket = 1 worktree = 1 branch = 1 PR**.
+(`t<NN>-<slug>`): **1 ticket ou 1 `/execute` = 1 worktree = 1 branch = 1 PR**. No
+`/execute` a rodada inteira sobe numa branch de integração e uma PR só; a branch de
+cada ticket morre no merge pra ela.
 
 Merge dessa branch é sempre **squash merge** (histórico limpo, 1 commit por
 tarefa em `main`) seguido de **delete da branch** no mesmo comando

@@ -2,7 +2,9 @@
 
 ## A regra
 
-**1 ticket = 1 worktree = 1 branch = 1 PR.**
+**1 ticket ou 1 `/execute` = 1 worktree = 1 branch = 1 PR.** Rodada de `/execute`
+integra os tickets em `<prefix>/<spec-slug>` e abre uma PR só
+(`skills/execute/references/branching-1-pr.md`).
 
 Duas sessões nunca compartilham working directory: `git switch` no mesmo dir
 arruma os arquivos por baixo da outra. `git worktree` dá um `.git` compartilhado

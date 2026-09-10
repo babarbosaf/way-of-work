@@ -7,6 +7,15 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **`/execute`: do ticket à PR única.** Skill user-invoked que fecha o ciclo
+  `to-spec → to-tickets → execute`. Brief transiente em `_tmp/execute/<slug>.md`
+  (argumento livre ou até 4 perguntas), `resolve-context.py` que trava sem spec,
+  ticket ou `verify_cmd` real, worker externo por ticket marcado (`smoke_backends.sh`
+  sonda antes; sem worker, inline, nunca subagente Claude), ticket e spec atualizados
+  a cada passo, `/simplify` sugerido a partir de 6 tickets com veto do dono, ticket de
+  QA Manual com cenários MECE e veredito por cenário, uma PR por rodada. Regra
+  atualizada em `AGENTS.md`, `git-workflow-and-versioning` e `to-tickets`: 1 ticket ou
+  1 `/execute` = 1 worktree = 1 branch = 1 PR. Suíte `tests/execute-context.test.sh`.
 - **Shunt de leitura: o corpus vai pro worker grátis, e só a resposta volta.** Modo
   bulk no `delegate.sh` (`--paths` mais `--question`), que monta pergunta, corpus em tag
   `<file path="...">` e contrato de saída em bullets. Medido end-to-end contra worker
