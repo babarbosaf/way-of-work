@@ -105,6 +105,9 @@ continua aqui: sumário barato acha onde, não acha por quê.
 
 ## Modo worktree (tasks de spec)
 
+Consumidor principal é o `/execute`: ele resolve a leva, chama este modo por
+ticket marcado e integra na branch da rodada. Avulso, o protocolo abaixo vale igual.
+
 **O marcador `delega: <type>` é vinculante e decidido no planejamento** (Fase 2
 do to-tickets carimba TODO ticket: delegável ou orquestrador). No build:
 task marcada → despacha; task sem marcador → executa inline, sem reavaliar.

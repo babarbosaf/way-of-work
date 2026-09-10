@@ -98,28 +98,15 @@ Regras de fatiamento, expand/contract e o teste do demo: `references/fatiamento.
       `~/.claude/scripts/check-spec.py --tickets <dir>`
 - [ ] **7. Materializar** no destino do `project.yaml`. Rascunho não vaza pro tracker.
 
-## Uma branch, um worktree, um ticket
+## Do ticket ao código
 
-```
-1 NASCE   claude -w t<NN>-<slug>        do SHA congelado da leva
-2 VIVE    TDD, só os files: do ticket
-3 PROVA   verify verde no worktree
-4 SOBE    PR, um por ticket
-5 ENTRA   merge serializado, verify entre cada
-6 MORRE   git worktree remove <path>, depois
-          gh pr merge --squash --delete-branch
-7 VARRE   ticket fecha no destino
-```
+Execução é do `/execute`: branch de integração por rodada, worker em worktree por
+ticket, merge serial, uma PR ao final. Regra: **1 ticket ou 1 `/execute` = 1 worktree
+= 1 branch = 1 PR**. Detalhe em `skills/execute/references/branching-1-pr.md`.
 
-Todos os worktrees da leva ramificam do **mesmo SHA**. Merge é serializado, um por
-vez: merge concorrente produz conflito composto que custa horas de debug.
-
-Teto de 3 a 5 simultâneos. Acima disso a revisão vira gargalo e o ganho evapora.
-
-Passo 6 não é opcional. Branch que sobrevive ao merge vira órfã, e órfã acumula:
-`--delete-branch` é default, e a worktree sai antes do merge porque worktree suja
-aborta o delete. Squash-merge cega o `git branch --merged` (o commit ganha SHA
-novo), então varredura de órfã lê `gh pr list --state merged`, nunca `--merged`.
+O que este passo garante pra isso funcionar: todos os `[P]` de uma fase com `files:`
+disjuntos, `blocked_by` com ID real, e `verify:` que roda. Sem os três o `/execute`
+trava na Fase 0, e é aqui que se conserta.
 
 ## Ticket sem spec
 
@@ -139,5 +126,5 @@ que precisa engordar até ficar executável: `references/refine.md`.
 Exemplo completo, quatro tickets reais com `[P]` e dependência:
 `references/exemplo.md`.
 
-**Próximo passo:** build. `delegate` para ticket marcado,
-`git-workflow-and-versioning` para branch, PR e ship.
+**Próximo passo:** `/execute <slug>`. Ele despacha os `delega:` pro worker, roda o
+resto inline, e fecha com `git-workflow-and-versioning` numa PR só.

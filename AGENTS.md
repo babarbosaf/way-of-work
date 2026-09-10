@@ -8,9 +8,10 @@ AI slop, fragmento > frase, bom português; doutrina e linter na skill `writing`
 
 Projeto novo entra por `/kickoff-project`, que entrevista e produz PRD, ROUTES, DESIGN,
 CONVENTIONS, AGENTS e FEEDBACK. Feature grande (várias sessões, muitos arquivos, toca
-contrato ou prod) passa por `/to-spec` e `/to-tickets` antes do TDD; na dúvida, vai
-direto e promove se crescer. Todo o resto vai direto no código, com TDD. Spec aprovada
-sempre vira ticket, e 1 ticket = 1 worktree = 1 branch = 1 PR.
+contrato ou prod) passa por `/to-spec` e `/to-tickets` antes do TDD, e os tickets rodam
+por `/execute`; na dúvida, vai direto e promove se crescer. Todo o resto vai direto no
+código, com TDD. Spec aprovada sempre vira ticket, e 1 ticket ou 1 `/execute` =
+1 worktree = 1 branch = 1 PR.
 
 **O gap amadurece no doc e executa no tracker.** Buraco entre o que o PRD promete e o que
 existe fica no doc de gaps até haver contexto pra decidir; sem decisão, subir pro board é
