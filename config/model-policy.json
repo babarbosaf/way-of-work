@@ -164,6 +164,11 @@
       ".ico"
     ]
   },
+  "limits": {
+    "$comment": "Teto de prompt em bytes, medido no gate/delegate.log: o maior scan que voltou útil entrou com 93.588 bytes e devolveu 19.041; o que entrou com 320.985 devolveu 56 bytes de desculpa depois de estourar 600s no primeiro worker. warn é onde o log deixa de ter caso de sucesso; max é onde a chamada vira desperdício certo.",
+    "prompt_warn_bytes": 100000,
+    "prompt_max_bytes": 250000
+  },
   "timeouts": {
     "$comment": "Segundos por task-type; --timeout só pra override pontual, e nenhum consumidor crava número próprio. review=300 medido: diff de 1432 linhas no Gemini 3.1 Pro (High) leva 170s, e os 180 anteriores não davam margem.",
     "scan": 600,

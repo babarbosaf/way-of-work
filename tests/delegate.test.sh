@@ -20,6 +20,7 @@ cat > "$MOCKBIN/codex" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_CODEX:-ok}" in
   ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
+  multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
   fail) echo "erro interno"; exit 1 ;;
   absent) exit 127 ;;
@@ -32,6 +33,8 @@ case "${MOCK_AGY:-ok}" in
   ratelimit) echo "quota exceeded"; exit 1 ;;
   fail) echo "erro interno agy"; exit 1 ;;
   empty) exit 0 ;;
+  desculpa) echo "warning: run ended with no output and no recorded error"; exit 0 ;;
+  curto) echo "linha unica"; exit 0 ;;
   drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
 esac
 EOF
@@ -80,6 +83,36 @@ assert_eq "exit 0 (codex assumiu depois dos 2 pools vazios)" "$?" "0"
 assert_contains "codex respondeu" "$out" "codex-resposta"
 [[ -f "$DELEGATE_GATE_DIR/cooldown.agy:gemini" ]] && ok "pool gemini vazio → cooldown armado" || fail "pool gemini vazio → cooldown armado"
 [[ -f "$DELEGATE_GATE_DIR/cooldown.agy:claude_gpt" ]] && ok "pool claude_gpt vazio → cooldown armado" || fail "pool claude_gpt vazio → cooldown armado"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: rc=0 com desculpa curta do worker é falha, não resposta (medido 2026-09-15: 321KB entraram, 56B voltaram como ok)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+out=$(MOCK_AGY=desculpa run --task scan -)
+assert_eq "exit 0 (codex assumiu depois das 2 desculpas)" "$?" "0"
+assert_contains "codex respondeu, a desculpa do agy não passou por resposta" "$out" "codex-resposta"
+grep -q "run ended with no output" <<<"$out" && fail "desculpa do worker vazou pro stdout" || ok "desculpa do worker não vaza pro stdout"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: prompt acima do teto é recusado antes de gastar o timeout"
+big="$TMP/grande.txt"
+head -c 300000 /dev/zero | tr '\0' 'x' > "$big"
+rc=0; out=$(bash "$DELEGATE" --task scan --paths "$big" --question "resuma" - <<< "x" 2>"$TMP/err") || rc=$?
+assert_eq "exit 1 (erro de uso, não 600s de timeout)" "$rc" "1"
+assert_contains "mensagem manda fatiar" "$(cat "$TMP/err")" "fatie"
+grep -q '"status":"oversize"' "$DELEGATE_GATE_DIR/delegate.log" && ok "recusa por tamanho fica no log" || fail "recusa por tamanho fica no log"
+
+echo "T: --expect-lines faz a cascata descer quando a forma não bate"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+out=$(MOCK_AGY=curto MOCK_CODEX=multilinha run --task scan --expect-lines 5 -)
+assert_eq "exit 0 (codex assumiu; o agy devolveu 1 linha onde 5 eram pedidas)" "$?" "0"
+assert_contains "quem respondeu foi quem bateu a forma" "$out" "codex-resposta"
+assert_contains "aviso nomeia a forma esperada" "$(cat "$TMP/err")" "esperava >= 5 linha"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: forma que nenhum worker atende esgota a cascata (exit 2), em vez de passar retorno curto por resposta"
+rc=0; out=$(MOCK_AGY=curto run --task scan --expect-lines 5 - ) || rc=$?
+assert_eq "exit 2 — a sessão assume" "$rc" "2"
+grep -q "linha unica" <<<"$out" && fail "retorno fora de forma vazou pro stdout" || ok "retorno fora de forma não vaza pro stdout"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 
 echo "T: worker que drena stdin (arg mode) não quebra o loop da cascata (regressão real de produção)"
@@ -221,6 +254,8 @@ case "${MOCK_AGY:-ok}" in
   ratelimit) echo "quota exceeded"; exit 1 ;;
   fail) echo "erro interno agy"; exit 1 ;;
   empty) exit 0 ;;
+  desculpa) echo "warning: run ended with no output and no recorded error"; exit 0 ;;
+  curto) echo "linha unica"; exit 0 ;;
   drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
 esac
 EOF
@@ -327,6 +362,7 @@ cat > "$MOCKBIN/codex" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_CODEX:-ok}" in
   ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
+  multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
   notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
   fail) echo "erro interno"; exit 1 ;;
