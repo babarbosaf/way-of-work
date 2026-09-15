@@ -24,7 +24,7 @@ ARGS_LOG="$TMP/delegate-args.log"
 cat > "$FAKE_HOME/.claude/scripts/delegate.sh" <<'MOCK'
 #!/usr/bin/env bash
 echo "$*" >> "$ARGS_LOG"
-cat >/dev/null
+cat > "${PROMPT_LOG:-/dev/null}"
 if [[ "${MOCK_OK:-1}" == "1" ]]; then
   echo "worker: ${MOCK_WORKER:-codex}" >&2
   echo "CRITICAL: achado de mentira"
@@ -106,6 +106,38 @@ fi
 [[ $(jq -r '.timeouts.review' "$HERE/../config/model-policy.json") -ge 300 ]] \
   && ok "policy dá pelo menos 300s pra review (medido: 170s num diff de 1432 linhas)" \
   || fail "timeouts.review abaixo da margem medida"
+
+echo "== lente por área tocada no diff =="
+REPO="$TMP/repo"; PROMPT_LOG="$TMP/prompt.txt"
+mkdir -p "$REPO" && git -C "$REPO" init -q
+git -C "$REPO" config user.email t@t && git -C "$REPO" config user.name t
+mkdir -p "$REPO/migrations" "$REPO/apps/auth" "$REPO/apps/ui"
+printf 'base\n' > "$REPO/apps/ui/button.tsx"
+git -C "$REPO" add -A && git -C "$REPO" commit -qm base
+
+lente_do_arquivo() {
+  local arquivo="$1"
+  : > "$PROMPT_LOG"
+  printf 'mudou\n' >> "$REPO/$arquivo"
+  git -C "$REPO" add -A
+  ( cd "$REPO" && env HOME="$FAKE_HOME" ARGS_LOG="$ARGS_LOG" PROMPT_LOG="$PROMPT_LOG" MOCK_OK=1 \
+      bash "$PR" diff HEAD ) >/dev/null 2>&1
+  git -C "$REPO" commit -qam "toca $arquivo"
+}
+
+lente_do_arquivo migrations/001_drop.sql
+grep -q "Perda de dado" "$PROMPT_LOG" && ok "migration puxa a lente de perda de dado" \
+  || fail "sem lente de perda de dado ($(head -c 120 "$PROMPT_LOG"))"
+
+lente_do_arquivo apps/auth/session.py
+grep -q "Autorização" "$PROMPT_LOG" && ok "auth puxa a lente de autorização" \
+  || fail "sem lente de autorização"
+grep -q "Perda de dado" "$PROMPT_LOG" && fail "lente de migration vazou pro diff de auth" \
+  || ok "lente não aparece em área que não foi tocada"
+
+lente_do_arquivo apps/ui/button.tsx
+grep -q "Lentes por área" "$PROMPT_LOG" && fail "diff sem área especial ganhou lente" \
+  || ok "diff sem área especial não ganha lente"
 
 echo
 echo "== $PASS passed, $FAIL failed =="

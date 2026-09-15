@@ -26,6 +26,19 @@ projeto; em spec mode, o PRD do sistema (ou `idea_ref:` do frontmatter); em
 diff mode, os ACs da spec se `--spec` for passado; findings do round anterior
 se `--findings` for passado.
 
+**Lente por área tocada.** Reviewer genérico acha problema genérico. Além da
+lista fixa de perguntas, o prompt de diff ganha um bloco extra escolhido pelo
+path dos arquivos alterados, com peso maior:
+
+| Área tocada | O que a lente pergunta |
+|---|---|
+| `migrations/`, `*.sql` | coluna derrubada com leitor vivo, caminho de volta, backfill rodado duas vezes |
+| `auth`, `rls`, `token`, `permission` | quem passa a poder o que não podia, checagem na boundary, filtro por tenant |
+| `api/`, `routes/`, `schema/`, `*.proto`, `openapi` | campo removido ou renomeado quebrando cliente velho, expand antes de contract |
+| `.github/workflows/`, `infra/`, `Dockerfile` | segredo versionado, permissão de workflow, o que só falha em prod |
+
+Área não tocada não gera lente: bloco que não veio é sinal, não omissão.
+
 ## Cascata de reviewers
 
 1. **codex.** Primário. Requer `codex` CLI no PATH.
