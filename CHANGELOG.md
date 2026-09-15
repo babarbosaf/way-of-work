@@ -7,6 +7,41 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Padrão de documentos, e os quatro lints que o cobram.** `docs/doc-standard.md`
+  deixa de falar só de `AGENTS.md` e `README.md` e passa a reger PRD e subdocs,
+  decisão, backlog e handoff, com cada regra nomeando o comando que a aplica.
+  `scripts/check-docs.py` ganha os quatro modos: `--estado` (doc de estado fala do
+  presente; o sinal é data em heading, não a palavra "histórico" no corpo),
+  `--grafo` (todo domínio do PRD se cita de volta, link resolve, âncora existe),
+  `--ciclo` (ADR e DDR vivem enquanto o status é vivo; superado vai pro `archive/`,
+  e ponteiro que sobra bloqueia) e `--decay` (handoff, inbox, pool e feedback com
+  prazo e teto). `scripts/check-spec.py --chain` fecha a corrente PRD, spec, ticket:
+  `prd:` com âncora, aceite com `AC-NN`, `closes:` no ticket, nenhum aceite órfão,
+  `harvest:` na spec entregue e a invariante de estágio único, que é item promovido
+  sair do backlog sem deixar rastro. Suítes `docs-lint` e `spec-lint`.
+- **Lente por área tocada no `peer-review.sh`.** Além da lista genérica, o prompt de
+  diff ganha as perguntas da área alterada: migration puxa perda de dado, auth puxa
+  autorização, contrato público puxa compatibilidade, infra puxa ambiente.
+
+### Changed
+
+- **Um template de ticket só.** O bloco do `to-tickets/SKILL.md`, que é o default de
+  projeto sem tracker, não tinha `Contexto:` nem `spec:`, enquanto o de tracker tinha
+  os dois: ticket de arquivo era beco sem saída pra agente frio. O conjunto de campos
+  passa a ser um, com `spec:` e `closes:` obrigatórios, e o reference guarda só o que
+  o tracker acrescenta.
+- **PRD não é decision log.** A anatomia do PRD mandava escrever "decisões
+  estratégicas registradas" com racional e data, e o PRD de exemplo ensinava a seção.
+  A escolha difícil passa a virar restrição no presente, na seção que possui o
+  assunto; o racional caro de reverter mora no ADR, e a deliberação mora no git.
+- **`docs/higiene-docs.md` virou `docs/doc-standard.md`.** O nome antigo descrevia o
+  sintoma.
+- **Handoff declara quando morre.** `Morre em:` em ISO no cabeçalho, default 14 dias,
+  cobrado pelo `--decay`. A regra "substitui, não acumula" era prosa, e prosa não se
+  executa: a varredura achou 57 handoffs vivos em `_tmp/`, 38 deles vencidos.
+
+### Added
+
 - **`/execute`: do ticket à PR única.** Skill user-invoked que fecha o ciclo
   `to-spec → to-tickets → execute`. Brief transiente em `_tmp/execute/<slug>.md`
   (argumento livre ou até 4 perguntas), `resolve-context.py` que trava sem spec,
