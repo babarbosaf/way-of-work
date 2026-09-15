@@ -240,7 +240,7 @@ Além do ranking de pontos, a tela da Liga tem um **seletor de tipo de ranking**
 
 Decisões:
 
-- **Ranking puramente social, sem premiação:** completar o álbum não vale pontos na Liga, mantém a separação economia social (álbum) × competição (Liga) registrada na seção 14.
+- **Ranking puramente social, sem premiação:** completar o álbum não vale pontos na Liga, mantém a separação economia social (álbum) e competição (Liga) da seção 14.
 - **Desempate simples:** mais figurinhas distintas; persiste empate, ordem alfabética de apelido. Sem cascata de critérios, não há prêmio em jogo.
 - **Privacidade:** o ranking expõe apenas a **contagem** por membro (RPC com gate de mesmo grupo); quais figurinhas cada um tem continua visível só pelo álbum do membro, que já tem seu próprio gate.
 - **Troca instantânea:** os dois rankings chegam no mesmo payload da Liga (1 roundtrip. CONVENTIONS.md, seção 6) e o seletor alterna client-side, sem nova request.
@@ -427,21 +427,30 @@ Projeção de figurinhas geradas por perfil de usuário ao longo da Copa (~30 di
 
 A distribuição cria gradiente entre níveis de engajamento sem nenhum nível ser punitivo.
 
-## 14. Decisões estratégicas registradas
+## 14. Restrições invioláveis
 
-Para contexto futuro do time, decisões importantes tomadas durante o desenho:
+As regras que nenhuma feature pode quebrar. Estão no presente, no imperativo, sem a data
+e sem as alternativas descartadas: o racional caro de reverter mora no ADR, e a
+deliberação mora no git.
 
-- **Sem pontos negativos:** filosofia de produto lúdico, não punir o erro
-- **Álbum colecionável puro, sem boost:** separa a economia social (álbum) da competição (Liga)
-- **Sem sistema de raridade nas figurinhas:** todas as 154 figurinhas têm a mesma probabilidade de drop. Raridade penalizaria a chance de completar o álbum (uma figurinha do Pelé não pode ser mais difícil que as outras) e eliminaria a discussão regulatória adjacente a probabilidades públicas de drop
-- **Criação de grupos aberta:** qualquer usuário cria um grupo (virando admin) e recebe um código de convite legível para compartilhar. Substitui a decisão anterior de grupos admin-only/convite-only, reduz fricção de entrada e permite crescimento orgânico
-- **Cadastro aberto:** qualquer pessoa cria conta; logo após, escolhe entrar num grupo (com código) ou criar o seu. Evita gargalo de depender de um convite para começar
-- **Onboarding skippable:** 6 passos contextuais pós-cadastro, mas sempre puláveis e reabríveis depois. Não bloquear o usuário ansioso para começar
-- **Saída voluntária do grupo permitida:** usuário não fica refém do grupo. Ao sair, pontos saem do ranking mas histórico de palpites permanece. Reentrada exige novo convite
-- **Pergunta Plus sistematizada via API:** evita dor operacional de curadoria editorial por jogo
-- **Lendas em ilustração estilizada via IA:** balanço entre identidade visual e risco jurídico
-- **Idiomas PT/ES/EN como preferência por usuário:** internacionalização da experiência do jogador (mercados México e EUA), espelhando o modelo de fuso horário, preferência persistida, sem roteamento por URL. Admin e UGC não são traduzidos. Ver seção 17
-- **Performance percebida como requisito, não polimento:** cada tela carrega seus dados em **um roundtrip ao banco** (RPC consolidada) e o shell do app nunca bloqueia atrás de queries. Padrão adotado após diagnóstico de trocas de aba de ~5-7s no PWA. Padrões obrigatórios: CONVENTIONS.md, seção 6
+- **Erro não tira ponto.** O produto é lúdico, e punição de erro afasta o jogador casual
+- **O álbum é colecionável puro.** Figurinha não dá vantagem na Liga: a economia social e
+  a competição não se misturam
+- **Toda figurinha tem a mesma chance de drop.** Sem raridade: raridade penalizaria fechar
+  o álbum e puxaria discussão regulatória sobre probabilidade pública
+- **Qualquer pessoa cria conta e cria grupo.** Quem cria o grupo vira admin e recebe um
+  código de convite legível
+- **A saída do grupo é voluntária e reversível.** Ao sair, os pontos somem do ranking e o
+  histórico de palpites fica; voltar exige convite novo
+- **Onboarding nunca bloqueia.** Os 6 passos pós-cadastro são puláveis e reabríveis
+- **A pergunta Plus vem de API, não de curadoria.** Curadoria editorial por jogo não
+  escala na operação
+- **Lenda é ilustração estilizada por IA.** É o ponto de equilíbrio entre identidade
+  visual e risco de imagem
+- **Idioma é preferência de usuário (PT/ES/EN), não rota.** Admin e conteúdo de usuário
+  não são traduzidos. Ver seção 17
+- **Cada tela carrega em um roundtrip ao banco.** RPC consolidada, e o shell do app nunca
+  espera query. Padrão obrigatório no CONVENTIONS.md, seção 6
 
 ## 15. Notificações
 

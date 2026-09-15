@@ -27,9 +27,11 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
   listados: o que anula, o que adia, o que empata, o que acontece no esquecimento.
 - **Pontos a definir.** Honestidade sobre o que ainda não foi decidido. Melhor registrar
   a lacuna do que inventar um número.
-- **Decisões estratégicas registradas.** Uma seção que loga as escolhas difíceis com o
-  racional de cada uma, incluindo o que foi deixado de fora e por quê. Dá contexto ao time
-  futuro.
+- **Restrição no imperativo, nunca decisão logada.** A escolha difícil vira uma regra na
+  seção que possui o assunto ("o número publicado mora na tabela"), no presente, sem data
+  e sem as alternativas descartadas. O racional completo mora no ADR enquanto ele estiver
+  vigente, e a deliberação mora no git. PRD que vira decision log cresce sem fim e
+  ninguém lê até o fim.
 - **Seções transversais.** Ao fim, as camadas que atravessam o produto (notificações,
   sincronização de dados, i18n) descritas em nível de comportamento: o que o usuário vê,
   quais eventos existem, o que é ou não coberto. O detalhamento de arquitetura de cada uma
@@ -59,15 +61,12 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
    Regras, requisitos e limitações capturados na Fase 0 que não podem ser quebrados
    nem ultrapassados. Uma linha por restrição, com o racional quando houver.
 
-## <Decisões estratégicas registradas>
-   Lista de "escolha: racional". Inclui o que foi deixado de fora.
-
 ## <Seções transversais>
    Notificações, Dados e sincronização, Internacionalização, Admin. Cada uma no nível
    de comportamento (eventos, escopo, promessas ao usuário), com tabela quando fizer
    sentido, fechando com link para a seção correspondente do CONVENTIONS.md.
    Performance e demais padrões puramente técnicos não ganham seção no PRD: vivem no
-   CONVENTIONS.md, citados na seção de decisões estratégicas quando forem requisito.
+   CONVENTIONS.md, citados na restrição que os torna requisito.
 ```
 
 A numeração é contínua. As seções transversais entram como seções numeradas ao fim.
@@ -78,10 +77,30 @@ A numeração é contínua. As seções transversais entram como seções numera
   limites, cadências de sync. Nunca deixar número solto no meio da prosa quando cabe tabela.
 - **Referenciar rotas por path** (`/palpites/jogos/:id`), mesmo antes do documento de rotas
   existir. Isso amarra PRD e rotas.
-- **Nota de escopo** quando algo mudou ou foi removido: registrar a data e o que aconteceu
-  (ex.: "substituiu o Mural em 12/06/2026"). Manter memória das viradas.
+- **O que saiu, saiu.** Feature removida some do PRD, sem nota de escopo e sem data: o
+  que aconteceu está no `CHANGELOG.md` e no git. Data em heading é achado do
+  `check-docs.py --estado`.
 - **Blockquotes para contexto factual** que ajuda a entender uma regra (ex.: por que a Copa
   2026 tem uma fase a mais).
+
+## Quando o PRD vira vários
+
+Um domínio ganha arquivo próprio em `docs/prd/<dominio>.md` quando a seção dele não cabe
+mais na cabeça de quem lê. O `PRD.md` continua sendo o índice e a visão de conjunto, com
+uma linha por domínio apontando pro subdoc.
+
+Cada subdoc carrega as duas direções do grafo:
+
+- topo, `> **Papel deste doc.**`: o que ele cobre e **de quem ele depende**;
+- fim, `## Relacionado`: **quem depende dele**, uma linha por vizinho dizendo o que
+  aquele vizinho consome daqui.
+
+É o que prova que dois subdocs não descrevem o mesmo assunto: se falam do mesmo tema e
+não se citam, estão duplicando. O `check-docs.py --grafo <raiz>` cobra link que resolve,
+âncora viva, subdoc no índice e aresta recíproca.
+
+Revisar um domínio carrega os vizinhos imediatos, e só eles: um salto cabe na janela, o
+fecho transitivo é o PRD inteiro de volta.
 
 ## Como usar o exemplo
 

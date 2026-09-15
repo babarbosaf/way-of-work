@@ -72,9 +72,12 @@ Loop, um ticket ou uma leva `[P]` por vez:
 - [ ] **Simplify.** `simplify_suggested` (6 ou mais tickets): `AskUserQuestion`
       com "rodar `/simplify` nos paths tocados" como recomendação. Usuário pode
       negar. Menos que 6: só se o usuário pedir.
-- [ ] **Docs vivos.** Produto mudou, `PRD.md`; fluxo, `ROUTES.md`; visual,
-      `DESIGN.md`; padrão técnico, `CONVENTIONS.md`; decisão cara de reverter,
-      ADR. Spec: mapa de slices reflete tickets reais e executados.
+- [ ] **Docs vivos, e a colheita.** Produto mudou, `PRD.md`; fluxo, `ROUTES.md`;
+      visual, `DESIGN.md`; padrão técnico, `CONVENTIONS.md`; decisão cara de
+      reverter, ADR. O que voltou pro doc vivo entra em `harvest:` no frontmatter
+      da spec, e a spec ganha `status: entregue`: sem isso ela some levando junto
+      o que aprendeu. Nenhum rastro do item fica no `TODOS.md` nem no `INBOX.md`,
+      e `check-spec.py --chain <raiz>` prova os dois.
 - [ ] **QA Manual.** Um ticket (criar, ou enriquecer o existente) com cenários
       MECE, passos e resultado esperado, cada um `validado por agente` ou
       `pendente humano`. O que dá pra validar sozinho, valida e marca. Molde:
@@ -100,7 +103,8 @@ Loop, um ticket ou uma leva `[P]` por vez:
 - [ ] Todo ticket do brief em estado final, com comentário de fechamento
 - [ ] `verify_cmd` e `smoke_cmd` verdes na branch de integração
 - [ ] Ticket de QA Manual existe, cenários MECE, cada um com veredito
-- [ ] Docs vivos tocados listados no corpo da PR
+- [ ] Docs vivos tocados listados no corpo da PR, e citados no `harvest:` da spec
+- [ ] `check-spec.py --chain <raiz>` verde: nenhum aceite órfão, nenhum rastro no backlog
 - [ ] Nenhuma worktree ou branch de ticket sobrando (`git worktree list`,
       `delegate.sh --gc`)
 - [ ] Uma PR aberta, push autorizado pelo usuário
