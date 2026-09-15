@@ -95,6 +95,18 @@ esperado_limpo "spec do exemplo"    --spec "$TMP/spec/spec.md"
 esperado_limpo "tickets do exemplo" --tickets "$TMP/tickets"
 rm -rf "$TMP"
 
+echo "corrente de ID limpa"
+esperado_limpo "projeto com corrente fechada" --chain fixtures/cadeia-boa
+
+echo "corrente quebrada, um check por linha"
+esperado_pega "ancora do prd morta"     "âncora"              --chain fixtures/cadeia-ruim
+esperado_pega "furo na numeracao do AC" "AC-02"               --chain fixtures/cadeia-ruim
+esperado_pega "ticket sem spec"         "sem campo spec"      --chain fixtures/cadeia-ruim
+esperado_pega "closes fantasma"         "AC-09"               --chain fixtures/cadeia-ruim
+esperado_pega "aceite sem ticket"       "nenhum ticket fecha" --chain fixtures/cadeia-ruim
+esperado_pega "rastro no backlog"       "rastro"              --chain fixtures/cadeia-ruim
+esperado_pega "spec feita sem colheita" "harvest"             --chain fixtures/cadeia-ruim
+
 echo "uso"
 if $LINT --spec fixtures/nao-existe.md >/dev/null 2>&1; then
   fail "arquivo inexistente devia dar exit 2"

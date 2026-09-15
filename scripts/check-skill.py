@@ -194,14 +194,17 @@ def check_skill(raiz: Path, ach: Achados) -> None:
 
         # Referência que aponta pra outra referência: o agente pode ler as duas
         # por partes e ficar com informação pela metade.
-        for m in LINK_MD.finditer(conteudo):
-            if m.group(1).strip().endswith(".md"):
-                linha = conteudo[: m.start()].count("\n") + 1
-                ach.add(prel, linha, f"referência aninhada: {m.group(1).strip()} sai daqui e não do SKILL.md")
-
-        # Amostra de artefato (`exemplos/`, `fixtures/`) é molde, e índice
-        # enfiado no meio de um PRD de exemplo estraga o molde.
+        # Amostra de artefato (`exemplos/`, `fixtures/`) é molde: ela imita um
+        # projeto de verdade, então linka os próprios arquivos e não carrega
+        # índice. Cobrar navegação de molde é cobrar que ele pare de ser molde.
         amostra = chave.startswith(("exemplos/", "fixtures/")) or "/exemplos/" in chave
+
+        if not amostra:
+            for m in LINK_MD.finditer(conteudo):
+                if m.group(1).strip().endswith(".md"):
+                    linha = conteudo[: m.start()].count("\n") + 1
+                    ach.add(prel, linha, f"referência aninhada: {m.group(1).strip()} sai daqui e não do SKILL.md")
+
         if nl > REF_INDICE and not amostra and not tem_indice(conteudo):
             ach.add(prel, 1, f"{nl} linhas sem índice no topo: leitura parcial não vê o escopo", aviso=True)
 

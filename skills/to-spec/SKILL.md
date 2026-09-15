@@ -24,11 +24,22 @@ há pergunta de escopo aberta, o trilho é `coaching`, não este.
 | **Problema** | prosa curta. O que dói hoje, na linguagem do dono |
 | **Como fica** | ASCII ≤40 colunas, antes → depois. Linguagem de negócio |
 | **Decisões `D-NN`** | parágrafo curto: o quê, por quê, trade-off. Sem template |
-| **Critérios de aceite** | SIM/NÃO comportamental |
+| **Critérios de aceite** | `AC-NN` + SIM/NÃO comportamental. O ID é o que o ticket fecha |
 | **Fora de escopo** | uma linha por item |
 | **Slices** | mapa: `NN` · título · uma linha · dependência |
 
 Se o sistema tem PRD, a spec **linka** a seção afetada. Não reescreve.
+
+O frontmatter fecha a corrente nas duas pontas, e é o que o `--chain` cobra:
+
+| Campo | O que prova |
+|---|---|
+| `prd: <doc>#<âncora>` | o contrato sai de um domínio do produto, e a âncora existe |
+| `status:` | em que estágio a spec está |
+| `harvest: <doc>` | ao fechar, onde a verdade funcional voltou a morar |
+
+Sem `harvest:`, a spec entregue leva o que aprendeu junto quando some, e o PRD
+continua prometendo o que o código já mudou.
 
 Duas seções condicionais, obrigatórias quando a mudança toca prod, recebe input
 externo ou é irreversível: **Segurança** (modelo de ameaça, vetor × defesa) e
@@ -80,6 +91,9 @@ legítimo, tipo nomear script que já existe). Aviso não trava o gate.
       oferecer `scripts/peer-review.sh spec <path>`. Não é gate, o dono decide.
       Finding vira ticket, nunca seção nova na spec.
 - [ ] **5. Aprovação explícita** do dono → `status: aprovado` no frontmatter.
+- [ ] **6. Tirar o item do backlog.** O que virou spec sai do `TODOS.md` e do
+      `INBOX.md`: promover é mover, nunca copiar. Rastro é o que faz o backlog
+      virar depósito de coisa já feita, e o `--chain` acusa.
 
 ## Depois de aprovada: append-only
 
@@ -93,9 +107,10 @@ material: cada rodada de review engordava o contrato em vez de gerar trabalho.
 
 - [ ] Sem jargão técnico nas seções de contrato; sem path, sem código
 - [ ] Toda `D-NN` aparece no mapa de slices
-- [ ] Aceite em SIM/NÃO comportamental, não "funcionar corretamente"
+- [ ] Aceite em SIM/NÃO comportamental, com `AC-NN`, não "funcionar corretamente"
 - [ ] "Fora de escopo" preenchido
-- [ ] `~/.claude/scripts/check-spec.py --spec` verde
+- [ ] `~/.claude/scripts/check-spec.py --spec` verde, e `--chain <raiz>` sem
+      aceite órfão nem rastro no backlog
 - [ ] Aprovação registrada antes de qualquer código
 
 Voz e red flags: `references/style-and-flags.md`. Checklist obrigatório de

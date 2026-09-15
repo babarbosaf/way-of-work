@@ -34,27 +34,22 @@ Issue referencia **só URL cloud** (github blob permalink ou página do tracker)
 - Spec nativa no tracker (Notion): referencia a página.
 - Cross-ref github↔notion no mesmo projeto é OK (task Notion aponta pro PR/issue github e vice-versa).
 
-## Template canônico da issue (mesmos campos, todo backend)
+## O que o tracker acrescenta ao ticket
+
+O conjunto de campos é um só e mora no `SKILL.md`. Duas cópias do template
+divergem na primeira edição, e foi assim que o ticket de arquivo ficou sem
+`Contexto:` e sem `spec:` enquanto o de tracker tinha os dois.
+
+Em tracker, quatro campos entram além dos do formato base, e um muda de forma:
 
 ```
-Título: <verbo + resultado observável, conciso>
-
-Contexto: <1-2 frases + link CLOUD da spec/PRD>
-
-O que construir: <comportamento end-to-end user-facing — NÃO camada-a-camada>
-
-Aceite (SIM/NÃO, 2-3 checkpoints verificáveis):
-- [ ] <critério observável>
-
-Arquivos (hint, por URL cloud): <blob URLs — pista, não a spec>
-verify: <verify_cmd da task>
-
-blocked_by: <#id das issues que travam esta — relação nativa no tracker>
 priority: <P0|P1|P2>
-delega: <task-type | não (orquestrador)>
-executor: <primário resolvido> (fallback: <próximo na cascata>)   # DERIVADO do delega via model-policy, não hand-authored
-spec: <link cloud | none>   # opcional; ausência não bloqueia
-label: ready-for-agent      # default; muda pra ready-for-human se delega=não
+label:    ready-for-agent      # default; ready-for-human se delega=não
+executor: <primário resolvido> (fallback: <próximo>)   # DERIVADO do delega via model-policy
+Arquivos (hint, por URL cloud): <blob URLs — pista, não a spec>
+
+spec:       <URL cloud, nunca path local>
+blocked_by: <#id, pela relação nativa do tracker>
 ```
 
 ## Regras de fatiamento (tracer-bullet)
