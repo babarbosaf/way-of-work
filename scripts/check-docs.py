@@ -234,6 +234,11 @@ NUMERACAO = re.compile(r"^\s*\d+[.)]\s*")
 
 def check_estado(path: Path, ach: Achados) -> None:
     nome = str(path)
+    # O CHANGELOG é o destino do histórico, não um doc de estado: cobrar dele
+    # que não tenha seção datada é cobrar que ele não seja o que é. Mesmo motivo
+    # do CITA_LIVRE no --ciclo, e pego rodando contra o BIP em 2026-09-15.
+    if path.name == "CHANGELOG.md" or "docs/changelog/" in path.as_posix():
+        return
     texto = path.read_text(encoding="utf-8", errors="replace")
 
     for linha, titulo in headings(texto):

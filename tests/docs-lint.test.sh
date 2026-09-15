@@ -50,6 +50,9 @@ esperado_pega "orfao de entrada"       "órfão de entrada"     --grafo ruim-gra
 
 echo "estado limpo"
 esperado_limpo "PRD bom passa" --estado bom/PRD.md
+# O CHANGELOG é o log: cobrar dele que não tenha seção de histórico é cobrar
+# que ele não seja o que é. Pego rodando --estado contra o BIP em 2026-09-15.
+esperado_limpo "CHANGELOG não é cobrado de não ser log" --estado bom/CHANGELOG.md
 
 echo "estado sujo, um check por linha"
 esperado_pega "data em heading"       "data em heading"     --estado ruim-estado/PRD.md
