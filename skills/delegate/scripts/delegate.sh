@@ -444,18 +444,27 @@ if [[ -n "$FORCE_MODEL" ]] && ! jq -e --arg b "$FORCE_MODEL" 'any(.[]; .backend 
     fi
 fi
 
+# Cascata esgotada dizia só "cascata esgotada": 119 das 302 linhas do log, sem
+# como saber qual degrau caiu nem por quê. TRILHA acumula <pool>=<rc> por degrau
+# e vai inteira pro detail — um campo string, o schema do log não muda.
+TRILHA=""
+trilha_add() { TRILHA="${TRILHA:+$TRILHA }$1=$2"; }
+
 run_cascade() {
     local entry backend model rc
     while IFS= read -r entry; do
         backend=$(jq -r '.backend' <<<"$entry")
         model=$(jq -r '.model // empty' <<<"$entry")
-        [[ -n "$FORCE_MODEL" && "$backend" != "$FORCE_MODEL" ]] && continue
+        if [[ -n "$FORCE_MODEL" && "$backend" != "$FORCE_MODEL" ]]; then
+            trilha_add "$(pool_key "$backend" "$model")" "outro_modelo"; continue
+        fi
         if [[ -n "$WT_DIR" ]]; then
             ( cd "$WT_DIR" && invoke_backend "$backend" "$model" ); rc=$?
         else
             invoke_backend "$backend" "$model"; rc=$?
         fi
         [[ $rc -eq 0 ]] && { USED="$backend"; USED_POOL=$(pool_key "$backend" "$model"); return 0; }
+        trilha_add "$(pool_key "$backend" "$model")" "rc$rc"
     done < <(jq -c '.[]' <<<"$CASCADE")
     return 1
 }
@@ -498,5 +507,5 @@ fi
 # cascata esgotada — só remove worktree criada nesta chamada; --continue nunca apaga trabalho reaproveitado
 [[ -n "$WT_DIR" && "$WT_FRESH" == "1" ]] && { git -C "$WORKTREE" worktree remove --force "$WT_DIR" 2>/dev/null; git -C "$WORKTREE" branch -D "$WT_BRANCH" 2>/dev/null; } >/dev/null
 echo "⚠️  Nenhum worker disponível na cascata pra task '$TASK'. A sessão assume." >&2
-log_usage "$TASK" "-" "unavailable" "cascata esgotada"
+log_usage "$TASK" "-" "unavailable" "cascata esgotada: ${TRILHA:-nenhum degrau elegível}"
 exit 2

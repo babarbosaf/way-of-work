@@ -93,6 +93,17 @@ assert_contains "codex respondeu, a desculpa do agy não passou por resposta" "$
 grep -q "run ended with no output" <<<"$out" && fail "desculpa do worker vazou pro stdout" || ok "desculpa do worker não vaza pro stdout"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 
+echo "T: cascata esgotada nomeia cada degrau que falhou (39% do log era 'cascata esgotada' e nada mais)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+rc=0; MOCK_AGY=fail MOCK_CODEX=fail run --task scan - >/dev/null || rc=$?
+assert_eq "exit 2" "$rc" "2"
+det=$(jq -r 'select(.status=="unavailable")|.detail' "$DELEGATE_GATE_DIR/delegate.log" | tail -1)
+assert_contains "detail nomeia o pool do agy" "$det" "agy:"
+assert_contains "detail nomeia o codex" "$det" "codex"
+assert_contains "detail carrega o rc do degrau" "$det" "rc1"
+grep -q '"detail":"cascata esgotada"' <<<"$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")" && fail "detail continua o literal sem diagnóstico" || ok "detail deixou de ser literal fixo"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
 echo "T: prompt acima do teto é recusado antes de gastar o timeout"
 big="$TMP/grande.txt"
 head -c 300000 /dev/zero | tr '\0' 'x' > "$big"
