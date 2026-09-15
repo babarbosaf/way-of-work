@@ -25,6 +25,15 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **O quadrante vazio do roteamento ganhou portão.** `to-spec`, `to-tickets` e
+  `execute` excluíam, cada um com essas palavras, a "tarefa que cabe numa sessão e
+  vai direto pro código": as skills eram mutuamente excludentes e não coletivamente
+  exaustivas, e a maior fatia do trabalho ficava sem gate. Pedido de *como*, com o
+  *quê* já fechado e mais de uma forma defensável, passa a rotear pro plan mode, onde
+  cada passo nomeia arquivo tocado, o que prova e o que foi descartado, e a edição
+  fica travada até a aprovação. Plano que passa de 5 passos, ou que alguém quis
+  salvar, é spec. A exclusão do `coaching` fechou a metade que faltava: escopo
+  pequeno demais pra spec, com só a rota aberta, não vira one-pager.
 - **Um template de ticket só.** O bloco do `to-tickets/SKILL.md`, que é o default de
   projeto sem tracker, não tinha `Contexto:` nem `spec:`, enquanto o de tracker tinha
   os dois: ticket de arquivo era beco sem saída pra agente frio. O conjunto de campos

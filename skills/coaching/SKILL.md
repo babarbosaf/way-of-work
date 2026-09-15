@@ -7,8 +7,9 @@ description: >
   Invoque quando o usuário quiser pensar antes de executar: "estou pensando em...",
   "como atacar X", "isso vale a pena?", "quero criar/montar Y", "qual nosso norte",
   ou tema pessoal/decisão.
-  Não invoque para: escopo já claro pronto pra spec (to-spec), projeto de software
-  novo já decidido (kickoff-project), bug com linha localizada (vai direto pro código).
+  Não invoque para: escopo já claro pronto pra spec (to-spec) ou pequeno demais pra
+  spec, quando só a rota está aberta (plan mode), projeto de software novo já decidido
+  (kickoff-project), bug com linha localizada (vai direto pro código).
   Aceita tema como argumento (ex: /coaching fechamento financeiro).
 ---
 

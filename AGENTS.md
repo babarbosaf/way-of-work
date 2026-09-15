@@ -24,7 +24,8 @@ Child AGENTS.md escreve override próprio, nunca repete o que está aqui.
 | Quando | Faz |
 |---|---|
 | Projeto novo | `/kickoff-project`: entrevista que produz PRD, ROUTES, DESIGN, CONVENTIONS, AGENTS e FEEDBACK |
-| Feature grande: várias sessões, muitos arquivos, toca contrato ou prod | `/to-spec` → `/to-tickets` → `/execute`. Na dúvida vai direto, e promove se crescer |
+| Feature grande: várias sessões, muitos arquivos, toca contrato ou prod | `/to-spec` → `/to-tickets` → `/execute`. Na dúvida vai direto, e promove se crescer: plano que passou de 5 passos, ou que você quis salvar, já é spec |
+| Pedido de *como*, com o *quê* já fechado, mais de uma forma defensável e código que já existe | plan mode. Cada passo nomeia arquivo tocado, o que prova, e o que foi descartado |
 | Todo o resto | direto no código, com TDD |
 | Ticket ou `/execute` fechando | 1 worktree = 1 branch = 1 PR |
 | Ideia solta no meio da conversa | uma linha no `INBOX.md`, sem análise. Decai em 30 dias |
