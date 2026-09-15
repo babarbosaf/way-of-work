@@ -57,6 +57,17 @@ esperado_pega "heading de historico"  "Histórico"           --estado ruim-estad
 esperado_pega "heading de decisoes"   "Decisões"            --estado ruim-estado/PRD.md
 esperado_pega "texto riscado"         "riscado"             --estado ruim-estado/PRD.md
 
+echo "ciclo de vida limpo"
+esperado_limpo "arvore de decisoes boa passa" --ciclo bom
+
+echo "ciclo de vida quebrado, um check por linha"
+esperado_pega "decisao sem status"        "sem campo Status"      --ciclo ruim-ciclo
+esperado_pega "status morto na arvore"    "fora do archive"       --ciclo ruim-ciclo
+esperado_pega "status desconhecido"       "fora do vocabulário"   --ciclo ruim-ciclo
+esperado_pega "decisao viva arquivada"    "viva dentro do archive" --ciclo ruim-ciclo
+esperado_pega "ponteiro morto de decisao" "não existe arquivo"   --ciclo ruim-ciclo
+esperado_pega "cita decisao arquivada"    "arquivada"             --ciclo ruim-ciclo
+
 echo "uso"
 if $LINT --grafo nao-existe >/dev/null 2>&1; then
   fail "raiz inexistente devia dar exit 2"

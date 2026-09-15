@@ -82,10 +82,12 @@ plantado "caminho de trabalho privado" '~/(Projects|Documents|Desktop)|\$HOME/(P
 
 echo "== ponteiro morto =="
 # CHANGELOG registra o que já saiu, então cita nome de arquivo removido por
-# desenho. A guarda vale pro resto, e o [Unreleased] tem assert próprio abaixo.
+# desenho, e fixture de lint cita ponteiro morto de propósito. A guarda vale pro
+# resto, e o [Unreleased] tem assert próprio abaixo.
 MORTO='RUNBOOK\.md|templates/VOZ|docs/research/escrita\.md|CONTEXT\.md|ADR-000|specs/done/'  # guard-regex
-regra    "ponteiro pra arquivo removido" "$MORTO" '^CHANGELOG\.md:'  # guard-regex
-plantado "ponteiro pra arquivo removido" "$MORTO" "Ver RUNBOOK.md para o passo a passo." '^CHANGELOG\.md:'  # guard-regex
+SALVO='^(CHANGELOG\.md|tests/fixtures/)'  # guard-regex
+regra    "ponteiro pra arquivo removido" "$MORTO" "$SALVO"  # guard-regex
+plantado "ponteiro pra arquivo removido" "$MORTO" "Ver RUNBOOK.md para o passo a passo." "$SALVO"  # guard-regex
 
 quebrados=$(python3 "$HERE/check-links.py" || true)
 if [[ -z "$quebrados" ]]; then ok "link markdown relativo: todos resolvem"

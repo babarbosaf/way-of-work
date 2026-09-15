@@ -3,6 +3,7 @@
 
     check-docs.py --grafo <raiz-do-projeto>
     check-docs.py --estado <arquivo.md> [<arquivo.md> ...]
+    check-docs.py --ciclo <raiz-do-projeto>
 
 `--grafo` prova que a documentação de produto é navegável e recíproca: link
 resolve com âncora, todo subdoc de `docs/prd/` está no índice do `PRD.md`, todo
@@ -13,6 +14,12 @@ delega pra outra.
 `--estado` prova que o doc fala do presente. Histórico mora no git e no
 CHANGELOG. O sinal é estrutural (data no heading), não léxico: buscar "histórico"
 no corpo dá falso positivo em produto cujo domínio é dado histórico.
+
+`--ciclo` prova que a árvore de ADR e DDR só tem decisão vigente. Decisão não é
+log: ela vale enquanto o status é vivo, e sai da árvore pro `archive/` quando é
+superada. O git guarda a deliberação; a árvore guarda a regra em vigor. O check
+também cobre o dano da remoção, quer dizer, o ponteiro que sobra apontando pra
+decisão que não está mais lá.
 
 Exit 0 limpo, 1 com achado, 2 erro de uso.
 """
@@ -107,6 +114,94 @@ def check_grafo(raiz: Path, ach: Achados) -> None:
             ach.add(f"{SUBDOCS}/{a}", 0, f"linka {b} e {b} não volta; aresta de mão única")
 
 
+# ---------------------------------------------------------------------- ciclo
+
+DECISAO = re.compile(r"^(adr|ddr)-(\d{4})", re.I)
+CITA = re.compile(r"\b(ADR|DDR)-(\d{4})\b")
+STATUS_BULLET = re.compile(r"^\s*[-*]\s*\*\*Status:?\*\*:?\s*(.+)$", re.I | re.M)
+STATUS_YAML = re.compile(r"^status:\s*(.+)$", re.I | re.M)
+
+# Vivo continua na árvore; morto vai pro archive. O vocabulário morto reusa o
+# DEAD_STATUSES do lint do llm-wiki, mais as formas de "substituída por".
+STATUS_VIVO = {"proposta", "proposto", "aceita", "aceito", "vigente"}
+STATUS_MORTO = {
+    "substituída", "substituído", "substituida", "substituido",
+    "superada", "superado", "morta", "morto", "revogada", "revogado",
+}
+
+# Fixture é entrada de teste e memória é estado do agente: nenhuma das duas é
+# documentação do produto.
+IGNORA_DIR = {"node_modules", "_tmp", "dist", "build", "vendor", ".git", "fixtures", "memory"}
+# Onde citar decisão superada é leitura legítima: o CHANGELOG é o histórico por
+# doutrina, e pesquisa é artefato datado, que não se reescreve.
+CITA_LIVRE = ("CHANGELOG.md", "docs/research/")
+
+
+def mds_do_projeto(raiz: Path) -> list[Path]:
+    return sorted(
+        p
+        for p in raiz.rglob("*.md")
+        if not any(parte in IGNORA_DIR or parte.startswith(".") for parte in p.relative_to(raiz).parts[:-1])
+    )
+
+
+def status_de(texto: str) -> str | None:
+    m = STATUS_BULLET.search(texto) or STATUS_YAML.search(texto)
+    return m.group(1).strip() if m else None
+
+
+def check_ciclo(raiz: Path, ach: Achados) -> None:
+    arquivos = mds_do_projeto(raiz)
+    decisoes: dict[str, Path] = {}
+    for p in arquivos:
+        if p.name.startswith("_TEMPLATE"):
+            continue
+        if m := DECISAO.match(p.name):
+            decisoes[f"{m.group(1).upper()}-{m.group(2)}"] = p
+
+    arquivada = {k for k, p in decisoes.items() if "archive" in p.parts}
+
+    for chave in sorted(decisoes):
+        p = decisoes[chave]
+        rel = str(p.relative_to(raiz))
+        bruto = status_de(p.read_text(encoding="utf-8", errors="replace"))
+        if not bruto:
+            ach.add(rel, 0, "sem campo Status; decisão sem status não diz se ainda vale")
+            continue
+
+        # Status carrega texto depois do estado ("aceito em tal data", "substituída
+        # por tal decisão"): o veredito é a primeira palavra.
+        primeira = re.split(r"[\s,.;:]", bruto.strip(), maxsplit=1)[0].lower()
+        morta = chave in arquivada
+
+        if primeira in STATUS_MORTO:
+            if not morta:
+                ach.add(rel, 0, f"status morto ({primeira}) fora do archive; superado sai da árvore e fica no git")
+        elif primeira in STATUS_VIVO:
+            if morta:
+                ach.add(rel, 0, f"decisão viva dentro do archive ({primeira}); quem procura a regra não olha ali")
+        else:
+            ach.add(rel, 0, f"status {bruto[:30]!r} fora do vocabulário: {', '.join(sorted(STATUS_VIVO))}")
+
+    # Sem árvore de decisão, ADR-NNNN no texto é só texto, e varrer citação só
+    # geraria ruído em projeto que não adota o padrão.
+    if not decisoes:
+        return
+
+    # Dano da remoção: ponteiro que sobrou, e citação de regra que já caiu.
+    for p in arquivos:
+        rel = str(p.relative_to(raiz))
+        if "archive" in p.parts:
+            continue
+        for n, ln in enumerate(p.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+            for m in CITA.finditer(ln):
+                chave = f"{m.group(1).upper()}-{m.group(2)}"
+                if chave not in decisoes:
+                    ach.add(rel, n, f"cita {chave} e não existe arquivo; ponteiro morto")
+                elif chave in arquivada and not rel.startswith(CITA_LIVRE) and "substitu" not in ln.lower():
+                    ach.add(rel, n, f"cita {chave}, que está arquivada; a regra em vigor é outra", aviso=True)
+
+
 # --------------------------------------------------------------------- estado
 
 DATA_HEADING = re.compile(
@@ -152,9 +247,10 @@ def main() -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--grafo", type=Path, help="raiz do projeto (a que tem PRD.md)")
     g.add_argument("--estado", type=Path, nargs="+", help="doc de estado a checar")
+    g.add_argument("--ciclo", type=Path, help="raiz do projeto (checa a árvore de ADR e DDR)")
     args = ap.parse_args()
 
-    alvos = [args.grafo] if args.grafo else args.estado
+    alvos = args.estado or [args.grafo or args.ciclo]
     for alvo in alvos:
         if not alvo.exists():
             print(f"não existe: {alvo}", file=sys.stderr)
@@ -163,6 +259,8 @@ def main() -> int:
     ach = Achados()
     if args.grafo:
         check_grafo(args.grafo, ach)
+    elif args.ciclo:
+        check_ciclo(args.ciclo, ach)
     else:
         for alvo in args.estado:
             check_estado(alvo, ach)
