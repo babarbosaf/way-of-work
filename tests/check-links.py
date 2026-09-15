@@ -18,6 +18,9 @@ def main():
     ).stdout.split()
     ruins = []
     for f in files:
+        # Fixture é entrada de teste, não doc: a ruim quebra link de propósito.
+        if f.startswith("tests/fixtures/"):
+            continue
         base = os.path.dirname(f)
         for n, line in enumerate(open(f, encoding="utf-8"), 1):
             for m in ALVO.finditer(line):
