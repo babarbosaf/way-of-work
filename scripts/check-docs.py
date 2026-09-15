@@ -4,6 +4,7 @@
     check-docs.py --grafo <raiz-do-projeto>
     check-docs.py --estado <arquivo.md> [<arquivo.md> ...]
     check-docs.py --ciclo <raiz-do-projeto>
+    check-docs.py --decay <raiz-do-projeto>
 
 `--grafo` prova que a documentação de produto é navegável e recíproca: link
 resolve com âncora, todo subdoc de `docs/prd/` está no índice do `PRD.md`, todo
@@ -21,18 +22,25 @@ superada. O git guarda a deliberação; a árvore guarda a regra em vigor. O che
 também cobre o dano da remoção, quer dizer, o ponteiro que sobra apontando pra
 decisão que não está mais lá.
 
+`--decay` prova que o que é transiente morre. Handoff vencido, inbox que virou
+depósito e backlog sem teto não são desorganização: são o gerador de paralisia
+de escolha, porque o custo de achar o que importa cresce com o lixo. A idade é o
+veredito, e ela se lê de data escrita, não de julgamento.
+
 Exit 0 limpo, 1 com achado, 2 erro de uso.
 """
 
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import sys
+from datetime import date, timedelta
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from lint_common import Achados, headings, slugify  # noqa: E402
+from lint_common import Achados, fenced_ranges, headings, slugify  # noqa: E402
 
 # ---------------------------------------------------------------------- grafo
 
@@ -239,6 +247,123 @@ def check_estado(path: Path, ach: Achados) -> None:
             ach.add(nome, n, f"texto riscado ({m.group(0)[:30]}); estado presente se reescreve, não se risca")
 
 
+# ---------------------------------------------------------------------- decay
+
+HANDOFF_DIR = "_tmp"
+HANDOFF_VIDA = 14          # dias, contados da data no nome quando não há Morre em
+TETO_FEEDBACK = 10         # o mesmo teto que o AGENTS.md já manda
+TETO_INBOX = 30
+TETO_PROXIMOS = 20
+IDADE_INBOX = 30           # dias parado antes de a captura virar lixo
+IDADE_POOL = 90
+
+SECOES_TODOS = ("Próximos", "Pool")
+ISO = re.compile(r"(\d{4}-\d{2}-\d{2})")
+ITEM = re.compile(r"^[-*]\s+(.*\S)\s*$")
+MORRE_EM = re.compile(r"^\s*(?:[-*]\s*)?\*{0,2}Morre em:?\*{0,2}:?\s*(\S+)", re.I | re.M)
+
+
+def hoje() -> date:
+    """`DECAY_HOJE` congela o relógio: teste de idade sem data fixa é teste que apodrece."""
+    if bruto := os.environ.get("DECAY_HOJE"):
+        return date.fromisoformat(bruto)
+    return date.today()
+
+
+def data_iso(texto: str) -> date | None:
+    if m := ISO.search(texto):
+        try:
+            return date.fromisoformat(m.group(1))
+        except ValueError:
+            return None
+    return None
+
+
+def itens_por_secao(path: Path) -> dict[str, tuple[int, list[tuple[int, str]]]]:
+    """(linha do heading, itens de primeiro nível) por seção `##` do arquivo.
+
+    A linha do heading vai junto porque seção vazia também é achado, e achado sem
+    linha manda o dono procurar à mão.
+    """
+    linhas = path.read_text(encoding="utf-8", errors="replace").splitlines()
+    cercado = fenced_ranges(linhas)
+    out: dict[str, tuple[int, list[tuple[int, str]]]] = {"": (0, [])}
+    atual = ""
+    for i, ln in enumerate(linhas):
+        if i in cercado:
+            continue
+        if m := re.match(r"^##\s+(.*\S)\s*$", ln):
+            atual = NUMERACAO.sub("", m.group(1)).strip()
+            out.setdefault(atual, (i + 1, []))
+            continue
+        if m := ITEM.match(ln):
+            out.setdefault(atual, (0, []))[1].append((i + 1, m.group(1)))
+    return out
+
+
+def check_decay(raiz: Path, ach: Achados) -> None:
+    ref = hoje()
+
+    # 1. handoff: substitui, não acumula, e morre na data que ele mesmo declara
+    dir_tmp = raiz / HANDOFF_DIR
+    handoffs = sorted(dir_tmp.glob("handoff-*.md")) if dir_tmp.is_dir() else []
+    if len(handoffs) > 1:
+        nomes = ", ".join(p.name for p in handoffs)
+        ach.add(f"{HANDOFF_DIR}/", 0, f"mais de um handoff vivo ({len(handoffs)}): {nomes}; handoff substitui, não acumula")
+    for p in handoffs:
+        texto = p.read_text(encoding="utf-8", errors="replace")
+        if m := MORRE_EM.search(texto):
+            morte = data_iso(m.group(1))
+        else:
+            nascimento = data_iso(p.name)
+            morte = nascimento + timedelta(days=HANDOFF_VIDA) if nascimento else None
+        rel = f"{HANDOFF_DIR}/{p.name}"
+        if morte is None:
+            ach.add(rel, 0, "sem data de morte e sem data no nome; handoff sem prazo nunca é apagado")
+        elif ref > morte:
+            ach.add(rel, 0, f"vencido em {morte.isoformat()}; absorver o que sobrou e apagar")
+
+    # 2. teto do buffer de correção
+    fb = raiz / "FEEDBACK.md"
+    if fb.exists():
+        n = sum(len(itens) for _, itens in itens_por_secao(fb).values())
+        if n > TETO_FEEDBACK:
+            ach.add("FEEDBACK.md", 0, f"FEEDBACK.md: {n} entradas, teto {TETO_FEEDBACK}; o que virou norma promove ao doc permanente")
+
+    # 3. inbox: captura crua tem teto e tem idade
+    inbox = raiz / "INBOX.md"
+    if inbox.exists():
+        itens = [x for _, lista in itens_por_secao(inbox).values() for x in lista]
+        if len(itens) > TETO_INBOX:
+            ach.add("INBOX.md", 0, f"{len(itens)} capturas, teto {TETO_INBOX}; inbox que não esvazia virou depósito")
+        for linha, texto in itens:
+            d = data_iso(texto)
+            if d is None:
+                ach.add("INBOX.md", linha, f"captura sem data ({texto[:36]!r}); sem data não decai")
+            elif (ref - d).days > IDADE_INBOX:
+                ach.add("INBOX.md", linha, f"parado há {(ref - d).days} dias ({texto[:30]!r}); promove ou apaga")
+
+    # 4. backlog: dois blocos, teto no ordenado, idade no pool
+    todos = raiz / "TODOS.md"
+    if todos.exists():
+        secoes = itens_por_secao(todos)
+        for nome, (linha_h, _) in secoes.items():
+            if not nome or nome in SECOES_TODOS:
+                continue
+            ach.add("TODOS.md", linha_h, f"seção {nome!r} fora do padrão; o backlog tem {' e '.join(SECOES_TODOS)}, e mais eixo é mais paralisia")
+
+        proximos = secoes.get("Próximos", (0, []))[1]
+        if len(proximos) > TETO_PROXIMOS:
+            ach.add("TODOS.md", 0, f"Próximos com {len(proximos)} itens, teto {TETO_PROXIMOS}; a posição é a prioridade, e lista longa não tem posição")
+
+        for linha, texto in secoes.get("Pool", (0, []))[1]:
+            d = data_iso(texto)
+            if d is None:
+                ach.add("TODOS.md", linha, f"item do Pool sem data ({texto[:36]!r}); sem data não decai")
+            elif (ref - d).days > IDADE_POOL:
+                ach.add("TODOS.md", linha, f"parado há {(ref - d).days} dias no Pool ({texto[:30]!r}); promove ou apaga", aviso=True)
+
+
 # ----------------------------------------------------------------------- main
 
 
@@ -248,9 +373,10 @@ def main() -> int:
     g.add_argument("--grafo", type=Path, help="raiz do projeto (a que tem PRD.md)")
     g.add_argument("--estado", type=Path, nargs="+", help="doc de estado a checar")
     g.add_argument("--ciclo", type=Path, help="raiz do projeto (checa a árvore de ADR e DDR)")
+    g.add_argument("--decay", type=Path, help="raiz do projeto (checa o que devia ter morrido)")
     args = ap.parse_args()
 
-    alvos = args.estado or [args.grafo or args.ciclo]
+    alvos = args.estado or [args.grafo or args.ciclo or args.decay]
     for alvo in alvos:
         if not alvo.exists():
             print(f"não existe: {alvo}", file=sys.stderr)
@@ -261,6 +387,8 @@ def main() -> int:
         check_grafo(args.grafo, ach)
     elif args.ciclo:
         check_ciclo(args.ciclo, ach)
+    elif args.decay:
+        check_decay(args.decay, ach)
     else:
         for alvo in args.estado:
             check_estado(alvo, ach)

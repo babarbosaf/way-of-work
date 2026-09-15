@@ -19,7 +19,14 @@ Estado transiente de trabalho em curso, num arquivo só. Fronteira dura com `cap
 uma spec de `docs/specs/`, o handoff referencia a spec e o ticket aberto pelo path,
 não vira seção de nenhum dos dois. Spec aprovada é append-only.
 
-**Substitui, não acumula**, regenerar reescreve o arquivo. Morre quando absorvido: o cabeçalho declara a condição de morte ("apagar quando X absorver isto").
+**Substitui, não acumula**, regenerar reescreve o arquivo. Dois handoffs vivos na
+mesma pasta é achado. Morre quando absorvido, e morre de velhice de todo jeito: o
+cabeçalho declara a condição em prosa e **a data em ISO**, que é o que a máquina
+lê. Default 14 dias; prazo maior se escreve, não se presume.
+
+Quem cobra: `python3 ~/.claude/scripts/check-docs.py --decay <raiz-do-projeto>`.
+Prosa não se executa, e foi por isso que a regra de não acumular falhou dezenas
+de vezes antes de existir data.
 
 ## Formato
 
@@ -27,6 +34,7 @@ não vira seção de nenhum dos dois. Spec aprovada é append-only.
 # Handoff — <tema> (YYYY-MM-DD)
 
 > **Propósito:** <1-2 linhas>. **Morte:** <condição pra apagar>.
+- **Morre em:** <YYYY-MM-DD>
 
 ## Decisões da sessão (com evidência)
 - <decisão + evidência: comando+output ou file:line>

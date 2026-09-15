@@ -68,6 +68,20 @@ esperado_pega "decisao viva arquivada"    "viva dentro do archive" --ciclo ruim-
 esperado_pega "ponteiro morto de decisao" "não existe arquivo"   --ciclo ruim-ciclo
 esperado_pega "cita decisao arquivada"    "arquivada"             --ciclo ruim-ciclo
 
+echo "decaimento limpo"
+export DECAY_HOJE=2026-09-15
+esperado_limpo "raiz sem lixo vencido passa" --decay decay-bom
+
+echo "decaimento estourado, um check por linha"
+esperado_pega "handoff acumulado"      "mais de um handoff"      --decay decay-ruim
+esperado_pega "handoff vencido"        "vencido"                 --decay decay-ruim
+esperado_pega "teto do FEEDBACK"       "FEEDBACK.md: 11"         --decay decay-ruim
+esperado_pega "item de inbox sem data" "sem data"                --decay decay-ruim
+esperado_pega "item de inbox podre"    "parado há"               --decay decay-ruim
+esperado_pega "teto dos proximos"      "Próximos"                --decay decay-ruim
+esperado_pega "secao fora do padrao"   "Onda 3"                  --decay decay-ruim
+unset DECAY_HOJE
+
 echo "uso"
 if $LINT --grafo nao-existe >/dev/null 2>&1; then
   fail "raiz inexistente devia dar exit 2"
