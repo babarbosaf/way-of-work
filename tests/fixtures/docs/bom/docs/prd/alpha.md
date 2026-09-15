@@ -2,7 +2,7 @@
 
 > **Papel deste doc.** O que entra no sistema.
 
-## 1. A entrada
+## 1. Entidades × modos
 
 Entra por aqui.
 

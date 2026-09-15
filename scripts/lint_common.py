@@ -78,7 +78,10 @@ def slugify(heading: str) -> str:
     """
     texto = unicodedata.normalize("NFC", heading.strip())
     texto = _NAO_SLUG.sub("", texto).strip().lower()
-    return re.sub(r"\s+", "-", texto)
+    # Cada espaço vira UM hífen, sem colapsar: o GitHub remove a pontuação e
+    # deixa os espaços que sobraram, então "Entidades × modos" dá
+    # "entidades--modos". Colapsar aqui inventa âncora morta.
+    return re.sub(r"\s", "-", texto)
 
 
 def headings(texto: str) -> list[tuple[int, str]]:

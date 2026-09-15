@@ -7,4 +7,4 @@
 
 ## Visão geral
 
-Produto de exemplo. Detalhe em [alpha §1](docs/prd/alpha.md#1-a-entrada).
+Produto de exemplo. Detalhe em [alpha §1](docs/prd/alpha.md#1-entidades--modos).
