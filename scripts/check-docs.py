@@ -124,6 +124,10 @@ HEADING_LOG = re.compile(
 
 RISCADO = re.compile(r"~~[^~\n]+~~")
 
+# Heading numerado ("## 14. Decisões registradas") é o caso comum no PRD:
+# a numeração ia à frente e desancorava o casamento.
+NUMERACAO = re.compile(r"^\s*\d+[.)]\s*")
+
 
 def check_estado(path: Path, ach: Achados) -> None:
     nome = str(path)
@@ -132,7 +136,7 @@ def check_estado(path: Path, ach: Achados) -> None:
     for linha, titulo in headings(texto):
         if DATA_HEADING.search(titulo):
             ach.add(nome, linha, f"data em heading ({titulo[:44]!r}); doc de estado não data seção")
-        if HEADING_LOG.match(titulo.strip()):
+        if HEADING_LOG.match(NUMERACAO.sub("", titulo).strip()):
             ach.add(nome, linha, f"seção de log ({titulo[:44]!r}); histórico mora no git e no CHANGELOG")
 
     for n, ln in enumerate(texto.splitlines(), 1):

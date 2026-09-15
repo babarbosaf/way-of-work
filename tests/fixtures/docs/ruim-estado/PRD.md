@@ -15,7 +15,7 @@ Log de execução datado, que não é estado presente.
 
 O que mudou ao longo do tempo.
 
-## Decisões estratégicas registradas
+## 14. Decisões estratégicas registradas
 
 Escolha e racional de cada virada.
 
