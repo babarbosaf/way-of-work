@@ -256,6 +256,11 @@ def check_tickets(alvo: Path, ach: Achados) -> None:
 # ------------------------------------------------------------------ corrente
 
 CAMPO_LIVRE = re.compile(r"^\s*(\w+)\s*:\s*(.*)$")
+# Spec não contratada e spec já entregue não devem ticket pelo mesmo motivo por
+# pontas opostas: uma ainda não foi assinada, a outra já foi provada pelo
+# harvest. Medido no BIP em 2026-09-15: 37 dos 119 "nenhum ticket fecha esse
+# aceite" vinham de dois rascunhos.
+STATUS_RASCUNHO = {"rascunho", "draft", "esboço", "esboco", "proposta"}
 STATUS_TERMINAL = {"feito", "feita", "entregue", "concluído", "concluida", "concluída", "done"}
 BACKLOG = ("TODOS.md", "INBOX.md", "ROADMAP.md")
 
@@ -327,11 +332,12 @@ def check_chain(raiz: Path, ach: Achados) -> None:
             ach.add(rel, 0, "spec fechada sem `harvest:`; a verdade funcional tem que voltar pro PRD antes de a spec sumir")
 
         # 4. ticket declara a spec que serve e os aceites que fecha
+        rascunho = fm.get("status", "").strip().lower() in STATUS_RASCUNHO
         fechados: set[str] = set()
         tickets = sorted((spec.parent / "tickets").glob("*.md")) if (spec.parent / "tickets").is_dir() else []
         # Spec entregue perde os tickets por desenho: quem prova a entrega é o
         # harvest, e cobrar ticket de spec fechada é cobrar lixo de volta.
-        if not tickets and not terminal:
+        if not tickets and not terminal and not rascunho:
             ach.add(rel, 0, "spec sem tickets; contratado e não endereçado é estágio que não anda")
         for t in tickets:
             rel_t = str(t.relative_to(raiz))
@@ -356,7 +362,7 @@ def check_chain(raiz: Path, ach: Achados) -> None:
                 else:
                     fechados.add(chave)
 
-        if not terminal:
+        if not terminal and not rascunho:
             for chave in sorted(set(acs) - fechados):
                 ach.add(rel, acs[chave], f"{chave}: nenhum ticket fecha esse aceite")
 

@@ -97,6 +97,10 @@ rm -rf "$TMP"
 
 echo "corrente de ID limpa"
 esperado_limpo "projeto com corrente fechada" --chain fixtures/cadeia-boa
+# Rascunho não foi contratado: cobrar ticket dele é cobrar entrega de quem
+# ainda não assinou. Mesma isenção da spec terminal, que perde o ticket por
+# desenho — medido no BIP, onde 37 dos 119 achados vinham de 2 rascunhos.
+esperado_limpo "rascunho sem tickets não é achado" --chain fixtures/cadeia-boa
 
 echo "corrente quebrada, um check por linha"
 esperado_pega "ancora do prd morta"     "âncora"              --chain fixtures/cadeia-ruim
