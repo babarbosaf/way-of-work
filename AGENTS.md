@@ -1,6 +1,7 @@
 # AGENTS.md, instrução de trabalho de todos os projetos
 
-Fonte única do agente. `CLAUDE.md` é symlink: edite este arquivo.
+Fonte única do agente. `CLAUDE.md` é symlink pra cá, em todo projeto: edite
+este arquivo, e nunca troque o symlink por arquivo que só carrega `@AGENTS.md`.
 Doutrina longa mora em `skills/` e `docs/`; aqui só o que muda decisão.
 Child AGENTS.md escreve override próprio, nunca repete o que está aqui.
 
@@ -14,6 +15,7 @@ Child AGENTS.md escreve override próprio, nunca repete o que está aqui.
 - **Repo que já existe: o inventário é o primeiro entregável.** O que tem, onde estão os buracos, o que sai. Bloco de escolhas antes do mapa faz o dono escolher no escuro.
 - **Fonte acessível se mede, não se opina.** Com API, banco ou arquivo na mão, medir vem antes de afirmar.
 - **Operação em lote sobre dado do usuário** (workspace, wiki, drive, prod) tem gate no plano, não só na execução: desenho e método na mesa, e espera o ok.
+- **Apagar, publicar e reabrir são do dono.** Item que sai sem deixar rastro, build que vai pro ar, e trabalho já encerrado que volta a abrir: a sessão mede, propõe e espera o ok. Aprovação de um caso não se estende ao seguinte.
 - **Achado colateral não fica solto na conversa:** resolve agora ou vira linha no `TODOS.md`.
 - **Doc de estado fala do presente.** Histórico mora no git e no `CHANGELOG.md`; item promovido sai do estágio anterior; transiente carrega a data em que morre.
 - **Escrita terse, sem AI slop.** Fragmento > frase, bom português. Doutrina e linter na skill `writing`.
@@ -40,7 +42,7 @@ Child AGENTS.md escreve override próprio, nunca repete o que está aqui.
 | Trabalho mecânico | `delegate` |
 | Pedido visual | `design-workflow`, roteado em papercut ou design |
 | Texto que outra pessoa vai ler | skill `writing`; `check-writing.py` antes do commit |
-| Doc de raiz novo ou editado | `docs/doc-standard.md`, e o lint que ele nomeia: `scripts/check-docs.py --estado\|--grafo\|--ciclo\|--decay` |
+| Doc de raiz novo ou editado | `docs/doc-standard.md`, e o lint que ele nomeia: `scripts/check-docs.py --estado\|--grafo\|--ciclo\|--decay\|--estagio` |
 | Compactação iminente com trabalho aberto | `/handoff` |
 | Diff que toca prod | `peer-review.sh diff`, opcional e recomendado (`docs/adversarial-evaluator.md`) |
 | Skill nova | `scripts/check-skill.py` (`docs/skill-authoring.md`) |

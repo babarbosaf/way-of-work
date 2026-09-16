@@ -13,6 +13,7 @@ nomeia o comando que a aplica:
 | Domínio do PRD se cita de volta | `scripts/check-docs.py --grafo <raiz>` |
 | Decisão vive enquanto vigente | `scripts/check-docs.py --ciclo <raiz>` |
 | Transiente tem prazo de validade | `scripts/check-docs.py --decay <raiz>` |
+| Item vive em um estágio só | `scripts/check-docs.py --estagio <raiz>` |
 | Corrente PRD, spec, ticket fechada | `scripts/check-spec.py --chain <raiz>` |
 | Teto do `AGENTS.md` | `hooks/claude_md_size_guard.py` |
 | Escrita sem slop | `skills/writing/scripts/check-writing.py` |
@@ -77,7 +78,7 @@ código é trabalho igual a feature.
 | 3 endereçado | `docs/specs/<slug>/tickets/` | arquivos, aceite, verify |
 | 4 entregue | some | virou PRD, código e `CHANGELOG.md` |
 
-**Invariante de estágio único:** todo item aparece em exatamente um estágio. Promover é
+**Invariante de estágio único** (cobra: `scripts/check-docs.py --estagio <raiz>`)**:** todo item aparece em exatamente um estágio. Promover é
 mover, nunca copiar, e item que virou spec sai do `TODOS.md` sem deixar ponteiro nem
 linha riscada.
 

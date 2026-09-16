@@ -1,0 +1,3 @@
+# Como contribuir
+
+Abra PR.

@@ -85,6 +85,15 @@ esperado_pega "teto dos proximos"      "Próximos"                --decay decay-
 esperado_pega "secao fora do padrao"   "Onda 3"                  --decay decay-ruim
 unset DECAY_HOJE
 
+echo "estagio unico limpo"
+esperado_limpo "escada sem degrau duplicado passa" --estagio estagio-bom
+
+echo "estagio unico quebrado, um check por linha"
+esperado_pega "degrau fora da escada"   "fora da escada"      --estagio estagio-ruim
+esperado_pega "ticket em doc cru"       "cita o ticket"       --estagio estagio-ruim
+esperado_pega "item em dois estagios"   "em dois estágios"    --estagio estagio-ruim
+esperado_pega "ponteiro pra spec"       "ponteiro pra spec"   --estagio estagio-ruim
+
 echo "uso"
 if $LINT --grafo nao-existe >/dev/null 2>&1; then
   fail "raiz inexistente devia dar exit 2"

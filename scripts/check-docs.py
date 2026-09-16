@@ -5,6 +5,7 @@
     check-docs.py --estado <arquivo.md> [<arquivo.md> ...]
     check-docs.py --ciclo <raiz-do-projeto>
     check-docs.py --decay <raiz-do-projeto>
+    check-docs.py --estagio <raiz-do-projeto>
 
 `--grafo` prova que a documentação de produto é navegável e recíproca: link
 resolve com âncora, todo subdoc de `docs/prd/` está no índice do `PRD.md`, todo
@@ -26,6 +27,12 @@ decisão que não está mais lá.
 depósito e backlog sem teto não são desorganização: são o gerador de paralisia
 de escolha, porque o custo de achar o que importa cresce com o lixo. A idade é o
 veredito, e ela se lê de data escrita, não de julgamento.
+
+`--estagio` prova o invariante de estágio único do backlog: todo item aparece em
+exatamente um degrau da escada (`INBOX.md`, `TODOS.md`, `docs/specs/<slug>/spec.md`,
+`tickets/`, some). Promover é mover, nunca copiar, e o item que sobe sai do degrau de
+baixo sem deixar ponteiro nem linha riscada. Doc de raiz que a escada não nomeia é
+degrau clandestino: ele não duplica por descuido, duplica por desenho.
 
 Exit 0 limpo, 1 com achado, 2 erro de uso.
 """
@@ -369,6 +376,83 @@ def check_decay(raiz: Path, ach: Achados) -> None:
                 ach.add("TODOS.md", linha, f"parado há {(ref - d).days} dias no Pool ({texto[:30]!r}); promove ou apaga", aviso=True)
 
 
+# -------------------------------------------------------------------- estágio
+
+# Doc de raiz que o doc-standard.md nomeia. O que sobra é degrau que a escada
+# não tem, e degrau a mais é o mesmo item vivendo em dois lugares.
+RAIZ_CANONICA = {
+    "agents.md", "claude.md", "readme.md", "prd.md", "routes.md", "design.md",
+    "conventions.md", "changelog.md", "feedback.md", "strategy.md", "memory.md",
+    "inbox.md", "todos.md",
+    # convenção de repo público, que não é degrau de backlog
+    "contributing.md", "license.md", "security.md", "code_of_conduct.md",
+}
+
+# Estágios 0 e 1, os dois degraus crus. O 2 (spec) fica de fora de propósito: a
+# spec cita o ticket que a executou por desenho, e quem cobra a corrente dela é
+# o `check-spec.py --chain`.
+DEGRAUS_CRUS = ("INBOX.md", "TODOS.md")
+
+TICKET = re.compile(r"\b([A-Z]{2,6}-\d{1,6})\b")
+PONTEIRO_SPEC = re.compile(r"(docs/specs/[\w./-]+|\bspec-\d{4}-\d{2,4}[\w-]*)")
+SEM_PALAVRA = re.compile(r"[^0-9a-zà-ÿ]+")
+IRRELEVANTE = {"a", "o", "as", "os", "de", "da", "do", "das", "dos", "e", "em",
+               "no", "na", "nos", "nas", "um", "uma", "que", "pra", "para",
+               "com", "por", "se", "ao", "aos"}
+SEMELHANCA = 0.75      # Jaccard: reescrita curta ainda é o mesmo item
+MIN_TOKENS = 4         # abaixo disso, coincidência de vocabulário vira falso positivo
+
+
+def tokens_de(texto: str) -> set[str]:
+    """Bag de palavras do item, sem data, sem marcação e sem palavra vazia."""
+    sem_data = ISO.sub(" ", texto.lower())
+    brutos = SEM_PALAVRA.sub(" ", sem_data).split()
+    return {t for t in brutos if t not in IRRELEVANTE and len(t) > 1}
+
+
+def check_estagio(raiz: Path, ach: Achados) -> None:
+    # 1. degrau que a escada não nomeia
+    # Nome se compara em caixa baixa: o macOS preserva a caixa e ignora ela na
+    # busca, então `inbox.md` é o mesmo arquivo que o `INBOX.md` do padrão. Caixa
+    # errada é achado de outro gate; aqui se cobra estágio, não nome.
+    for p in sorted(raiz.glob("*.md")):
+        nome_base = p.name.lower()
+        if nome_base.endswith(".example.md"):
+            continue          # molde que se copia, não doc vivo
+        if nome_base not in RAIZ_CANONICA:
+            ach.add(p.name, 0, f"doc de raiz fora da escada do backlog; a escada tem {' e '.join(DEGRAUS_CRUS)}, e degrau a mais é item vivendo duas vezes")
+
+    itens: dict[str, list[tuple[int, str]]] = {}
+    for nome in DEGRAUS_CRUS:
+        p = raiz / nome
+        if not p.exists():
+            continue
+        itens[nome] = [x for _, lista in itens_por_secao(p).values() for x in lista]
+
+    for nome, lista in itens.items():
+        for linha, texto in lista:
+            # 2. citação de ticket em degrau cru
+            if m := TICKET.search(texto):
+                ach.add(nome, linha, f"cita o ticket {m.group(1)}; item com ticket já está no estágio 3, e estágio único manda ele sair daqui")
+            # 3. ponteiro pra spec, que é o degrau de cima
+            if m := PONTEIRO_SPEC.search(texto):
+                ach.add(nome, linha, f"ponteiro pra spec ({m.group(1)}); item que virou spec sai do degrau de baixo sem deixar linha")
+
+    # 4. o mesmo item nos dois degraus crus
+    cru, aceito = (itens.get(n, []) for n in DEGRAUS_CRUS)
+    perfis = [(linha, texto, tokens_de(texto)) for linha, texto in cru]
+    for linha_a, texto_a, toks_a in [(l, t, tokens_de(t)) for l, t in aceito]:
+        if len(toks_a) < MIN_TOKENS:
+            continue
+        for linha_b, _, toks_b in perfis:
+            if len(toks_b) < MIN_TOKENS:
+                continue
+            uniao = toks_a | toks_b
+            if uniao and len(toks_a & toks_b) / len(uniao) >= SEMELHANCA:
+                ach.add(DEGRAUS_CRUS[1], linha_a, f"{texto_a[:36]!r} também está em {DEGRAUS_CRUS[0]}:{linha_b}; o item vive em dois estágios, e promover é mover, nunca copiar")
+                break
+
+
 # ----------------------------------------------------------------------- main
 
 
@@ -379,9 +463,10 @@ def main() -> int:
     g.add_argument("--estado", type=Path, nargs="+", help="doc de estado a checar")
     g.add_argument("--ciclo", type=Path, help="raiz do projeto (checa a árvore de ADR e DDR)")
     g.add_argument("--decay", type=Path, help="raiz do projeto (checa o que devia ter morrido)")
+    g.add_argument("--estagio", type=Path, help="raiz do projeto (checa o invariante de estágio único)")
     args = ap.parse_args()
 
-    alvos = args.estado or [args.grafo or args.ciclo or args.decay]
+    alvos = args.estado or [args.grafo or args.ciclo or args.decay or args.estagio]
     for alvo in alvos:
         if not alvo.exists():
             print(f"não existe: {alvo}", file=sys.stderr)
@@ -394,6 +479,8 @@ def main() -> int:
         check_ciclo(args.ciclo, ach)
     elif args.decay:
         check_decay(args.decay, ach)
+    elif args.estagio:
+        check_estagio(args.estagio, ach)
     else:
         for alvo in args.estado:
             check_estado(alvo, ach)
