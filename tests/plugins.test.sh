@@ -117,6 +117,30 @@ assert_contains "http vira mcp add --transport http" "$out" "mcp add --transport
 out=$(bash "$BOOT" --manifest="$TMP/mcp.json" --update)
 grep -q "mcp add" <<<"$out" && fail "update não mexe em MCP" || ok "update não mexe em MCP"
 
+echo "== o repo como plugin =="
+PLUG="$ROOT/.claude-plugin/plugin.json"
+MKT="$ROOT/.claude-plugin/marketplace.json"
+if [[ -f "$PLUG" && -f "$MKT" ]]; then
+  ok "manifestos de plugin e de marketplace existem"
+  jq -e . "$PLUG" >/dev/null 2>&1 && ok "plugin.json é JSON válido" || fail "plugin.json inválido"
+  jq -e . "$MKT" >/dev/null 2>&1 && ok "marketplace.json é JSON válido" || fail "marketplace.json inválido"
+  nome_p=$(jq -r '.name' "$PLUG")
+  nome_m=$(jq -r '.plugins[0].name' "$MKT")
+  [[ "$nome_p" == "$nome_m" ]] && ok "o nome bate nos dois manifestos" \
+    || fail "nome divergente: $nome_p vs $nome_m"
+  dir_skills="$ROOT/$(jq -r '.skills' "$PLUG" | sed 's|^\./||')"
+  [[ -d "$dir_skills" ]] && ok "o diretório de skills declarado existe" \
+    || fail "skills apontam pra diretório inexistente: $dir_skills"
+  # Skill distribuída precisa estar versionada, senão o instalador recebe menos do que o manifesto promete.
+  nao_versionada=$(comm -23 \
+    <(find "$ROOT/skills" -maxdepth 2 -name SKILL.md | sed "s|$ROOT/||;s|/SKILL.md||" | sort) \
+    <(git -C "$ROOT" ls-files 'skills/*/SKILL.md' | sed 's|/SKILL.md||' | sort))
+  [[ -z "$nao_versionada" ]] && ok "toda skill com SKILL.md está versionada" \
+    || fail "skill fora do git entraria no plugin: $nao_versionada"
+else
+  fail "manifestos de plugin ausentes: $PLUG"
+fi
+
 echo "== manifesto do repo =="
 out=$(bash "$BOOT" 2>&1); rc=$?
 assert_rc "manifesto versionado é válido e sem órfão" "$rc" 0
