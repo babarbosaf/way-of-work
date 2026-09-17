@@ -76,12 +76,18 @@ def ancoras_de(path: Path) -> set[str]:
 
 def check_grafo(raiz: Path, ach: Achados) -> None:
     prd = raiz / "PRD.md"
-    if not prd.exists():
-        ach.add(str(prd), 0, "raiz sem PRD.md; o índice de domínios mora nele")
-        return
-
     dir_sub = raiz / SUBDOCS
     subdocs = sorted(p for p in dir_sub.glob("*.md")) if dir_sub.is_dir() else []
+
+    if not prd.exists():
+        # Cláusula de não-adoção, a mesma do --ciclo sem árvore de decisão: repo
+        # de doutrina não instancia produto, e cobrar dele o índice é cobrar um
+        # doc que a doutrina não manda existir. Subdoc sem índice continua
+        # achado, porque aí o padrão foi adotado pela metade e o domínio não tem
+        # porta de entrada.
+        if subdocs:
+            ach.add(str(prd), 0, "raiz sem PRD.md e docs/prd/ com subdoc; o índice de domínios mora nele")
+        return
 
     # 1. link resolve, e a âncora existe no destino
     alvos_do_prd: set[str] = set()

@@ -39,6 +39,7 @@ esperado_pega() {
 
 echo "grafo limpo"
 esperado_limpo "raiz boa passa" --grafo bom
+esperado_limpo "raiz que nao adota PRD nao e cobrada" --grafo sem-prd
 
 echo "grafo quebrado, um check por linha"
 esperado_pega "link que nao resolve"   "não resolve"          --grafo ruim-grafo
@@ -47,6 +48,7 @@ esperado_pega "subdoc fora do indice"  "fora do índice"       --grafo ruim-graf
 esperado_pega "subdoc sem saida"       "sem link de saída"    --grafo ruim-grafo
 esperado_pega "aresta de mao unica"    "não volta"            --grafo ruim-grafo
 esperado_pega "orfao de entrada"       "órfão de entrada"     --grafo ruim-grafo
+esperado_pega "subdoc sem indice"      "sem PRD.md"           --grafo prd-orfao
 
 echo "estado limpo"
 esperado_limpo "PRD bom passa" --estado bom/PRD.md

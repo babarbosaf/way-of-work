@@ -3,11 +3,11 @@ name: delegate
 description: >-
   Despacha tarefas delegáveis para workers externos de custo zero (codex, agy)
   via ~/.claude/scripts/delegate.sh, guiado por ~/.claude/config/model-policy.json.
-  Invoque SEMPRE que: for executar task de spec marcada com `delega: <task-type>`;
+  Invoque SEMPRE que: for executar task de spec com o campo `delega:` preenchido;
   precisar de varredura de codebase grande, segunda opinião de lógica/arquitetura,
   boilerplate/testes mecânicos ou review extra; quando o `read_size_guard` ou o
   `bash_read_guard` bloquearem uma leitura e mandarem pro worker; ou quando uma
-  tarefa mecânica de >10 min não exigir o contexto da sessão. Invoque também quando o usuário
+  tarefa mecânica acima de 10 min não exigir o contexto da sessão. Invoque também quando o usuário
   pedir economia de consumo ("modo economia", "economiza", "otimiza o consumo",
   "tô perto do limite"), ativa o modo economia da sessão. Não invoque para:
   decisão de arquitetura, integração de código na branch principal, ou tarefa

@@ -1,0 +1,25 @@
+{
+  "name": "way-of-work",
+  "metadata": {
+    "description": "As skills do modelo de trabalho, instaláveis em máquina que não clona o repo como diretório de configuração."
+  },
+  "owner": {
+    "name": "way-of-work",
+    "url": "https://github.com/babarbosaf/way-of-work"
+  },
+  "plugins": [
+    {
+      "name": "way-of-work",
+      "source": ".",
+      "description": "Modelo de trabalho em skills: spec, tickets, execução, design, escrita, delegação e handoff.",
+      "category": "workflow",
+      "tags": [
+        "skills",
+        "workflow",
+        "tdd",
+        "design",
+        "docs"
+      ]
+    }
+  ]
+}

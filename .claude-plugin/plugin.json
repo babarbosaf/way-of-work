@@ -1,0 +1,8 @@
+{
+  "name": "way-of-work",
+  "description": "Modelo de trabalho em skills: spec, tickets, execução, design, escrita, delegação e handoff.",
+  "version": "0.1.0",
+  "homepage": "https://github.com/babarbosaf/way-of-work",
+  "repository": "https://github.com/babarbosaf/way-of-work",
+  "skills": "./skills/"
+}

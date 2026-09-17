@@ -7,6 +7,43 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **`design-workflow` vira roteador, e a stack de design passa a ser externa.**
+  A skill deixa de carregar doutrina de craft e nomeia o dono de cada passo: plugin
+  `impeccable` (`shape`, `live`, `distill`, `critique`, `audit`, `polish`, `harden`,
+  `extract`, `document`), skill `shadcn` do plugin vercel para componente e tema, MCP
+  `mobbin` para referência real no passo de referência, `DesignSync` para a base
+  canônica. Figma sai do loop: a tentativa de usar não pegou, e referência de fora entra
+  por print ou pelo Mobbin. Fica aqui só o que não tem dono externo: classificar papercut,
+  fechar constraint, loop-back, veredito e registro. shadcn passa a ser a base de
+  componente (primitivo do registry; nosso lado é token semântico e composto), e o
+  passo de showcase, que nenhum projeto seguia, vira "isolado antes da tela real" na
+  ordem do que o repo já tem.
+- **Escopo por plugin no manifesto.** `escopo: project` sai como `--scope project` no
+  comando de install, porque plugin que serve um repo não precisa custar contexto no
+  perfil inteiro. `vercel` passa a ser o primeiro caso: 35 skills e ~4k tokens always-on
+  para usar uma (`shadcn`), então ele entra no repo que tem UI, não em toda sessão.
+- **O repo se instala como plugin.** `.claude-plugin/marketplace.json` e
+  `.claude-plugin/plugin.json` declaram o `way-of-work` como plugin de skills, então
+  máquina que não clona isto como diretório de configuração instala com
+  `claude plugin marketplace add` mais `claude plugin install`. Só as skills viajam:
+  hook, script e `config/` dependem de caminho e de `settings.json`, e continuam vindo do
+  clone. Seis asserts em `tests/plugins.test.sh`, incluindo o que cobra que toda skill
+  distribuída esteja versionada.
+- **A régua de skill adota o limite do empacotador oficial.** `description` com `<` ou
+  `>` passa a bloquear no `check-skill.py`, porque o `quick_validate.py` do
+  `skill-creator` recusa a skill por isso; `delegate` e `remove-dumb-comments` perderam os
+  placeholders em `<>` sem perder o gatilho. O parser de frontmatter parou de contar o
+  indicador de bloco (`|`, `>-`) como valor, que era falso positivo em três skills, e a
+  varredura passa a pular diretório que o git ignora, porque `skills/synced/` é cache do
+  harness e não skill quebrada. `argument-hint` e `disable-model-invocation` ficam como
+  estão: são válidas no Claude Code, e a segunda é o que mantém `/execute` fora do
+  alcance do modelo.
+- **`bootstrap-plugins.sh --update` e bloco `mcp` no manifesto.** `--update` puxa
+  upstream do que já está instalado (`marketplace update` + `plugin update`) sem
+  instalar nada; o bloco `mcp` declara servidor remoto (`url`) e local (`command`) e
+  gera o `claude mcp add` no escopo `user`. `config/plugins.json` passa a declarar
+  `impeccable`, `vercel`, e os MCP `shadcn` e `mobbin`.
+
 - **Padrão de documentos, e os quatro lints que o cobram.** `docs/doc-standard.md`
   deixa de falar só de `AGENTS.md` e `README.md` e passa a reger PRD e subdocs,
   decisão, backlog e handoff, com cada regra nomeando o comando que a aplica.
@@ -19,9 +56,26 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `prd:` com âncora, aceite com `AC-NN`, `closes:` no ticket, nenhum aceite órfão,
   `harvest:` na spec entregue e a invariante de estágio único, que é item promovido
   sair do backlog sem deixar rastro. Suítes `docs-lint` e `spec-lint`.
+- **Cláusula de não-adoção no `--grafo`.** Raiz sem `PRD.md` e sem `docs/prd/` é repo
+  que não instancia produto, não repo com doc faltando: o check sai limpo, como o
+  `--ciclo` já fazia sem árvore de decisão. Subdoc de `docs/prd/` sem índice continua
+  achado, porque aí o padrão foi adotado pela metade.
 - **Lente por área tocada no `peer-review.sh`.** Além da lista genérica, o prompt de
   diff ganha as perguntas da área alterada: migration puxa perda de dado, auth puxa
   autorização, contrato público puxa compatibilidade, infra puxa ambiente.
+
+### Removed
+
+- **`caveman` sai.** Medido: ~1.4k tokens always-on, mais o bloco que o `SessionStart`
+  injeta e o rastreador a cada prompt, perto de 2k por sessão. O que ele entrega no nível
+  `lite` é o que o output style `Concise` já faz, e a doutrina de brevidade mora na skill
+  `writing`; os níveis que justificariam o plugin derrubam artigo e esbarram no requisito
+  de bom português. Os três agentes `cavecrew` duplicavam `Explore` e `general-purpose`.
+  A memória que regia qual skill dele usar foi apagada no mesmo movimento.
+- **Um validador de skill só.** `skill-doctor` sai por duplicar o `check-skill.py` e o
+  `quick_validate.py` sem acrescentar regra. Junto dele saíram `cloudflare`, `eli5`,
+  `diagram-design`, `notion`, `slack` e `linear`, instalados e desligados havia meses, e
+  as entradas de escopo project que apontavam pra repositório que não existe mais.
 
 ### Changed
 
