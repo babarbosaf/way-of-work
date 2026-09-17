@@ -39,6 +39,9 @@ config/*.local.md
 hooks/emit_trace_guard.py
 hooks/wiki_push_guard.py
 skills/_archive/
+# skills baixadas pelo harness, em bucket com UUID de conta: cache de runtime,
+# não doutrina do repo.
+skills/synced/
 docs/_archive/
 hooks/__pycache__/
 **/__pycache__/
@@ -49,3 +52,6 @@ hooks/__pycache__/
 
 # transient handoffs / scratch (doutrina _tmp)
 _tmp/
+# fixture de lint precisa de um _tmp de mentira pra provar o decaimento
+!tests/fixtures/docs/*/_tmp/
+!tests/fixtures/docs/*/_tmp/**

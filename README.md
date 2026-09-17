@@ -18,11 +18,11 @@ memória durável entre sessões.
 
 | Área | O que é |
 |------|---------|
-| `AGENTS.md` | Instrução viva, agnóstica, lida por Codex, Cursor e qualquer harness que siga o padrão. `CLAUDE.md` é symlink. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
+| `AGENTS.md` | Instrução viva, agnóstica, lida por Codex, Cursor e qualquer harness que siga o padrão. `CLAUDE.md` só aponta pra ele. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
 | `skills/` | Uma skill por fase do ciclo (taxonomia abaixo). O conteúdo é doutrina em markdown, então serve de leitura pra qualquer agente; o dispatch por `/comando` é do Claude Code. |
 | `docs/` | Doutrina: `skill-authoring.md` (régua de autoria de skill, aplicada por `scripts/check-skill.py`), `evolve-over-create.md`, `autonomy-loops.md`, `adversarial-evaluator.md` (segunda opinião opcional) e runbooks em `docs/runbooks/`. |
 | `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`. |
-| `tests/` | Nove suítes, 236 asserts, sem rede e sem CLI real: despacho de modelo, review adversarial, os cinco hooks de enforcement, manifesto de plugins, linter de escrita, lint de spec e ticket, lint de skill, resolvedor de contexto do `/execute`, agnosticismo do repo e link markdown morto. |
+| `tests/` | Dez suítes, 390 asserts, sem rede e sem CLI real: despacho de modelo, review adversarial, os cinco hooks de enforcement, manifesto de plugins, linter de escrita, lint de spec, ticket e da corrente PRD, spec, ticket, lint de doc de estado, do grafo de domínios e do ciclo de vida das decisões, lint de skill, resolvedor de contexto do `/execute`, agnosticismo do repo e link markdown morto. |
 | `specs/_TEMPLATE-spec/` | Formato de spec pra feature grande: contrato, design, slices, gate. |
 | `FEEDBACK.example.md` | Formato do buffer de correção do projeto: uma linha por entrada com o gatilho embutido, teto de 10, regra de promoção. O `FEEDBACK.md` real é gitignored. |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
@@ -33,7 +33,11 @@ memória durável entre sessões.
 Histórico de release em [`CHANGELOG.md`](CHANGELOG.md).
 
 Convenções estruturais:
-- **`AGENTS.md` é a fonte, `CLAUDE.md` symlink.** Editar sempre o `AGENTS.md`.
+- **README descreve, `AGENTS.md` manda.** Este arquivo é pra quem chega de fora decidir se adota e como instalar. O `AGENTS.md` é pra quem já está dentro executar. Teste por linha: muda o que o agente faz? Vai pro `AGENTS.md`. Régua completa em [`docs/doc-standard.md`](docs/doc-standard.md).
+- **`AGENTS.md` é a fonte, `CLAUDE.md` aponta pra ele.** Editar sempre o `AGENTS.md`.
+  Neste repo o ponteiro é symlink; em projeto, é um `CLAUDE.md` de uma linha com
+  `@AGENTS.md`. O import é explícito, sobrevive a Windows, zip e export, e lê bem
+  no diff de PR, coisas que o symlink não garante.
 - **`.gitignore` é allowlist:** ignora tudo (`*`), libera com `!`. O que é pessoal (scope pago, paths, roteamento) vive em `config/*.local.json`, gitignored, deep-merge em runtime.
 - **Memória (`memory/`) não é versionada.** É comportamento do agente, específico da máquina.
 - **Instrução viva, não changelog.** Docs de start-up não guardam histórico (→ `CHANGELOG.md`, ADR, memória).
@@ -56,15 +60,20 @@ Convenções estruturais:
 
 **model-invoked** dispara sozinha quando o fluxo bate o gatilho (fase do ciclo, gate pré-ship). **user-invoked** você aciona por `/comando` num momento deliberado.
 
-## Sete regras
+## Sete apostas
 
-- **Fundação por entrevista.** Projeto novo nasce pelo `/kickoff-project`: entrevista dirigida → PRD, ROUTES, DESIGN, CONVENTIONS, AGENTS.md e FEEDBACK.md. Nada de formulário em branco.
-- **Docs vivos são a fonte de verdade.** Decisão de produto edita o PRD; padrão técnico, o CONVENTIONS; correção vira entrada no FEEDBACK.md (buffer com teto e promoção). Spec só pra feature grande, em 1 arquivo descartável. Ao shippar, a verdade migra pro PRD.
-- **TDD sempre.** Comportamento novo nasce com teste; bug ganha regressão antes do fix; suite verde é pré-condição de commit.
-- **Segunda opinião sob demanda.** O Adversarial Evaluator (`peer-review.sh`) é opcional, recomendado quando o diff toca prod ou é caro de reverter.
-- **Evoluir > criar.** Estender artefato existente antes de criar paralelo. `_v2` e "migro depois" nunca migra.
-- **Memória durável entre sessões.** Fatos que sobrevivem à sessão viram memória atômica indexada; o resto morre com o contexto.
-- **Escrita terse.** Fragmento > frase. Sem verborragia, sem AI slop.
+O que o método assume, e onde cada aposta está escrita em forma normativa. Este README
+descreve; quem manda no agente é o [`AGENTS.md`](AGENTS.md).
+
+| Aposta | Onde a regra mora |
+|---|---|
+| Projeto novo nasce de entrevista dirigida, não de formulário em branco | [`skills/kickoff-project`](skills/kickoff-project) |
+| Doc vivo é a fonte de verdade: PRD, ROUTES, DESIGN, CONVENTIONS. Spec só pra feature grande, em arquivo descartável | `AGENTS.md` § Roteamento |
+| Comportamento novo nasce com teste, e suite verde é pré-condição de commit | `AGENTS.md` § Invariantes |
+| Segunda opinião é opcional, recomendada em diff que toca prod | [`docs/adversarial-evaluator.md`](docs/adversarial-evaluator.md) |
+| Estender artefato existente antes de criar paralelo: `_v2` nunca migra | [`docs/evolve-over-create.md`](docs/evolve-over-create.md) |
+| Fato que sobrevive à sessão vira memória atômica indexada; o resto morre com o contexto | [`docs/auto-memoria.md`](docs/auto-memoria.md) |
+| Escrita terse, fragmento > frase, sem AI slop | [`skills/writing`](skills/writing) |
 
 ## Como usar
 

@@ -15,7 +15,7 @@ CONVENTIONS.md consolida a camada técnica levantada aqui (ver `anatomia-convent
 - Fase 1, Pilares
 - Fase 2, Deep-dive por feature (loop)
 - Fase 3: camadas transversais
-- Fase 4, Decisões estratégicas
+- Fase 4, Restrições invioláveis
 - Saída da entrevista
 
 ## Princípios de condução
@@ -108,20 +108,23 @@ detalhamento técnico no CONVENTIONS.md (regra de fronteira). Cobrir as que se a
   anti-spam, janelas de recência, preferências por categoria?
 - **Performance.** Há requisito de velocidade? Alguma regra de ouro (ex.: cada tela
   carrega em um roundtrip)? Isso costuma nascer de uma dor concreta já vivida. Vira
-  decisão registrada no PRD e padrão obrigatório no CONVENTIONS.md.
+  restrição no PRD e padrão obrigatório no CONVENTIONS.md.
 - **Internacionalização.** Quantos idiomas? O que é traduzido e o que não é (UGC, admin)?
 - **Admin.** Existe painel administrativo? O que ele cria, edita, mede?
 
-## Fase 4, Decisões estratégicas
+## Fase 4, Restrições invioláveis
 
-Objetivo: o registro que dá contexto futuro ao time. É a seção mais negligenciada e a que
-mais agrega.
+Objetivo: extrair as escolhas difíceis e transformá-las em regra que não se quebra. É a
+fase mais negligenciada e a que mais agrega.
 
 - Quais escolhas difíceis foram feitas de propósito? Para cada uma, qual o racional?
 - O que foi deliberadamente deixado de fora, e por quê?
-- Houve decisão que substituiu uma anterior? Registrar a virada.
+- Que regra, se alguém quebrar daqui a seis meses, quebra o produto?
 
-Cada decisão vira uma linha no formato "escolha: racional em uma frase".
+Cada uma vira **uma regra no presente**, na seção que possui o assunto: "erro não tira
+ponto", não "decidimos não punir o erro". O racional entra quando muda uma decisão
+futura, e só então; quando for caro de reverter, o lugar dele é um ADR. O que foi
+descartado não vira linha: ele está no git.
 
 ## Saída da entrevista
 

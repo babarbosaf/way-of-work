@@ -8,7 +8,7 @@ Fork do [iagodemacedo/kickoff-project](https://github.com/iagodemacedo/kickoff-p
 
 | Arquivo | Papel |
 |---|---|
-| `PRD.md` | Especificação do produto. Cada feature arquitetada com modelo, estrutura, regras em tabela, edge cases e pontos a definir. Inclui restrições invioláveis e decisões estratégicas registradas com racional. |
+| `PRD.md` | Especificação do produto. Cada feature arquitetada com modelo, estrutura, regras em tabela, edge cases e pontos a definir. Fecha com as restrições invioláveis, no presente: o produto descrito, não as decisões que o produziram. |
 | `ROUTES.md` | Mapa completo de telas e navegação, agrupado por estado de acesso, com a lógica condicional de cada rota. |
 | `DESIGN.md` | Design system: identidade, tokens exatos, patterns de componente com código e guarda-corpos anti-slop (checklist e lista negra). |
 | `CONVENTIONS.md` | Como se constrói: stack, regras do projeto, padrões de arquitetura por camada, processo e índice de ADRs. |
@@ -25,7 +25,7 @@ Os quatro primeiros descrevem o produto e como construí-lo. Os demais formam a 
 
 O fluxo é encadeado: cada documento se apoia no anterior.
 
-1. **Entrevista.** O motor da skill. Conduzida em fases (enquadramento e stack, pilares de engajamento, deep-dive por feature, camadas transversais, decisões estratégicas), com no máximo 1 a 3 perguntas por vez. A Fase 0 também captura as restrições invioláveis, as convenções de construção que o dono já pratica, se a estratégia merece doc próprio e se existe fundação de design para herdar. As respostas são persistidas incrementalmente em `_tmp/notas-entrevista.md`, então a entrevista sobrevive a quedas de sessão.
+1. **Entrevista.** O motor da skill. Conduzida em fases (enquadramento e stack, pilares de engajamento, deep-dive por feature, camadas transversais, restrições invioláveis), com no máximo 1 a 3 perguntas por vez. A Fase 0 também captura as restrições invioláveis, as convenções de construção que o dono já pratica, se a estratégia merece doc próprio e se existe fundação de design para herdar. As respostas são persistidas incrementalmente em `_tmp/notas-entrevista.md`, então a entrevista sobrevive a quedas de sessão.
 2. **PRD.** Redigido a partir das notas da entrevista, seguindo um padrão de seção repetido: modelo conceitual, estrutura, regras exatas em tabela, edge cases e pontos a definir, feature por feature. Regra de fronteira: o que o usuário percebe é PRD; o que só o dev percebe vai para o CONVENTIONS.md, linkado.
 3. **Rotas.** Derivadas do PRD: cada feature implica telas, cada estado implica uma rota. Inclui a lógica condicional de navegação em cada descrição.
 4. **Design.** Derivado das telas que as rotas definiram. Se o usuário apontou um design system existente na entrevista, ele vira a base do `DESIGN.md` sem perda de informação.

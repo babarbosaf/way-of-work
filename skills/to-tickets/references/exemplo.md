@@ -22,10 +22,14 @@ Projeto sem tracker (`backend: none`), então cada um é um arquivo em
 ```markdown
 01 [XS] [P]  category derivada de section no caminho DTR
 
+Contexto: a quebra de receita por categoria cai num bucket NULL porque `dim_product.category` nunca foi preenchida.
+
 O que construir: produto ingerido pelo caminho DTR chega em dim_product com
 category preenchida a partir de section. Section fora do de-para vira "OUTROS"
 e registra warn.
 
+spec:       docs/specs/category-derivada/spec.md
+closes:     AC-01, AC-03
 files:      src/ingest/dtr.py
             src/ingest/section_map.py
             migrations/012_section_category_map.sql
@@ -47,9 +51,13 @@ spec: docs/specs/category-derivada/spec.md
 ```markdown
 02 [S] [P]  category derivada de section no caminho PDV
 
+Contexto: mesmo buraco do ticket 01, no outro caminho de ingestão.
+
 O que construir: mesmo comportamento do ticket 01, no caminho PDV. Reusa o
 section_map criado lá.
 
+spec:       docs/specs/category-derivada/spec.md
+closes:     AC-02, AC-03
 files:      src/ingest/pdv.py
             tests/ingest/test_pdv_category.py
 blocked_by: nenhum
@@ -68,9 +76,13 @@ spec: docs/specs/category-derivada/spec.md
 ```markdown
 03 [S]  backfill de category nos 4197 produtos existentes
 
+Contexto: os 4197 produtos que já estão no banco não passam pela ingestão de novo.
+
 O que construir: script de backfill com dry-run obrigatório. Imprime o de-para
 completo e a contagem por categoria antes de gravar; grava só com --apply.
 
+spec:       docs/specs/category-derivada/spec.md
+closes:     AC-04
 files:      scripts/backfill_category.py
             tests/scripts/test_backfill_category.py
 blocked_by: #01, #02
@@ -90,9 +102,13 @@ spec: docs/specs/category-derivada/spec.md  (D-02)
 ```markdown
 04 [XS]  scenario de reconciliação falha se bucket NULL voltar
 
+Contexto: o cenário de reconciliação é o que prova que o backfill não inventou categoria.
+
 O que construir: o scenario de receita passa a falhar quando aparece linha com
 category NULL, em vez de somar num bucket silencioso.
 
+spec:       docs/specs/category-derivada/spec.md
+closes:     AC-04
 files:      tests/scenarios/revenue_reconcilia.py
 blocked_by: #03
 delega:     implement

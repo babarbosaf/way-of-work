@@ -34,10 +34,10 @@ de gravar. Escreve em produção e não é reversível por `git revert`.
 
 ## Critérios de aceite
 
-- SIM: produto novo pelo caminho DTR chega com category preenchida
-- SIM: produto novo pelo caminho PDV chega com category preenchida
-- SIM: section desconhecida vira "OUTROS" e registra warn
-- NÃO: category continua não-editável na interface
+- **AC-01** SIM: produto novo pelo caminho DTR chega com category preenchida
+- **AC-02** SIM: produto novo pelo caminho PDV chega com category preenchida
+- **AC-03** SIM: section desconhecida vira "OUTROS" e registra warn
+- **AC-04** NÃO: category continua não-editável na interface
 
 ## Fora de escopo
 

@@ -106,6 +106,31 @@ has_external_input() {
     fi
 }
 
+# Lentes por área tocada. Um reviewer genérico acha bug genérico: a pergunta que
+# pega perda de dado em migration não é a mesma que pega escalada de privilégio
+# em auth. A lente entra pelo path do arquivo, não por palpite sobre o conteúdo.
+lentes_do_diff() {
+    local ref="${1:-HEAD}" arquivos saida=""
+    arquivos=$(git diff "$ref" --name-only 2>/dev/null) || return 0
+    [[ -n "$arquivos" ]] || return 0
+
+    if grep -qiE '(^|/)(migrations?|migrate)/|\.sql$' <<<"$arquivos"; then
+        saida+="- **Perda de dado**: a migration derruba ou reescreve coluna que ainda tem leitor? Existe caminho de volta sem restaurar backup? Backfill roda duas vezes sem duplicar?"$'\n'
+    fi
+    if grep -qiE '(^|/|_|-)(auth|authz|login|session|rls|permission|role|token|secret)s?(/|_|-|\.|$)' <<<"$arquivos"; then
+        saida+="- **Autorização**: quem passa a poder o que não podia? A checagem está na boundary ou só na UI? Política de linha filtra por tenant em toda consulta nova?"$'\n'
+    fi
+    if grep -qiE '(^|/)(api|routes?|contracts?|schema|types?)/|\.(proto|graphql)$|openapi' <<<"$arquivos"; then
+        saida+="- **Compatibilidade**: campo removido, renomeado ou com default novo quebra cliente que não subiu junto? A mudança é expand antes de contract?"$'\n'
+    fi
+    if grep -qiE '(^|/)(\.github/workflows|infra|terraform|deploy)/|(^|/)(Dockerfile|docker-compose)' <<<"$arquivos"; then
+        saida+="- **Ambiente**: segredo entra por env e não por arquivo versionado? A permissão do workflow é a mínima? O que muda aqui só falha em prod?"$'\n'
+    fi
+
+    [[ -n "$saida" ]] || return 0
+    printf 'Lentes por área tocada neste diff (peso maior que a lista genérica):\n%s' "$saida"
+}
+
 # Injeta primeiras 40 linhas do CLAUDE.md do projeto. Escapa backticks e $ pra não
 # disparar substitution quando concatenado em heredoc unquoted.
 inject_project_context() {
@@ -234,10 +259,11 @@ PROMPT
 }
 
 build_prompt_diff() {
-    local ctx acs prev
+    local ctx acs prev lentes
     ctx=$(inject_project_context)
     acs=$(inject_spec_acs "$ACTIVE_SPEC")
     prev=$(inject_prev_findings "$PREV_FINDINGS")
+    lentes=$(lentes_do_diff "$TARGET")
     cat <<PROMPT
 ${ctx:+Contexto do projeto (use para calibrar severidade — padrões estabelecidos aqui não são issues):
 $ctx
@@ -257,6 +283,8 @@ $ctx
 7. **Race conditions**: estado compartilhado sem lock, dicts module-level com workers concorrentes?
 8. **Débito iminente**: abstração prematura (regra de 3 violada — extraiu helper na 1ª ou 2ª duplicação)? duplicação nova que vai pedir DRY em 3 sprints? acoplamento novo entre módulos antes separados? \`TODO\`/\`FIXME\`/feature flag sem prazo ou critério de cleanup?
 
+${lentes:+$lentes
+}
 **Definição de BLOCKER**: impede funcionamento em prod, risco de perda de dado, falha de segurança real, OU compromisso de débito irreversível (abstração que vai travar refactor futuro, acoplamento que vai forçar reescrita).
 Naming, style e otimizações prematuras NÃO são blockers — vão em SUGESTÕES ou são omitidos.
 Para cada BLOCKER, responda: (1) o que quebra ou trava, (2) quando quebra ou trava, (3) impacto observável. Se não conseguir os 3, mova para IMPORTANTE.

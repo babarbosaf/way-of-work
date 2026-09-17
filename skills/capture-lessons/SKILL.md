@@ -45,7 +45,8 @@ Casos derivados:
 |---|---|
 | Lição de projeto que já está no FEEDBACK.md (reincidência) ou virou norma | **Promover:** mover pro doc permanente (AGENTS.md se instrução de agente, CONVENTIONS.md se regra de código, PRD.md/DESIGN.md se produto) e apagar a entrada |
 | FEEDBACK.md perto do teto | Compactar: promover o que virou norma, deletar o obsoleto |
-| Decisão técnica cara de reverter | ADR em `docs/adrs/` + linha no índice do CONVENTIONS.md |
+| Decisão técnica cara de reverter | ADR em `docs/adrs/` + linha no índice do CONVENTIONS.md. Se ela supera um ADR vivo, o superado vai pro `archive/` no mesmo commit |
+| Ideia crua, sem dono nem esforço ainda | uma linha no `INBOX.md`. Dossiê só na véspera do build |
 | Tarefa com owner + esforço | `TODOS.md` do projeto |
 | Fato sobre o usuário | `profile/me.md` |
 | Tema global com hub existente | Memória atômica + atualizar hub `concept_<tema>.md` |

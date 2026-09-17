@@ -6,6 +6,17 @@ não é contagem, são as seções que não deviam estar lá.
 
     check-spec.py --spec docs/specs/<slug>/spec.md
     check-spec.py --tickets docs/specs/<slug>/tickets/
+    check-spec.py --chain   <raiz-do-projeto>
+
+`--chain` prova a corrente que liga o PRD ao código: a spec aponta pro domínio do
+PRD com âncora, cada critério de aceite tem ID estável, cada ticket declara a
+spec que serve e os aceites que fecha, e nenhum aceite fica sem ticket. É o que
+faz um ticket ser executável por agente sem contexto, e o que garante que o que
+foi implementado é o que o PRD prometeu.
+
+A corrente também cobra a **invariante de estágio único**: item que virou spec
+sai do backlog. Promover é mover, não copiar, senão o backlog vira depósito de
+coisa que já foi feita.
 
 Exit 0 limpo, 1 com achado, 2 erro de uso.
 """
@@ -20,62 +31,22 @@ from pathlib import Path
 # ---------------------------------------------------------------- utilidades
 
 
-def strip_frontmatter(text: str) -> tuple[str, int]:
-    """Devolve (corpo, linha_inicial_do_corpo). Frontmatter não é conteúdo."""
-    if not text.startswith("---\n"):
-        return text, 1
-    end = text.find("\n---\n", 4)
-    if end == -1:
-        return text, 1
-    corpo = text[end + 5 :]
-    offset = text[: end + 5].count("\n") + 1
-    return corpo, offset
+def _carrega_comum():
+    """Acha `scripts/lint_common.py` subindo a partir deste arquivo.
+
+    O script é chamado tanto por `scripts/check-spec.py` (symlink) quanto pelo
+    caminho real dentro da skill; subir procurando é o que sobrevive aos dois.
+    """
+    for base in Path(__file__).resolve().parents:
+        alvo = base / "scripts" / "lint_common.py"
+        if alvo.exists():
+            sys.path.insert(0, str(alvo.parent))
+            return
+    raise SystemExit("scripts/lint_common.py não encontrado")
 
 
-def fenced_ranges(lines: list[str]) -> set[int]:
-    """Índices (0-based) de linhas dentro de bloco cercado por ```."""
-    dentro: set[int] = set()
-    aberto = False
-    for i, ln in enumerate(lines):
-        if ln.lstrip().startswith("```"):
-            dentro.add(i)
-            aberto = not aberto
-            continue
-        if aberto:
-            dentro.add(i)
-    return dentro
-
-
-class Achados:
-    """Bloqueante trava o gate; aviso só informa (pode ser leitura legítima)."""
-
-    def __init__(self) -> None:
-        self.itens: list[tuple[str, int, str, bool]] = []
-
-    def add(self, arquivo: str, linha: int, msg: str, aviso: bool = False) -> None:
-        self.itens.append((arquivo, linha, msg, aviso))
-
-    def report(self) -> int:
-        for arquivo, linha, msg, aviso in self.itens:
-            local = f"{arquivo}:{linha}" if linha else arquivo
-            print(f"{local}: {'aviso: ' if aviso else ''}{msg}")
-
-        bloqueiam = sum(1 for *_, aviso in self.itens if not aviso)
-        avisos = len(self.itens) - bloqueiam
-
-        if bloqueiam:
-            resumo = f"{bloqueiam} achado{'s' if bloqueiam > 1 else ''}"
-            if avisos:
-                resumo += f", {avisos} aviso{'s' if avisos > 1 else ''}"
-            print(f"\n{resumo}.")
-            return 1
-
-        if avisos:
-            print(f"\nsem bloqueio; {avisos} aviso{'s' if avisos > 1 else ''} pra conferir.")
-            return 0
-
-        print("limpo.")
-        return 0
+_carrega_comum()
+from lint_common import Achados, fenced_ranges, headings, slugify, strip_frontmatter  # noqa: E402
 
 
 # --------------------------------------------------------------------- spec
@@ -186,7 +157,8 @@ def check_spec(path: Path, ach: Achados) -> None:
 
 # ------------------------------------------------------------------ tickets
 
-CAMPOS = ["files", "blocked_by", "delega", "verify"]
+AC = re.compile(r"\bAC-(\d{2})\b")
+CAMPOS = ["spec", "closes", "files", "blocked_by", "delega", "verify"]
 HEADER = re.compile(r"^\s*(\d+)\s*\[(XS|S|M|L|XL)\]\s*(\[P\])?\s*(.+)$", re.I)
 TODO = re.compile(r"<\s*TODO|<\.\.\.>|TBD", re.I)
 ID_OK = re.compile(r"^(?:nenhum|none|-)$|^#\d+$")
@@ -257,6 +229,10 @@ def check_tickets(alvo: Path, ach: Achados) -> None:
             if not ID_OK.match(ref.strip()):
                 ach.add(nome, t["linha_campo"]["blocked_by"], f"`blocked_by: {ref}` não é ID real; pseudo-ID não ordena nada")
 
+        fecha = " ".join(t["campos"].get("closes", []))
+        if fecha and not AC.search(fecha):
+            ach.add(nome, t["linha_campo"]["closes"], f"`closes: {fecha[:24]}` não cita AC-NN; sem ID o aceite da spec não é rastreável")
+
         delega = " ".join(t["campos"].get("delega", [])).strip().lower()
         if delega in ("sim", "yes", "true"):
             ach.add(nome, t["linha_campo"]["delega"], "`delega: sim` não resolve worker; usar task-type ou `não`")
@@ -277,6 +253,129 @@ def check_tickets(alvo: Path, ach: Achados) -> None:
                 )
 
 
+# ------------------------------------------------------------------ corrente
+
+CAMPO_LIVRE = re.compile(r"^\s*(\w+)\s*:\s*(.*)$")
+# Spec não contratada e spec já entregue não devem ticket pelo mesmo motivo por
+# pontas opostas: uma ainda não foi assinada, a outra já foi provada pelo
+# harvest. Medido no BIP em 2026-09-15: 37 dos 119 "nenhum ticket fecha esse
+# aceite" vinham de dois rascunhos.
+STATUS_RASCUNHO = {"rascunho", "draft", "esboço", "esboco", "proposta"}
+STATUS_TERMINAL = {"feito", "feita", "entregue", "concluído", "concluida", "concluída", "done"}
+BACKLOG = ("TODOS.md", "INBOX.md", "ROADMAP.md")
+
+
+def campos_frontmatter(texto: str) -> dict[str, str]:
+    corpo, _ = strip_frontmatter(texto)
+    if corpo == texto:
+        return {}
+    bruto = texto[: len(texto) - len(corpo)]
+    out = {}
+    for ln in bruto.splitlines():
+        if ln.strip() in ("---", ""):
+            continue
+        if m := CAMPO_LIVRE.match(ln):
+            out[m.group(1).lower()] = m.group(2).strip()
+    return out
+
+
+def acs_da_spec(texto: str) -> dict[str, int]:
+    """(AC-NN, linha) de cada critério de aceite numerado."""
+    out: dict[str, int] = {}
+    for n, ln in enumerate(texto.splitlines(), 1):
+        if m := AC.search(ln):
+            out.setdefault(f"AC-{m.group(1)}", n)
+    return out
+
+
+def check_chain(raiz: Path, ach: Achados) -> None:
+    specs = sorted(raiz.glob("docs/specs/*/spec.md"))
+    if not specs:
+        ach.add(str(raiz), 0, "nenhuma spec em docs/specs/*/spec.md")
+        return
+
+    for spec in specs:
+        rel = str(spec.relative_to(raiz))
+        texto = spec.read_text(encoding="utf-8", errors="replace")
+        fm = campos_frontmatter(texto)
+        slug = spec.parent.name
+
+        # 1. a spec aponta pro domínio do PRD, com âncora que existe
+        alvo = fm.get("prd", "")
+        if not alvo:
+            ach.add(rel, 0, "sem campo `prd:`; spec que não cita o PRD não prova que segue o produto")
+        else:
+            destino, _, ancora = alvo.partition("#")
+            arquivo = raiz / destino
+            if not arquivo.exists():
+                ach.add(rel, 0, f"`prd: {alvo}` não resolve")
+            elif not ancora:
+                ach.add(rel, 0, f"`prd: {alvo}` sem âncora; apontar pra seção, não pro arquivo inteiro")
+            else:
+                vivas = {slugify(t) for _, t in headings(arquivo.read_text(encoding="utf-8", errors="replace"))}
+                if slugify(ancora) not in vivas:
+                    ach.add(rel, 0, f"âncora morta em `prd: {alvo}`")
+
+        # 2. aceite com ID estável e numeração sem furo
+        acs = acs_da_spec(texto)
+        if not acs:
+            ach.add(rel, 0, "nenhum critério de aceite com ID `AC-NN`; sem ID o ticket não tem o que fechar")
+        else:
+            numeros = sorted(int(k[3:]) for k in acs)
+            faltando = [f"AC-{n:02d}" for n in range(1, numeros[-1] + 1) if n not in numeros]
+            if faltando:
+                ach.add(rel, 0, f"furo na numeração dos aceites: {', '.join(faltando)}")
+
+        # 3. spec terminal declara o que devolveu pro doc de estado
+        terminal = fm.get("status", "").strip().lower() in STATUS_TERMINAL
+        if terminal and not fm.get("harvest"):
+            ach.add(rel, 0, "spec fechada sem `harvest:`; a verdade funcional tem que voltar pro PRD antes de a spec sumir")
+
+        # 4. ticket declara a spec que serve e os aceites que fecha
+        rascunho = fm.get("status", "").strip().lower() in STATUS_RASCUNHO
+        fechados: set[str] = set()
+        tickets = sorted((spec.parent / "tickets").glob("*.md")) if (spec.parent / "tickets").is_dir() else []
+        # Spec entregue perde os tickets por desenho: quem prova a entrega é o
+        # harvest, e cobrar ticket de spec fechada é cobrar lixo de volta.
+        if not tickets and not terminal and not rascunho:
+            ach.add(rel, 0, "spec sem tickets; contratado e não endereçado é estágio que não anda")
+        for t in tickets:
+            rel_t = str(t.relative_to(raiz))
+            texto_t = t.read_text(encoding="utf-8", errors="replace")
+            campos = {}
+            for ln in texto_t.splitlines():
+                if m := CAMPO_LIVRE.match(ln):
+                    campos.setdefault(m.group(1).lower(), m.group(2).strip())
+
+            if "spec" not in campos:
+                ach.add(rel_t, 0, "sem campo spec:; agente sem contexto não sabe que contrato está servindo")
+            elif slug not in campos["spec"]:
+                ach.add(rel_t, 0, f"`spec: {campos['spec']}` não aponta pra spec que o contém ({slug})")
+
+            citados = set(AC.findall(campos.get("closes", "")))
+            if not citados:
+                ach.add(rel_t, 0, "sem campo closes:; ticket que não fecha aceite não tem como ser aceito")
+            for nn in sorted(citados):
+                chave = f"AC-{nn}"
+                if chave not in acs:
+                    ach.add(rel_t, 0, f"`closes: {chave}` e a spec não tem esse aceite")
+                else:
+                    fechados.add(chave)
+
+        if not terminal and not rascunho:
+            for chave in sorted(set(acs) - fechados):
+                ach.add(rel, acs[chave], f"{chave}: nenhum ticket fecha esse aceite")
+
+        # 5. invariante de estágio único: promover é mover, não copiar
+        for nome in BACKLOG:
+            doc = raiz / nome
+            if not doc.exists():
+                continue
+            for n, ln in enumerate(doc.read_text(encoding="utf-8", errors="replace").splitlines(), 1):
+                if slug in ln:
+                    ach.add(nome, n, f"rastro de {slug}, que já é spec; promover move o item, não copia")
+
+
 # --------------------------------------------------------------------- main
 
 
@@ -285,9 +384,10 @@ def main() -> int:
     g = ap.add_mutually_exclusive_group(required=True)
     g.add_argument("--spec", type=Path, help="caminho do spec.md")
     g.add_argument("--tickets", type=Path, help="diretório de tickets, ou um ticket")
+    g.add_argument("--chain", type=Path, help="raiz do projeto (checa a corrente PRD, spec, ticket)")
     args = ap.parse_args()
 
-    alvo = args.spec or args.tickets
+    alvo = args.spec or args.tickets or args.chain
     if not alvo.exists():
         print(f"não existe: {alvo}", file=sys.stderr)
         return 2
@@ -295,6 +395,8 @@ def main() -> int:
     ach = Achados()
     if args.spec:
         check_spec(args.spec, ach)
+    elif args.chain:
+        check_chain(args.chain, ach)
     else:
         check_tickets(args.tickets, ach)
     return ach.report()

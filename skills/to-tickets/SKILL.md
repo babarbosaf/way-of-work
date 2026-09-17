@@ -36,11 +36,18 @@ Backends, template por backend e regra de link vivo: `references/backends-e-temp
 
 ## O ticket
 
+Um formato só, em todo backend. O que muda por tracker é o endereçamento
+(`references/backends-e-template.md`), nunca o conjunto de campos.
+
 ```
 NN [tamanho] [P]  <verbo + resultado observável>
 
+Contexto: <1-2 frases: por que isto existe, pra quem chega sem nada>
+
 O que construir: <comportamento end-to-end. Não camada-a-camada>
 
+spec:       <caminho ou URL da spec que este ticket serve>
+closes:     <AC-NN, AC-NN da spec>
 files:      <arquivos que ESTE ticket possui>
 blocked_by: <IDs reais, ou "nenhum">
 delega:     <task-type | não>
@@ -51,8 +58,15 @@ Aceite:
 - [ ] <critério observável>
 ```
 
-Três campos carregam o peso, e são os que faltavam:
+Cinco campos carregam o peso:
 
+- **`Contexto:` e `spec:` fecham a corrente pra trás.** O agente que pega o
+  ticket não viu a discussão, não leu o PRD e não estava na sessão. Sem os dois,
+  o ticket é beco sem saída: ele sabe o que digitar e não sabe o que está
+  servindo, então não tem como decidir nada que o texto não previu.
+- **`closes:` fecha a corrente pra frente.** Aceite da spec tem ID (`AC-NN`), e o
+  ticket diz qual fecha. É o que prova que o que foi construído é o que o PRD
+  prometeu, e o que faz aceite órfão aparecer antes do build, não depois.
 - **`files:` é ownership, não pista.** Nenhum outro ticket da leva toca esses
   arquivos. Sem isso não há paralelismo seguro: conflito entre agentes diferentes
   é o dobro do conflito dentro de um mesmo agente.
@@ -94,8 +108,10 @@ Regras de fatiamento, expand/contract e o teste do demo: `references/fatiamento.
 - [ ] **4. Carimbar `files:`, `[P]` e `delega:`** em todos. Ticket sem os três é
       planning gap, não decisão implícita.
 - [ ] **5. Rastrear `D-NN` → ticket.** Decisão sem ticket é decisão órfã.
-- [ ] **6. Rodar o lint.** Gate de presença:
-      `~/.claude/scripts/check-spec.py --tickets <dir>`
+- [ ] **6. Rodar os dois lints.** Presença dos campos:
+      `~/.claude/scripts/check-spec.py --tickets <dir>`. Corrente fechada, com
+      aceite sem ticket e rastro no backlog:
+      `~/.claude/scripts/check-spec.py --chain <raiz>`
 - [ ] **7. Materializar** no destino do `project.yaml`. Rascunho não vaza pro tracker.
 
 ## Do ticket ao código
@@ -116,11 +132,12 @@ que precisa engordar até ficar executável: `references/refine.md`.
 
 ## Verification
 
-- [ ] Todo ticket com `files:`, aceite, `blocked_by`, `verify:`, `delega:`
+- [ ] Todo ticket com `Contexto:`, `spec:`, `closes:`, `files:`, aceite, `blocked_by`, `verify:`, `delega:`
 - [ ] Nenhum `files:` se cruza entre tickets `[P]` da mesma fase
 - [ ] Cross-cutting fora da Fase 2
 - [ ] `blocked_by` resolve pra ID que existe
-- [ ] `~/.claude/scripts/check-spec.py --tickets` verde
+- [ ] `~/.claude/scripts/check-spec.py --tickets` e `--chain` verdes
+- [ ] Nenhum `AC-NN` da spec ficou sem ticket, e o item saiu do `TODOS.md`
 - [ ] Cada ticket responde "o que eu demonstro quando isto fecha?"
 
 Exemplo completo, quatro tickets reais com `[P]` e dependência:

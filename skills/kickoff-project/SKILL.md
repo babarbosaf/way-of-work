@@ -50,7 +50,7 @@ nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
 Ler `references/metodo-entrevista.md` e conduzir a entrevista. Ela cobre, em fases:
 enquadramento e stack, pilares de engajamento, deep-dive por feature (modelo, estrutura,
 regras exatas, edge cases, pontos a definir), camadas transversais (dados e sync,
-notificações, performance, i18n, admin) e decisões estratégicas.
+notificações, performance, i18n, admin) e restrições invioláveis.
 
 Disciplina: um bloco de tema por mensagem, no máximo 1 a 3 perguntas por vez, forçar
 especificidade (números, tabelas, cadências), devolver um mini-resumo ao fechar cada bloco.
@@ -85,7 +85,7 @@ Consultar a seção equivalente de `references/exemplos/PRD.md` para calibrar o 
 detalhe de cada seção (abrir por seção, não carregar o arquivo inteiro de uma vez).
 
 Garantir os diferenciais: padrão de seção repetido (modelo, estrutura, regras em tabela,
-edge cases, pontos a definir), a seção de decisões estratégicas registradas com racional, e
+edge cases, pontos a definir), a seção de restrições invioláveis no imperativo, e
 as seções transversais em nível de comportamento. O detalhamento técnico delas nasce aqui
 na conversa, mas o texto final aponta para o CONVENTIONS.md (regra de fronteira na
 anatomia). Guardar o material técnico levantado para o Passo 5.

@@ -102,16 +102,25 @@ is_ratelimit() { grep -qiE "(rate.?limit|too many requests|status.*429|quota.*(e
 # nomes de modelo do CLI acompanharam a janela em bloco. Esse sinal NUNCA vira
 # `enabled: false` na policy: um fato que depende da hora não é decisão de
 # roteamento, e desabilitar apaga um tier que funciona parte do tempo.
+# Worker que desiste nem sempre devolve vazio: às vezes devolve uma desculpa
+# curta com rc=0, e aí a guarda de vazio não dispara. Medido em 2026-09-15:
+# 320.985 bytes entraram, 56 voltaram ("warning: run ended with no output and no
+# recorded error"), e a chamada foi gravada como ok. Desculpa é falha do pool,
+# tratada como o vazio: cooldown e cascata desce.
+is_sem_resposta() { grep -qiE "(run ended with no output|no recorded error|no output (was )?(produced|generated)|i (was |am )?(unable|not able) to (process|complete|read)|context (length|window) exceeded|prompt is too long|input too large)" "$1"; }
+
 is_transient() { grep -qiE "(does not exist or you do not have access|model .* not (found|supported)|status 404|502 bad gateway|503 service unavailable|504 gateway timeout|overloaded_error|temporarily unavailable)" "$1"; }
 
 # --- args ---
 TASK="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
-QUESTION="" REFERENCE="" PATHS=()
+QUESTION="" REFERENCE="" PATHS=() EXPECT_LINES="" EXPECT_REGEX=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --task) TASK="$2"; shift 2 ;;
         --question) QUESTION="$2"; shift 2 ;;
         --reference) REFERENCE="$2"; shift 2 ;;
+        --expect-lines) EXPECT_LINES="$2"; shift 2 ;;
+        --expect-regex) EXPECT_REGEX="$2"; shift 2 ;;
         # variádico: consome até a próxima flag (ou o '-' do modo heredoc)
         --paths) shift; while [[ $# -gt 0 && "$1" != -* ]]; do PATHS+=("$1"); shift; done ;;
         --model) FORCE_MODEL="$2"; shift 2 ;;
@@ -230,6 +239,20 @@ fi
 if [[ ! -s "$PROMPT_FILE" ]] || ! grep -qE '[^[:space:]]' "$PROMPT_FILE"; then
     die "prompt vazio (stdin) — nada foi lido antes de '-'; confira o heredoc/pipe do chamador"
 fi
+# Prompt grande não falha na hora: ele queima o timeout inteiro e devolve
+# desculpa. Recusar aqui custa zero e diz o que fazer; o teto vem da policy
+# porque é número medido, e número medido muda.
+PROMPT_BYTES=$(wc -c < "$PROMPT_FILE" | tr -d ' ')
+WARN_BYTES=$(jq -r '.limits.prompt_warn_bytes // 100000' "$POLICY")
+MAX_BYTES=$(jq -r '.limits.prompt_max_bytes // 250000' "$POLICY")
+if (( PROMPT_BYTES > MAX_BYTES )); then
+    log_usage "$TASK" "-" "oversize" "bytes=$PROMPT_BYTES max=$MAX_BYTES" "" "$PROMPT_BYTES" 0
+    die "prompt de $PROMPT_BYTES bytes passa do teto de $MAX_BYTES: fatie o corpus (--paths menor, ou uma pergunta por rodada). Acima do teto o worker estoura o timeout e devolve desculpa, e a chamada custa ${TIMEOUT:-600}s pra não produzir nada."
+fi
+if (( PROMPT_BYTES > WARN_BYTES )); then
+    echo "⚠️  prompt de $PROMPT_BYTES bytes: acima de $WARN_BYTES o log não tem caso de sucesso. Se voltar curto, fatie." >&2
+fi
+
 if head -c 200 "$PROMPT_FILE" | grep -qE '^\{"backend"'; then
     die "prompt suspeito: parece JSON de cascata da policy (\"{\\\"backend\\\":...\") em vez de texto de tarefa — chamador vazou dado interno no lugar do prompt"
 fi
@@ -339,6 +362,27 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
         return 3
     fi
 
+    if [[ -z "$WORKTREE" ]] && is_sem_resposta "$TMP_OUT"; then
+        arm_cooldown "$pkey"
+        echo "⚠️  $pkey devolveu desculpa em vez de resposta (rc=0) — cooldown armado (${COOLDOWN_MINS}min)" >&2
+        return 3
+    fi
+
+    # Forma pedida não conferida é "voltou incompleto" virando resposta. Só o
+    # chamador sabe a forma, então ela é opcional; quando declarada, cascata
+    # desce sem cooldown: a forma errada é do worker, não do pool.
+    if [[ -z "$WORKTREE" && -n "$EXPECT_LINES" ]]; then
+        local linhas; linhas=$(grep -cE '[^[:space:]]' "$TMP_OUT" || true)
+        if (( linhas < EXPECT_LINES )); then
+            echo "⚠️  $backend devolveu $linhas linha(s); esperava >= $EXPECT_LINES linhas — cascata desce" >&2
+            return 1
+        fi
+    fi
+    if [[ -z "$WORKTREE" && -n "$EXPECT_REGEX" ]] && ! grep -qE "$EXPECT_REGEX" "$TMP_OUT"; then
+        echo "⚠️  $backend devolveu resposta que não casa com --expect-regex — cascata desce" >&2
+        return 1
+    fi
+
     clear_cooldown "$pkey"
     return 0
 }
@@ -400,18 +444,27 @@ if [[ -n "$FORCE_MODEL" ]] && ! jq -e --arg b "$FORCE_MODEL" 'any(.[]; .backend 
     fi
 fi
 
+# Cascata esgotada dizia só "cascata esgotada": 119 das 302 linhas do log, sem
+# como saber qual degrau caiu nem por quê. TRILHA acumula <pool>=<rc> por degrau
+# e vai inteira pro detail — um campo string, o schema do log não muda.
+TRILHA=""
+trilha_add() { TRILHA="${TRILHA:+$TRILHA }$1=$2"; }
+
 run_cascade() {
     local entry backend model rc
     while IFS= read -r entry; do
         backend=$(jq -r '.backend' <<<"$entry")
         model=$(jq -r '.model // empty' <<<"$entry")
-        [[ -n "$FORCE_MODEL" && "$backend" != "$FORCE_MODEL" ]] && continue
+        if [[ -n "$FORCE_MODEL" && "$backend" != "$FORCE_MODEL" ]]; then
+            trilha_add "$(pool_key "$backend" "$model")" "outro_modelo"; continue
+        fi
         if [[ -n "$WT_DIR" ]]; then
             ( cd "$WT_DIR" && invoke_backend "$backend" "$model" ); rc=$?
         else
             invoke_backend "$backend" "$model"; rc=$?
         fi
         [[ $rc -eq 0 ]] && { USED="$backend"; USED_POOL=$(pool_key "$backend" "$model"); return 0; }
+        trilha_add "$(pool_key "$backend" "$model")" "rc$rc"
     done < <(jq -c '.[]' <<<"$CASCADE")
     return 1
 }
@@ -454,5 +507,5 @@ fi
 # cascata esgotada — só remove worktree criada nesta chamada; --continue nunca apaga trabalho reaproveitado
 [[ -n "$WT_DIR" && "$WT_FRESH" == "1" ]] && { git -C "$WORKTREE" worktree remove --force "$WT_DIR" 2>/dev/null; git -C "$WORKTREE" branch -D "$WT_BRANCH" 2>/dev/null; } >/dev/null
 echo "⚠️  Nenhum worker disponível na cascata pra task '$TASK'. A sessão assume." >&2
-log_usage "$TASK" "-" "unavailable" "cascata esgotada"
+log_usage "$TASK" "-" "unavailable" "cascata esgotada: ${TRILHA:-nenhum degrau elegível}"
 exit 2
