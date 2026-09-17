@@ -32,6 +32,11 @@ mais comum de cair nisso: `[<número>|all]` vira "um número ou `all`" sem perde
 A varredura pula diretório que o git ignora, porque cache do harness em `skills/` não é
 skill quebrada.
 
+Um validador só governa: o `check-skill.py`, que roda na suíte e conhece as regras daqui
+(profundidade de referência, índice, link morto, navegação). O `quick_validate.py` do
+`skill-creator` serve de conferência antes de publicar o plugin, e o `skill-doctor` saiu
+por duplicar os dois sem acrescentar regra.
+
 O validador oficial é mais estreito que o Claude Code em outro ponto, e aí quem cede é
 ele: `argument-hint` e `disable-model-invocation` são chaves válidas aqui e ele as recusa.
 `disable-model-invocation: true` é o que mantém uma skill user-invoked fora do alcance do

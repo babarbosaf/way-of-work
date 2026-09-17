@@ -18,6 +18,10 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   componente (primitivo do registry; nosso lado é token semântico e composto), e o
   passo de showcase, que nenhum projeto seguia, vira "isolado antes da tela real" na
   ordem do que o repo já tem.
+- **Escopo por plugin no manifesto.** `escopo: project` sai como `--scope project` no
+  comando de install, porque plugin que serve um repo não precisa custar contexto no
+  perfil inteiro. `vercel` passa a ser o primeiro caso: 35 skills e ~4k tokens always-on
+  para usar uma (`shadcn`), então ele entra no repo que tem UI, não em toda sessão.
 - **O repo se instala como plugin.** `.claude-plugin/marketplace.json` e
   `.claude-plugin/plugin.json` declaram o `way-of-work` como plugin de skills, então
   máquina que não clona isto como diretório de configuração instala com
@@ -59,6 +63,19 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 - **Lente por área tocada no `peer-review.sh`.** Além da lista genérica, o prompt de
   diff ganha as perguntas da área alterada: migration puxa perda de dado, auth puxa
   autorização, contrato público puxa compatibilidade, infra puxa ambiente.
+
+### Removed
+
+- **`caveman` sai.** Medido: ~1.4k tokens always-on, mais o bloco que o `SessionStart`
+  injeta e o rastreador a cada prompt, perto de 2k por sessão. O que ele entrega no nível
+  `lite` é o que o output style `Concise` já faz, e a doutrina de brevidade mora na skill
+  `writing`; os níveis que justificariam o plugin derrubam artigo e esbarram no requisito
+  de bom português. Os três agentes `cavecrew` duplicavam `Explore` e `general-purpose`.
+  A memória que regia qual skill dele usar foi apagada no mesmo movimento.
+- **Um validador de skill só.** `skill-doctor` sai por duplicar o `check-skill.py` e o
+  `quick_validate.py` sem acrescentar regra. Junto dele saíram `cloudflare`, `eli5`,
+  `diagram-design`, `notion`, `slack` e `linear`, instalados e desligados havia meses, e
+  as entradas de escopo project que apontavam pra repositório que não existe mais.
 
 ### Changed
 
