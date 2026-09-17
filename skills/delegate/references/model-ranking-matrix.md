@@ -42,3 +42,17 @@ Notas de operação:
   pra policy = editar `model-policy.json` direto (git é o histórico).
   Atividades sem task-type na policy (docs, infra mecânica) roteiam por esta
   matriz diretamente.
+
+## Codex: modelo e esforço por task (17/set/2026)
+
+A entrada da cascata em `model-policy.json` carrega `model` e `effort`, e o
+`delegate.sh` repassa como `-m <model> -c model_reasoning_effort=<effort>`.
+Equivalência decidida pelo dono: Opus ↔ `gpt-6-astra`, Sonnet ↔ `gpt-5.6-sol`;
+esforço só `low` ou `medium`. Onde Fable e Haiku caem, e o que `terra` e `luna`
+são, fica aberto até benchmark. Estudo: `bip/docs/research/codex-como-executor-2026-09.md`.
+
+| task | modelo | effort |
+|---|---|---|
+| review, second-opinion | gpt-6-astra | medium |
+| implement | gpt-5.6-sol | medium |
+| scan, boilerplate | gpt-5.6-sol | low |

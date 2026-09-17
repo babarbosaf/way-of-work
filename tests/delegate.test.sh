@@ -404,6 +404,20 @@ rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 [[ "$(jq -r '.backends.codex.enabled' "$DELEGATE_POLICY")" == "true" ]] \
   && ok "404 não desabilita o backend na policy" || fail "backend foi desabilitado"
 
+echo "T: codex recebe modelo e esforço da entrada da cascata (low/medium por task, 17/set/2026)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+REV_MODEL=$(jq -r '.tasks.review[] | select(.backend=="codex") | .model' "$DELEGATE_POLICY")
+REV_EFFORT=$(jq -r '.tasks.review[] | select(.backend=="codex") | .effort' "$DELEGATE_POLICY")
+[[ -n "$REV_MODEL" && "$REV_MODEL" != "null" ]] && ok "policy nomeia modelo do codex em review" || fail "policy sem modelo do codex em review"
+[[ "$REV_EFFORT" == "low" || "$REV_EFFORT" == "medium" ]] && ok "esforço do codex fica entre low e medium" || fail "esforço do codex fora de low/medium ($REV_EFFORT)"
+out=$(MOCK_AGY=fail run --task review -)
+assert_eq "exit 0" "$?" "0"
+assert_contains "modelo vai no -m" "$out" "[-]m $REV_MODEL"
+assert_contains "esforço vai no -c model_reasoning_effort" "$out" "model_reasoning_effort=$REV_EFFORT"
+SCAN_EFFORT=$(jq -r '.tasks.scan[] | select(.backend=="codex") | .effort' "$DELEGATE_POLICY")
+assert_eq "scan roda em low" "$SCAN_EFFORT" "low"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
 echo ""
 echo "== $PASS passed, $FAIL failed =="
 [[ $FAIL -eq 0 ]]

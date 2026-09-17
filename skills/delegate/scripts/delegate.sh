@@ -274,7 +274,7 @@ backend_enabled() {
 }
 
 invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit, 4 ausente, 1 falha)
-    local backend="$1" model="$2" rem cmd model_flag
+    local backend="$1" model="$2" effort="${3:-}" rem cmd model_flag effort_config
     # cooldown por pool (backend:pool), não por backend inteiro — agy tem pools
     # independentes (gemini vs claude_gpt); um pool ruim não deve derrubar o outro.
     local pkey; pkey=$(pool_key "$backend" "$model")
@@ -317,11 +317,22 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     local prompt_via; prompt_via=$(backend_field "$backend" prompt_via)
     [[ -n "$prompt_via" ]] || prompt_via=arg
     model_flag=$(backend_field "$backend" model_flag)
+    effort_config=$(backend_field "$backend" effort_config)
+
+    # Modelo e esforço vêm da ENTRADA da cascata (policy `tasks.<task>[]`), não
+    # do config global do CLI: é o que deixa review pedir mais cabeça que scan
+    # sem tocar em ~/.codex/config.toml. Backend sem effort_config ignora effort.
+    local -a extra=()
+    [[ -n "$model" && -n "$model_flag" ]] && extra+=("$model_flag" "$model")
+    [[ -n "$effort" && -n "$effort_config" ]] && extra+=(-c "$effort_config=$effort")
 
     local rc
     # ${API_KEY:+...} injeta a chave só no processo do worker (não vaza pro ambiente)
     if [[ "$prompt_via" == "stdin" ]]; then
-        env ${API_KEY:+ANTHROPIC_API_KEY="$API_KEY"} $TIMEOUT_CMD $cmd < "$PROMPT_FILE" > "$TMP_OUT" 2>&1; rc=$?
+        # o `-` final do invoke é "prompt por stdin"; as flags entram antes dele
+        local head="${cmd% -}"; [[ "$head" == "$cmd" ]] && head="$cmd"
+        local tail=""; [[ "$head" != "$cmd" ]] && tail="-"
+        env ${API_KEY:+ANTHROPIC_API_KEY="$API_KEY"} $TIMEOUT_CMD $head "${extra[@]}" $tail < "$PROMPT_FILE" > "$TMP_OUT" 2>&1; rc=$?
     else
         # </dev/null explícito: sem stdin próprio (prompt vai por --arg), o worker
         # herdaria o pipe do `while read` de run_cascade e drenaria o file
@@ -451,17 +462,18 @@ TRILHA=""
 trilha_add() { TRILHA="${TRILHA:+$TRILHA }$1=$2"; }
 
 run_cascade() {
-    local entry backend model rc
+    local entry backend model effort rc
     while IFS= read -r entry; do
         backend=$(jq -r '.backend' <<<"$entry")
         model=$(jq -r '.model // empty' <<<"$entry")
+        effort=$(jq -r '.effort // empty' <<<"$entry")
         if [[ -n "$FORCE_MODEL" && "$backend" != "$FORCE_MODEL" ]]; then
             trilha_add "$(pool_key "$backend" "$model")" "outro_modelo"; continue
         fi
         if [[ -n "$WT_DIR" ]]; then
-            ( cd "$WT_DIR" && invoke_backend "$backend" "$model" ); rc=$?
+            ( cd "$WT_DIR" && invoke_backend "$backend" "$model" "$effort" ); rc=$?
         else
-            invoke_backend "$backend" "$model"; rc=$?
+            invoke_backend "$backend" "$model" "$effort"; rc=$?
         fi
         [[ $rc -eq 0 ]] && { USED="$backend"; USED_POOL=$(pool_key "$backend" "$model"); return 0; }
         trilha_add "$(pool_key "$backend" "$model")" "rc$rc"
