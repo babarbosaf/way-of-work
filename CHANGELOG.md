@@ -7,6 +7,39 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **`design-workflow` vira roteador, e a stack de design passa a ser externa.**
+  A skill deixa de carregar doutrina de craft e nomeia o dono de cada passo: plugin
+  `impeccable` (`shape`, `live`, `distill`, `critique`, `audit`, `polish`, `harden`,
+  `extract`, `document`), skill `shadcn` do plugin vercel para componente e tema, MCP
+  `mobbin` para referência real no passo de referência, `DesignSync` para a base
+  canônica. Figma sai do loop: a tentativa de usar não pegou, e referência de fora entra
+  por print ou pelo Mobbin. Fica aqui só o que não tem dono externo: classificar papercut,
+  fechar constraint, loop-back, veredito e registro. shadcn passa a ser a base de
+  componente (primitivo do registry; nosso lado é token semântico e composto), e o
+  passo de showcase, que nenhum projeto seguia, vira "isolado antes da tela real" na
+  ordem do que o repo já tem.
+- **O repo se instala como plugin.** `.claude-plugin/marketplace.json` e
+  `.claude-plugin/plugin.json` declaram o `way-of-work` como plugin de skills, então
+  máquina que não clona isto como diretório de configuração instala com
+  `claude plugin marketplace add` mais `claude plugin install`. Só as skills viajam:
+  hook, script e `config/` dependem de caminho e de `settings.json`, e continuam vindo do
+  clone. Seis asserts em `tests/plugins.test.sh`, incluindo o que cobra que toda skill
+  distribuída esteja versionada.
+- **A régua de skill adota o limite do empacotador oficial.** `description` com `<` ou
+  `>` passa a bloquear no `check-skill.py`, porque o `quick_validate.py` do
+  `skill-creator` recusa a skill por isso; `delegate` e `remove-dumb-comments` perderam os
+  placeholders em `<>` sem perder o gatilho. O parser de frontmatter parou de contar o
+  indicador de bloco (`|`, `>-`) como valor, que era falso positivo em três skills, e a
+  varredura passa a pular diretório que o git ignora, porque `skills/synced/` é cache do
+  harness e não skill quebrada. `argument-hint` e `disable-model-invocation` ficam como
+  estão: são válidas no Claude Code, e a segunda é o que mantém `/execute` fora do
+  alcance do modelo.
+- **`bootstrap-plugins.sh --update` e bloco `mcp` no manifesto.** `--update` puxa
+  upstream do que já está instalado (`marketplace update` + `plugin update`) sem
+  instalar nada; o bloco `mcp` declara servidor remoto (`url`) e local (`command`) e
+  gera o `claude mcp add` no escopo `user`. `config/plugins.json` passa a declarar
+  `impeccable`, `vercel`, e os MCP `shadcn` e `mobbin`.
+
 - **Padrão de documentos, e os quatro lints que o cobram.** `docs/doc-standard.md`
   deixa de falar só de `AGENTS.md` e `README.md` e passa a reger PRD e subdocs,
   decisão, backlog e handoff, com cada regra nomeando o comando que a aplica.

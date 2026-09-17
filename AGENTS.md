@@ -40,6 +40,7 @@ Child AGENTS.md escreve override próprio, nunca repete o que está aqui.
 | O que um projeto **é** mudou: stack, canal, quem mantém, se morreu | atualiza a página dele na base de conhecimento na mesma rodada |
 | Fixar API, assinatura ou versão de lib | context7 antes (`docs/research/context7.md`) |
 | Trabalho mecânico | `delegate` |
+| Comentário que só repete o código | `remove-dumb-comments`, que propõe e espera o ok |
 | Pedido visual | `design-workflow`, roteado em papercut ou design |
 | Texto que outra pessoa vai ler | skill `writing`; `check-writing.py` antes do commit |
 | Doc de raiz novo ou editado | `docs/doc-standard.md`, e o lint que ele nomeia: `scripts/check-docs.py --estado\|--grafo\|--ciclo\|--decay\|--estagio` |
