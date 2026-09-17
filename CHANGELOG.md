@@ -19,6 +19,10 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   `prd:` com âncora, aceite com `AC-NN`, `closes:` no ticket, nenhum aceite órfão,
   `harvest:` na spec entregue e a invariante de estágio único, que é item promovido
   sair do backlog sem deixar rastro. Suítes `docs-lint` e `spec-lint`.
+- **Cláusula de não-adoção no `--grafo`.** Raiz sem `PRD.md` e sem `docs/prd/` é repo
+  que não instancia produto, não repo com doc faltando: o check sai limpo, como o
+  `--ciclo` já fazia sem árvore de decisão. Subdoc de `docs/prd/` sem índice continua
+  achado, porque aí o padrão foi adotado pela metade.
 - **Lente por área tocada no `peer-review.sh`.** Além da lista genérica, o prompt de
   diff ganha as perguntas da área alterada: migration puxa perda de dado, auth puxa
   autorização, contrato público puxa compatibilidade, infra puxa ambiente.
