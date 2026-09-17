@@ -15,6 +15,7 @@ e a referência existe pra ser aberta quando a rodada precisa dela.
 |---|---|---|
 | `name` | minúscula, número e hífen, até 64 chars, sem palavra reservada, igual ao diretório | bloqueia |
 | `description` | até 1024 chars, terceira pessoa, o que faz mais quando usar | bloqueia, exceto o gatilho, que avisa |
+| `description` | sem `<` e sem `>` | bloqueia |
 | Corpo do `SKILL.md` | até 500 linhas | bloqueia acima de 500, avisa acima de 400 |
 | Link relativo | tem que resolver | bloqueia |
 | Profundidade de referência | um nível a partir do `SKILL.md` | bloqueia |
@@ -24,6 +25,17 @@ e a referência existe pra ser aberta quando a rodada precisa dela.
 
 `python3 scripts/check-skill.py --todas skills/` aplica tudo isso. Exit 0 limpo, 1 com
 bloqueante, 2 erro de uso. A suíte é `tests/skill-lint.test.sh`.
+
+**Sinal de menor ou maior na description** existe porque o empacotador oficial
+(`quick_validate.py` do `skill-creator`) recusa a skill, e placeholder em `<>` é o jeito
+mais comum de cair nisso: `[<número>|all]` vira "um número ou `all`" sem perder o gatilho.
+A varredura pula diretório que o git ignora, porque cache do harness em `skills/` não é
+skill quebrada.
+
+O validador oficial é mais estreito que o Claude Code em outro ponto, e aí quem cede é
+ele: `argument-hint` e `disable-model-invocation` são chaves válidas aqui e ele as recusa.
+`disable-model-invocation: true` é o que mantém uma skill user-invoked fora do alcance do
+modelo, então ela fica como está.
 
 Duas regras merecem o porquê. **Profundidade de um nível** existe porque o agente lê
 arquivo referenciado dentro de arquivo referenciado por partes, com `head`, e fica com

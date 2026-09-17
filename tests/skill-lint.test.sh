@@ -124,6 +124,10 @@ d=$(planta gatilho-citado)
 sed -i.bak 's/^description: .*/description: Gera handoff da sessão. Invoque quando o usuário disser "vou compactar" ou "pausar por aqui"./' "$d/SKILL.md" && rm -f "$d/SKILL.md.bak"
 esperado_limpo "gatilho entre aspas não conta como primeira pessoa" "$d"
 
+d=$(planta com-angulo)
+sed -i.bak 's/^description: .*/description: Monta artefato de teste. Invoque quando o usuário digitar `\/monta [<nome>]`./' "$d/SKILL.md" && rm -f "$d/SKILL.md.bak"
+esperado_pega "description com < ou >" "sinal de menor ou maior" "$d"
+
 d=$(planta sem-gatilho)
 sed -i.bak 's/^description: .*/description: Monta artefato de teste a partir de diretório./' "$d/SKILL.md" && rm -f "$d/SKILL.md.bak"
 esperado_aviso "description sem gatilho de uso" "sem gatilho" "$d"
@@ -196,6 +200,8 @@ if [ "${#VERSIONADAS[@]}" -eq 0 ]; then
   fail "nenhuma skill versionada encontrada"
 else
   esperado_sem_bloqueio "${#VERSIONADAS[@]} skills versionadas sem bloqueio" "${VERSIONADAS[@]}"
+  # `skills/synced/` é cache do harness, gitignored: varredura não o trata como skill quebrada.
+  esperado_sem_bloqueio "--todas pula diretório que o git ignora" --todas skills/
 fi
 
 echo

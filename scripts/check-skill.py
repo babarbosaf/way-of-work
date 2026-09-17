@@ -15,6 +15,7 @@ from __future__ import annotations
 
 import argparse
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -30,6 +31,7 @@ REF_INDICE = 100
 
 NAME_OK = re.compile(r"^[a-z0-9-]{1,64}$")
 RESERVADO = ("anthropic", "claude")
+ESCALAR_BLOCO = ("|", ">", "|-", ">-", "|+", ">+")
 PESSOA = re.compile(r"\b(eu |meu |minha |meus |minhas |I can|I will|you can|you should)", re.I)
 # Gatilho citado ("vou compactar", "pausar por aqui") é fala do usuário dentro da
 # description, não a skill falando em primeira pessoa. Sai antes do teste.
@@ -112,11 +114,28 @@ def frontmatter(texto: str) -> tuple[dict[str, str], str, int]:
         m = re.match(r"^([a-z-]+):\s*(.*)$", linha)
         if m:
             chave = m.group(1)
-            campos[chave] = m.group(2).strip()
+            valor = m.group(2).strip()
+            # `description: |` e `description: >-` abrem bloco: o indicador não é valor.
+            campos[chave] = "" if valor in ESCALAR_BLOCO else valor
         elif chave and linha.startswith((" ", "\t")):
             campos[chave] += " " + linha.strip()
     offset = texto[: fim + 5].count("\n") + 1
     return campos, texto[fim + 5 :], offset
+
+
+def ignorado(caminho: Path) -> bool:
+    """Diretório que o git ignora é cache de máquina, não skill quebrada.
+
+    Fora de repositório git nada é ignorado, e a varredura segue como antes."""
+    try:
+        alvo = caminho.resolve()
+        r = subprocess.run(
+            ["git", "check-ignore", "-q", str(alvo)],
+            cwd=alvo.parent, capture_output=True,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return False
+    return r.returncode == 0
 
 
 def citada(corpo: str, rel: str, nome: str) -> bool:
@@ -160,6 +179,9 @@ def check_skill(raiz: Path, ach: Achados) -> None:
             ach.add(arq, 1, f"description com {len(desc)} chars, teto de 1024")
         if PESSOA.search(CITACAO.sub("", desc)):
             ach.add(arq, 1, "description em primeira ou segunda pessoa: escreve em terceira")
+        if "<" in desc or ">" in desc:
+            ach.add(arq, 1, "description com sinal de menor ou maior: o empacotador "
+                            "upstream recusa, e placeholder em <> se escreve por extenso")
         if not GATILHO.search(desc):
             ach.add(arq, 1, "description sem gatilho de uso: diz o que faz e quando usar", aviso=True)
 
@@ -227,7 +249,10 @@ def main() -> int:
             print(f"não existe: {alvo}", file=sys.stderr)
             return 2
         if args.todas:
-            skills += sorted(p for p in alvo.iterdir() if p.is_dir() and not p.name.startswith("_"))
+            skills += sorted(
+                p for p in alvo.iterdir()
+                if p.is_dir() and not p.name.startswith("_") and not ignorado(p)
+            )
         else:
             skills.append(alvo)
 
