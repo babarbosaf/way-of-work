@@ -2,6 +2,11 @@
 # Aplica o manifesto de plugins do repo. Dry-run por default: imprime os comandos
 # e não muda nada. Com --apply, executa.
 #
+# Dois modos. Sem flag: instala o que falta (marketplaces, plugins, MCP).
+# Com --update: puxa o upstream do que já está instalado (marketplace update +
+# plugin update), e não instala nada. MCP fica de fora do update porque cada
+# servidor resolve versão sozinho (`npx @latest`, endpoint remoto).
+#
 # Manifesto base: config/plugins.json. Overlay privado: config/plugins.local.json
 # (gitignored), deep-merge via jq `*`, local vence. Mesma convenção do
 # model-policy. Plugin de conta (Slack, Linear, Notion) vive só no local: o nome
@@ -13,12 +18,14 @@ set -uo pipefail
 
 MANIFEST="${MANIFEST:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/config/plugins.json}"
 APPLY=0
+UPDATE=0
 for arg in "$@"; do
   case "$arg" in
     --apply) APPLY=1 ;;
+    --update) UPDATE=1 ;;
     --manifest=*) MANIFEST="${arg#--manifest=}" ;;
-    -h|--help) sed -n '2,12p' "${BASH_SOURCE[0]}"; exit 0 ;;
-    *) echo "uso: $(basename "$0") [--apply] [--manifest=PATH]" >&2; exit 1 ;;
+    -h|--help) sed -n '2,17p' "${BASH_SOURCE[0]}"; exit 0 ;;
+    *) echo "uso: $(basename "$0") [--apply] [--update] [--manifest=PATH]" >&2; exit 1 ;;
   esac
 done
 
@@ -48,17 +55,43 @@ if [[ -n "$ORFAOS" ]]; then
 fi
 
 CMDS=()
-while IFS=$'\t' read -r nome repo; do
-  [[ -z "$nome" ]] && continue
-  CMDS+=("claude plugin marketplace add $repo")
-done < <(jq -r '(.marketplaces // {}) | to_entries[]
-  | select(.value.builtin != true)
-  | "\(.key)\t\(.value.github // .value.source // .key)"' <<<"$EFETIVO")
+if (( UPDATE == 1 )); then
+  while IFS= read -r nome; do
+    [[ -z "$nome" ]] && continue
+    CMDS+=("claude plugin marketplace update $nome")
+  done < <(jq -r '(.marketplaces // {}) | to_entries[] | select(.value.builtin != true) | .key' <<<"$EFETIVO")
 
-while IFS=$'\t' read -r nome mercado; do
-  [[ -z "$nome" ]] && continue
-  CMDS+=("claude plugin install $nome@$mercado")
-done < <(jq -r '(.plugins // [])[] | "\(.name)\t\(.marketplace)"' <<<"$EFETIVO")
+  while IFS=$'\t' read -r nome mercado; do
+    [[ -z "$nome" ]] && continue
+    CMDS+=("claude plugin update $nome@$mercado")
+  done < <(jq -r '(.plugins // [])[] | "\(.name)\t\(.marketplace)"' <<<"$EFETIVO")
+else
+  while IFS=$'\t' read -r nome repo; do
+    [[ -z "$nome" ]] && continue
+    CMDS+=("claude plugin marketplace add $repo")
+  done < <(jq -r '(.marketplaces // {}) | to_entries[]
+    | select(.value.builtin != true)
+    | "\(.key)\t\(.value.github // .value.source // .key)"' <<<"$EFETIVO")
+
+  while IFS=$'\t' read -r nome mercado; do
+    [[ -z "$nome" ]] && continue
+    CMDS+=("claude plugin install $nome@$mercado")
+  done < <(jq -r '(.plugins // [])[] | "\(.name)\t\(.marketplace)"' <<<"$EFETIVO")
+
+  # MCP: `url` é remoto (http), `command` é local (stdio). Escopo user, porque o
+  # servidor serve o perfil inteiro, não um repo.
+  # Tab é IFS-whitespace e colapsa campo vazio no meio, então o tipo vem primeiro
+  # e o valor é o resto da linha.
+  while IFS=$'\t' read -r tipo nome valor; do
+    [[ -z "$nome" ]] && continue
+    if [[ "$tipo" == "http" ]]; then
+      CMDS+=("claude mcp add --transport http $nome $valor -s user")
+    else
+      CMDS+=("claude mcp add $nome -s user -- $valor")
+    fi
+  done < <(jq -r '(.mcp // {}) | to_entries[]
+    | if .value.url then "http\t\(.key)\t\(.value.url)" else "stdio\t\(.key)\t\(.value.command)" end' <<<"$EFETIVO")
+fi
 
 if (( APPLY == 0 )); then
   echo "# dry-run: nada foi executado. Rode com --apply pra valer."

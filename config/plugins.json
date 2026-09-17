@@ -1,9 +1,15 @@
 {
   "_comentario": "Plugins que o modelo de trabalho usa. Todos opcionais: nenhum é pré-requisito do repo. Marketplace de conta (Slack, Linear, Notion) vive em plugins.local.json, gitignored. Aplicar com scripts/bootstrap-plugins.sh --apply.",
   "marketplaces": {
-    "claude-plugins-official": { "builtin": true },
-    "caveman": { "github": "JuliusBrussee/caveman" },
-    "impeccable": { "github": "pbakaus/impeccable" }
+    "claude-plugins-official": {
+      "builtin": true
+    },
+    "caveman": {
+      "github": "JuliusBrussee/caveman"
+    },
+    "impeccable": {
+      "github": "pbakaus/impeccable"
+    }
   },
   "plugins": [
     {
@@ -15,6 +21,26 @@
       "name": "pyright-lsp",
       "marketplace": "claude-plugins-official",
       "porque": "diagnóstico de tipo em projeto Python, no editor e na sessão."
+    },
+    {
+      "name": "impeccable",
+      "marketplace": "impeccable",
+      "porque": "doutrina de craft visual e os 23 comandos que a skill design-workflow roteia (shape, distill, critique, audit, polish, live). Fonte externa: atualiza por upstream, nada nosso pra manter."
+    },
+    {
+      "name": "vercel",
+      "marketplace": "claude-plugins-official",
+      "porque": "skill shadcn: CLI, registry, composição, tema. Base de componente do fluxo de design. Vem com 26 skills a mais (~3k tokens always_on) porque skillOverrides não alcança skill de plugin; aceito enquanto o custo não doer."
     }
-  ]
+  ],
+  "mcp": {
+    "shadcn": {
+      "command": "npx -y shadcn@latest mcp",
+      "porque": "registry vivo do shadcn/ui: busca componente, block e exemplo na versão de hoje, e instala. Fonte de componente do fluxo de design."
+    },
+    "mobbin": {
+      "url": "https://api.mobbin.com/mcp",
+      "porque": "referência externa do passo 1: 600k+ telas reais, atualizadas semanalmente. Exige plano Mobbin pago e OAuth por perfil (/mcp)."
+    }
+  }
 }

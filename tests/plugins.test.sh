@@ -86,6 +86,37 @@ out=$(MOCK_RC=1 bash "$BOOT" --manifest="$TMP/base.json" --apply 2>&1)
 assert_contains "reporta a contagem de falhas" "$out" "3 com falha"
 assert_contains "segue depois da falha" "$out" "Segue."
 
+echo "== --update =="
+: > "$MOCK_LOG"
+out=$(bash "$BOOT" --manifest="$TMP/base.json" --update)
+assert_contains "dry-run do update atualiza a marketplace" "$out" "plugin marketplace update terceiro"
+assert_contains "dry-run do update atualiza o plugin" "$out" "plugin update alfa@terceiro"
+grep -q "plugin install" <<<"$out" && fail "update não instala" || ok "update não instala"
+grep -q "marketplace update oficial" <<<"$out" && fail "builtin não tem marketplace pra atualizar" || ok "builtin fica de fora do marketplace update"
+[[ ! -s "$MOCK_LOG" ]] && ok "dry-run do update não invoca o CLI" || fail "dry-run do update invocou o CLI"
+: > "$MOCK_LOG"
+bash "$BOOT" --manifest="$TMP/base.json" --update --apply >/dev/null; rc=$?
+assert_rc "--update --apply: rc=0" "$rc" 0
+assert_contains "CLI recebeu o marketplace update" "$(cat "$MOCK_LOG")" "plugin marketplace update terceiro"
+assert_contains "CLI recebeu o plugin update" "$(cat "$MOCK_LOG")" "plugin update beta@oficial"
+
+echo "== bloco mcp =="
+cat > "$TMP/mcp.json" <<'JSON'
+{
+  "marketplaces": { "oficial": { "builtin": true } },
+  "plugins": [],
+  "mcp": {
+    "shadcn": { "command": "npx -y shadcn@latest mcp" },
+    "mobbin": { "url": "https://api.mobbin.com/mcp" }
+  }
+}
+JSON
+out=$(bash "$BOOT" --manifest="$TMP/mcp.json")
+assert_contains "stdio vira mcp add com --" "$out" "mcp add shadcn -s user -- npx -y shadcn@latest mcp"
+assert_contains "http vira mcp add --transport http" "$out" "mcp add --transport http mobbin https://api.mobbin.com/mcp -s user"
+out=$(bash "$BOOT" --manifest="$TMP/mcp.json" --update)
+grep -q "mcp add" <<<"$out" && fail "update não mexe em MCP" || ok "update não mexe em MCP"
+
 echo "== manifesto do repo =="
 out=$(bash "$BOOT" 2>&1); rc=$?
 assert_rc "manifesto versionado é válido e sem órfão" "$rc" 0
