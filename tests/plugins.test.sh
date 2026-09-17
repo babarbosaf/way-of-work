@@ -100,6 +100,22 @@ assert_rc "--update --apply: rc=0" "$rc" 0
 assert_contains "CLI recebeu o marketplace update" "$(cat "$MOCK_LOG")" "plugin marketplace update terceiro"
 assert_contains "CLI recebeu o plugin update" "$(cat "$MOCK_LOG")" "plugin update beta@oficial"
 
+echo "== escopo do plugin =="
+cat > "$TMP/escopo.json" <<'JSON'
+{
+  "marketplaces": { "oficial": { "builtin": true } },
+  "plugins": [
+    { "name": "alfa", "marketplace": "oficial" },
+    { "name": "beta", "marketplace": "oficial", "escopo": "project" }
+  ]
+}
+JSON
+out=$(bash "$BOOT" --manifest="$TMP/escopo.json")
+assert_contains "escopo declarado vira --scope" "$out" "install beta@oficial --scope project"
+grep -q "install alfa@oficial --scope" <<<"$out" && fail "sem escopo não leva flag" || ok "sem escopo declarado continua no default"
+out=$(bash "$BOOT" --manifest="$TMP/escopo.json" --update)
+grep -q -- "--scope" <<<"$out" && fail "update não tem escopo" || ok "update ignora o escopo"
+
 echo "== bloco mcp =="
 cat > "$TMP/mcp.json" <<'JSON'
 {

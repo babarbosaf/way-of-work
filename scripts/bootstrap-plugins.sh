@@ -73,10 +73,16 @@ else
     | select(.value.builtin != true)
     | "\(.key)\t\(.value.github // .value.source // .key)"' <<<"$EFETIVO")
 
-  while IFS=$'\t' read -r nome mercado; do
+  # `escopo: project` sai como flag: o plugin serve um repo, não o perfil, e o
+  # comando roda dentro dele.
+  while IFS=$'\t' read -r nome mercado escopo; do
     [[ -z "$nome" ]] && continue
-    CMDS+=("claude plugin install $nome@$mercado")
-  done < <(jq -r '(.plugins // [])[] | "\(.name)\t\(.marketplace)"' <<<"$EFETIVO")
+    if [[ -n "$escopo" ]]; then
+      CMDS+=("claude plugin install $nome@$mercado --scope $escopo")
+    else
+      CMDS+=("claude plugin install $nome@$mercado")
+    fi
+  done < <(jq -r '(.plugins // [])[] | "\(.name)\t\(.marketplace)\t\(.escopo // "")"' <<<"$EFETIVO")
 
   # MCP: `url` é remoto (http), `command` é local (stdio). Escopo user, porque o
   # servidor serve o perfil inteiro, não um repo.
