@@ -89,7 +89,11 @@ echo "== ponteiro morto =="
 # CHANGELOG registra o que já saiu, então cita nome de arquivo removido por
 # desenho, e fixture de lint cita ponteiro morto de propósito. A guarda vale pro
 # resto, e o [Unreleased] tem assert próprio abaixo.
-MORTO='RUNBOOK\.md|templates/VOZ|docs/research/escrita\.md|CONTEXT\.md|ADR-000|specs/done/'  # guard-regex
+# `ADR-000` saiu da lista quando a árvore de decisão passou a existir: o termo
+# barrava a citação de ADR que não existia aqui, e quem faz isso agora é o
+# `check-docs.py --ciclo`, que confere se o número resolve pra arquivo em vez de
+# proibir a faixa inteira.
+MORTO='RUNBOOK\.md|templates/VOZ|docs/research/escrita\.md|CONTEXT\.md|specs/done/'  # guard-regex
 SALVO='^(CHANGELOG\.md|tests/fixtures/)'  # guard-regex
 regra    "ponteiro pra arquivo removido" "$MORTO" "$SALVO"  # guard-regex
 plantado "ponteiro pra arquivo removido" "$MORTO" "Ver RUNBOOK.md para o passo a passo." "$SALVO"  # guard-regex

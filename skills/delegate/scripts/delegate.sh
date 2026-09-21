@@ -6,6 +6,7 @@
 #               [--model <backend>] [--worktree <repo-dir>] [--continue <slug>]
 #               [--timeout N] [--gc <repo-dir>] [--async] -
 #   delegate.sh --status <id>     # estado e material de um despacho assíncrono
+#   delegate.sh --tasks           # as tasks em curso, uma por linha (só leitura)
 #
 #   Modo bulk (o script monta o prompt, sem heredoc):
 #   delegate.sh --task scan --paths <f1> <f2>... --question "<pergunta>"
@@ -125,7 +126,7 @@ is_sem_resposta() { grep -qiE "(run ended with no output|no recorded error|no ou
 
 # --- args ---
 TASK="" TIER="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
-ASYNC=0; STATUS_ID=""
+ASYNC=0; STATUS_ID=""; TASKS=0
 QUESTION="" REFERENCE="" PATHS=() EXPECT_LINES="" EXPECT_REGEX=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -141,6 +142,7 @@ while [[ $# -gt 0 ]]; do
         --worktree) WORKTREE="$2"; shift 2 ;;
 --async) ASYNC=1; shift ;;
 --status) STATUS_ID="$2"; shift 2 ;;
+        --tasks) TASKS=1; shift ;;
         --continue) CONTINUE_SLUG="$2"; shift 2 ;;
         --timeout) TIMEOUT="$2"; shift 2 ;;
         --gc) GC="$2"; shift 2 ;;
@@ -150,6 +152,24 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ "$TASKS" == 1 ]]; then
+    # A camada de terminal (ADR-0001) roda isto em laço num pane: o gate é a fonte,
+    # a leitura não escreve nada, e não existe aqui caminho que toque policy. É o
+    # que faz desligar a camada mudar a tela e não o roteamento.
+    # Quem está em curso é o que a biblioteca de slot diz, e não a lista de
+    # diretórios em `tasks/`: task que terminou deixa o diretório pra trás de
+    # propósito, e listar ele mostraria trabalho que ninguém está fazendo.
+    _n=0
+    while read -r _pool _id; do
+        [[ -n "$_id" && -f "$GATE_DIR/tasks/$_id/meta" ]] || continue
+        printf '%-22s %-12s %-12s %s\n' "$_id" "$_pool" \
+            "$(sed -n 's/^task=//p' "$GATE_DIR/tasks/$_id/meta")" \
+            "$(sed -n 's/^branch=//p' "$GATE_DIR/tasks/$_id/meta")"
+        _n=$(( _n + 1 ))
+    done < <(slot_em_curso)
+    (( _n )) || echo "nenhuma task em curso"
+    exit 0
+fi
 if [[ -n "$STATUS_ID" ]]; then
     # Identificador é nome de diretório, então travessia de caminho é recusada
     # antes de qualquer leitura: consulta é a porta mais fácil de empurrar.
@@ -160,7 +180,7 @@ if [[ -n "$STATUS_ID" ]]; then
     [[ -f "$_meta" ]] || die "--status: identificador não existe: $STATUS_ID"
     echo "id: $STATUS_ID"
     # Um sed só, na ordem em que o arquivo grava, e campo vazio não vira linha.
-    sed -nE 's/^(estado|task|balde|rc|comecou|terminou)=(..*)/\1: \2/p' "$_meta"
+    sed -nE 's/^(estado|task|balde|branch|rc|comecou|terminou)=(..*)/\1: \2/p' "$_meta"
     # Caminho, nunca conteúdo: o material pode carregar o repo inteiro, e despejar
     # isso no terminal é vazamento, não diagnóstico.
     [[ -f "$GATE_DIR/tasks/$STATUS_ID/out.txt" ]] && echo "material: $GATE_DIR/tasks/$STATUS_ID/out.txt"
@@ -308,12 +328,16 @@ trap 'rm -f "$PROMPT_FILE"; [[ -n "$SLOT_TOMADO" ]] && slot_soltar "$SLOT_TOMADO
 # valendo tem que ser recomposto aqui: `comecou` era perdido, e o leitor procurava
 # um campo que a escrita terminal nunca produzia. O `id` saiu porque é o nome do
 # diretório, e o leitor já o tem na mão.
+# O `branch` entra porque a camada de terminal o mostra, e derivar
+# `delegate/<id>` na leitura mentiria pra despacho sem árvore de trabalho, que não
+# tem branch nenhuma.
 task_estado() { # estado [rc]
-    printf 'estado=%s\ntask=%s\nbalde=%s\nrc=%s\ncomecou=%s\nterminou=%s\n' \
-        "$1" "$TASK" "${USED_POOL:-}" "${2:-}" "$COMECOU" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TASK_DIR/meta"
+    printf 'estado=%s\ntask=%s\nbalde=%s\nbranch=%s\nrc=%s\ncomecou=%s\n' \
+        "$1" "$TASK" "${USED_POOL:-}" "${WT_BRANCH:-}" "${2:-}" "$COMECOU" > "$TASK_DIR/meta"
+    [[ "$1" == "em curso" ]] || printf 'terminou=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TASK_DIR/meta"
 }
 COMECOU=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-printf 'estado=em curso\ntask=%s\ncomecou=%s\n' "$TASK" "$COMECOU" > "$TASK_DIR/meta"
+task_estado "em curso"
 abs_path() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$PWD" "$1" ;; esac; }
 
 build_bulk_prompt() { # pergunta + corpus em tag XML + contrato de saída
@@ -608,6 +632,9 @@ fi
 # e escreve lá. Foi assim que uma delegação deixou o working tree do dono meio
 # editado. O `cd` normaliza o `/../` do WT_DIR pra ele servir os três consumidores
 # (prompt, --add-dir da policy, mensagens de erro) com o mesmo caminho.
+# A branch nasce aqui, depois do meta inicial: reestampar é o que dá à camada de
+# terminal o que mostrar enquanto a task corre, em vez de só quando ela fecha.
+[[ -n "$WT_BRANCH" ]] && task_estado "em curso"
 if [[ -n "$WT_DIR" ]]; then
     WT_DIR=$(cd "$WT_DIR" && pwd)
     { printf 'Diretório de trabalho: %s\n\nEsse é o caminho absoluto da sua worktree. Leia e escreva SÓ dentro dele, sempre pelo caminho absoluto. Se os arquivos da task não estiverem aí, pare e diga isso: não procure o repositório em outro lugar do disco, e nunca escreva fora desse diretório.\n\n---\n\n' "$WT_DIR"; cat "$PROMPT_FILE"; } > "$PROMPT_FILE.wt"

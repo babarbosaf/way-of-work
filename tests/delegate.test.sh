@@ -679,6 +679,70 @@ saida=$(bash "$DELEGATE" --status "../../etc/passwd" 2>&1); rc=$?
   || fail "identificador com ../ foi aceito"
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
 
+echo "T: a camada de terminal lê as tasks em curso, e não decide nada"
+# AC-14 e AC-15. O leitor é o que o pane do herdr roda em laço, e a fronteira dura
+# é a razão do ADR-0001: sem caminho de escrita, a camada não tem por onde
+# escolher worker nem modelo, então desligá-la muda a tela e não o roteamento.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+rm -rf "$DELEGATE_GATE_DIR/tasks"
+vazio=$(bash "$DELEGATE" --tasks 2>&1); rc=$?
+assert_eq "sem task em curso a listagem sai 0" "$rc" "0"
+assert_contains "e diz que não tem nada em curso" "$vazio" "nenhuma task em curso"
+
+# Task em curso montada à mão: o que o leitor promete é ler o estado que o
+# despacho deixa, e montar isso aqui prova o contrato sem esperar worker.
+TID="implement-fixture"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TID"
+cat > "$DELEGATE_GATE_DIR/tasks/$TID/meta" <<EOF
+estado=em curso
+task=implement
+balde=codex
+branch=delegate/$TID
+comecou=2026-09-21T12:00:00Z
+EOF
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=%s\n' "$$" "$TID" "$(( $(date +%s) + 300 ))" "codex" \
+  > "$DELEGATE_GATE_DIR/slot.codex"
+lista=$(bash "$DELEGATE" --tasks 2>&1)
+assert_contains "a listagem nomeia o balde" "$lista" "codex"
+assert_contains "a listagem nomeia o tipo de task" "$lista" "implement"
+assert_contains "a listagem nomeia a branch" "$lista" "delegate/$TID"
+
+# Só de leitura, e o assert é o gate inteiro byte a byte: se o leitor criasse
+# log, lock ou cache, a camada passaria a ter estado próprio e a fronteira do
+# ADR-0001 cairia sem ninguém ver.
+estado_gate() { find "$DELEGATE_GATE_DIR" | sort | tr '\n' ' '; find "$DELEGATE_GATE_DIR" -type f | sort | xargs cat 2>/dev/null | cksum; }
+antes=$(estado_gate); bash "$DELEGATE" --tasks >/dev/null 2>&1; depois=$(estado_gate)
+assert_eq "a leitura não escreve nada no gate" "$depois" "$antes"
+
+# Sem policy o leitor continua inteiro: é a prova de que não existe caminho de
+# escolha de worker ou modelo no meio dele, porque escolha exige policy.
+sem_policy=$(DELEGATE_POLICY="$TMP/policy-que-nao-existe.json" bash "$DELEGATE" --tasks 2>&1); rc=$?
+assert_eq "a listagem não depende da policy" "$rc" "0"
+assert_contains "e sem policy ainda lista a task" "$sem_policy" "delegate/$TID"
+
+# Slot órfão é task que ninguém está rodando, e listar ela mentiria pra quem olha
+# a tela: a mesma expiração que solta o balde tira a linha da listagem.
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=%s\n' "999999" "$TID" "1" "codex" > "$DELEGATE_GATE_DIR/slot.codex"
+orfao=$(bash "$DELEGATE" --tasks 2>&1)
+grep -q "delegate/$TID" <<<"$orfao" && fail "slot órfão apareceu como task em curso" \
+  || ok "slot órfão não entra na listagem"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+rm -rf "$DELEGATE_GATE_DIR/tasks/$TID"
+
+# Desligar a camada é não rodar o leitor, e o despachante não tem como notar.
+grep -qi 'herdr' "$DELEGATE" \
+  && fail "o despachante cita a ferramenta de terminal, e aí desligá-la pode mudar roteamento" \
+  || ok "o despachante não conhece a ferramenta de terminal"
+mock_codex
+sem_camada=$(run --task _probe -)
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+( for _i in $(seq 1 10); do bash "$DELEGATE" --tasks >/dev/null 2>&1; done ) &
+_leitor=$!
+com_camada=$(run --task _probe -)
+wait "$_leitor"
+assert_eq "com a camada lendo em laço, o roteamento é idêntico" "$com_camada" "$sem_camada"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+
 echo "T: a fila de implementação lidera pelo plano principal, e só ela mudou"
 # A ordem só pôde virar depois de o caminho do plano principal rodar pelo próprio
 # despachante em árvore isolada, medido em 21/set/2026: status ok, pool claude,

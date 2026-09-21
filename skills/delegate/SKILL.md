@@ -202,6 +202,14 @@ worktree reaproveitada via `--continue` nunca é apagada automaticamente pelo
 script, mesmo se a cascata esgotar nessa chamada, limpeza continua manual
 (passo 4) ou via `--gc`.
 
+## Ver as tasks em curso
+
+`delegate.sh --tasks` lista o que está rodando agora, uma linha por task, com
+identificador, balde de cota, tipo de task e branch. É leitura pura: nenhum
+caminho dela toca policy, cota ou worker. Um pane do herdr rodando isso em laço
+é a camada de terminal, e o passo a passo dela está em
+`references/camada-terminal.md`.
+
 ## Delegação interna, subagentes Claude (tier `session`)
 
 Workers externos não são a única saída: o **Agent tool aceita override de
