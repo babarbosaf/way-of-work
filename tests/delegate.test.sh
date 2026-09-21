@@ -82,6 +82,11 @@ export PATH="$MOCKBIN:$PATH"
 
 # ambiente isolado: gate dir e policy próprios do teste
 export DELEGATE_GATE_DIR="$TMP/gate"
+# A raiz das árvores de trabalho saiu de dentro do repo, e sem sobrepor aqui a
+# suíte passou a semear diretório no $HOME de verdade: 160 husks vazios numa
+# rodada só, que ninguém colhe porque `worktree prune` não vê diretório que nunca
+# virou worktree.
+export DELEGATE_WT_ROOT="$TMP/wt"
 export DELEGATE_POLICY="$TMP/policy.json"
 export DELEGATE_INBOX="$TMP/inbox.md"
 # A policy do teste é a do repo com a régua de balde levantada: a suíte dispara
@@ -269,7 +274,7 @@ out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO
 assert_eq "exit 0" "$rc" "0"
 argv=$(cat "$AGY_ARGV_DUMP" 2>/dev/null)
 grep -q '{worktree}' <<<"$argv" && fail "placeholder {worktree} não sobrou no comando" || ok "placeholder {worktree} não sobrou no comando"
-assert_contains "--add-dir aponta pra worktree" "$argv" "\.delegate-wt"
+assert_contains "--add-dir aponta pra worktree" "$argv" "$DELEGATE_WT_ROOT/"
 assert_contains "prompt abre com o diretório de trabalho" "$argv" "^Diretório de trabalho: /"
 grep -q 'Diretório de trabalho: .*/\.\./' <<<"$argv" && fail "caminho do prompt normalizado (sem /../)" || ok "caminho do prompt normalizado (sem /../)"
 [[ ! -f "$REPO/worker-agy.txt" ]] && ok "árvore principal intocada" || fail "árvore principal intocada"
@@ -293,7 +298,7 @@ case "$wt_path" in "$REPO_REAL"/*) fail "a árvore nasceu dentro do repositório
 echo "T: a limpeza acha árvore no lugar novo e no antigo"
 gc_out=$(bash "$DELEGATE" --gc "$REPO" 2>&1)
 assert_contains "a limpeza lista a branch de delegação" "$gc_out" "delegate/"
-unset DELEGATE_WT_ROOT
+export DELEGATE_WT_ROOT="$TMP/wt"   # devolve o default da suíte, senão o resto semeia no $HOME
 
 echo "T: one-shot não recebe o preâmbulo de worktree"
 : > "$AGY_ARGV_DUMP"
