@@ -57,8 +57,10 @@ truncado = "não rodou", nunca "ok".
 
 ### Cooldown e probe
 
-Cooldown por reviewer em `~/.claude/gate/cooldown.<model>` (override
-`PEER_COOLDOWN_MINS`, default 60; limpo no primeiro sucesso). O script checa
+Cooldown por reviewer em `~/.claude/gate/cooldown.<model>`, limpo no primeiro
+sucesso. A duração sai de `cooldowns` na `model-policy.json`, com prazo por
+classe de limite: rate limit por minuto castiga em minutos, cota de tier castiga
+até o reset que o provider declarou, e tropeço de provider castiga 10 minutos. O script checa
 `command -v` antes de invocar. Reviewer ausente desce a cascata sem latência.
 Workspace não-git é normal pra review de spec (codex roda com
 `--skip-git-repo-check`); diff mode precisa de git no cwd.
