@@ -14,7 +14,8 @@ PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); echo "  ✓ $1"; }
 fail() { FAIL=$((FAIL+1)); echo "  ✗ $1"; }
 assert_eq() { [[ "$2" == "$3" ]] && ok "$1" || fail "$1 (esperado='$3' obtido='$2')"; }
-assert_contains() { grep -q "$3" <<<"$2" && ok "$1" || fail "$1 (não contém '$3')"; }
+# -e porque padrão que começa com hífen (--model, por exemplo) senão vira opção do grep.
+assert_contains() { grep -qe "$3" <<<"$2" && ok "$1" || fail "$1 (não contém '$3')"; }
 
 # --- mocks ---
 MOCKBIN="$TMP/bin"; mkdir -p "$MOCKBIN"
@@ -80,8 +81,17 @@ export DELEGATE_INBOX="$TMP/inbox.md"
 # dezenas de chamadas em segundos, e a régua real (pico de 30 dias) esgotaria no
 # meio da rodada, fazendo todo teste seguinte medir o gate em vez do que ele quer
 # medir. Quem exercita o gate baixa a régua no próprio bloco.
+# `_probe` existe porque as provas de MECÂNICA de cascata (desce por falha, arma
+# castigo, pula por saldo) precisam de uma fila com três backends distinguíveis, e
+# não podem quebrar toda vez que o dono reordena uma fila real por medição. Ela é
+# montada com as entradas de verdade da implementação, só reagrupadas, então
+# continua satisfazendo todo invariante que a policy cobra. A ordem que a
+# implementação declara é cobrada em assert próprio, com outro nome.
 policy_fresh() {
-  jq '.budgets.pools |= with_entries(.value.max_calls = 9999)' \
+  jq '.budgets.pools |= with_entries(.value.max_calls = 9999)
+      | .tasks._probe = ([.tasks.implement[] | select(.backend == "codex")]
+                       + [.tasks.implement[] | select(.backend == "agy")]
+                       + [.tasks.implement[] | select(.backend == "claude")])' \
     "$HERE/../config/model-policy.json" > "$DELEGATE_POLICY"
 }
 policy_fresh
@@ -444,6 +454,30 @@ rem=$(( ${armed#expiry:} - $(date +%s) ))
   || fail "sonda não aplicou prazo transiente ao rc=124 (rem=${rem}s)"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 
+echo "T: a fila de implementação lidera pelo plano principal, e só ela mudou"
+# A ordem só pôde virar depois de o caminho do plano principal rodar pelo próprio
+# despachante em árvore isolada, medido em 21/set/2026: status ok, pool claude,
+# dur_s 18. Antes disso o primeiro lugar seria um degrau que nunca rodou.
+[[ "$(jq -r '.tasks.implement[0].backend' "$HERE/../config/model-policy.json")" == "claude" ]] \
+  && ok "implementação lidera pelo balde do plano principal" \
+  || fail "implementação lidera por $(jq -r '.tasks.implement[0].backend' "$DELEGATE_POLICY")"
+for fila in review scan boilerplate; do
+  primeiro=$(jq -r --arg f "$fila" '.tasks[$f][0].backend' "$DELEGATE_POLICY")
+  [[ "$primeiro" != "claude" ]] && ok "a fila $fila não teve a ordem alterada (lidera $primeiro)" \
+    || fail "a fila $fila virou de ordem, e este ticket é só da implementação"
+done
+# Esgotar o balde do topo não pode custar a task: o gate desce sem gastar chamada.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+jq '.budgets.pools.claude = {"max_calls": 0}' "$DELEGATE_POLICY" > "$TMP/pol-lider.json" \
+  && mv "$TMP/pol-lider.json" "$DELEGATE_POLICY"
+out=$(run --task implement -)
+assert_eq "exit 0 com o balde do líder esgotado" "$?" "0"
+grep -q "claude-resposta" <<<"$out" && fail "o líder foi invocado com o balde esgotado" \
+  || ok "líder esgotado não gasta chamada"
+[[ -n "$out" ]] && ok "o mesmo trabalho fechou no degrau seguinte" || fail "nenhum degrau assumiu"
+policy_fresh
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+
 echo "T: balde sem saldo na janela desce a cascata sem gastar chamada"
 # A cascata só descia por falha, então descobrir que um balde acabou custava uma
 # chamada perdida. O gate consulta o saldo antes de invocar, e pular por saldo é
@@ -618,10 +652,15 @@ for cls in fable opus; do
     || fail "review_pairing.$cls não cruza com tasks.review"
 done
 
-echo "T: toda cascata termina no plano Claude antes de esgotar (o master é o fallback real, não o único)"
-semclaude=$(jq -r '.tasks | to_entries[] | select((.value|type)=="array") | select(.value[-1].backend != "claude") | .key' "$DELEGATE_POLICY")
-[[ -z "$semclaude" ]] && ok "último degrau de toda task é o backend claude" \
-  || fail "task sem degrau Claude no fim: $semclaude"
+echo "T: o plano Claude está em toda cascata (o master é o fallback real, não o único)"
+# A régua era "último degrau é claude", e ela codificava que o plano do dono
+# sempre fecha o trabalho. Com o gate de saldo isso mudou de lugar: cascata
+# esgotada já entrega pra sessão com exit 2, e a fila de implementação passou a
+# LIDERAR pelo plano, o que é mais forte que fechar com ele. O que segue valendo,
+# e é o que este assert cobra, é o plano aparecer em toda cascata.
+semclaude=$(jq -r '.tasks | to_entries[] | select((.value|type)=="array") | select([.value[].backend] | index("claude") | not) | .key' "$DELEGATE_POLICY")
+[[ -z "$semclaude" ]] && ok "toda task tem o backend claude em algum degrau" \
+  || fail "task sem degrau Claude: $semclaude"
 ult=$(jq -r '.tiers | to_entries[] | select(.key|startswith("$")|not) | .value | to_entries[] | select(.value[-1].backend != "claude") | .key' "$DELEGATE_POLICY")
 [[ -z "$ult" ]] && ok "último degrau de todo tier é o backend claude" || fail "tier sem degrau Claude no fim: $ult"
 
@@ -645,16 +684,23 @@ done
 echo "T: --tier troca o ponto de entrada da cascata, e não o task-type (21/set/2026)"
 AMPLO_1=$(jq -r '.tiers.implement.amplo[0].model' "$DELEGATE_POLICY")
 PADRAO_1=$(jq -r '.tasks.implement[0].model' "$DELEGATE_POLICY")
+# A flag do modelo é por backend (-m no codex, --model nos outros), e desde que a
+# implementação lidera pelo plano principal os dois pontos de entrada da fila não
+# usam mais a mesma flag. Cravar "-m" media o backend, não o ponto de entrada.
+flag_de() { jq -r --arg m "$1" '[.tasks.implement[], .tiers.implement.amplo[]]
+  | map(select(.model == $m)) | .[0].backend as $b | $b' "$DELEGATE_POLICY" \
+  | xargs -I{} jq -r --arg b {} '.backends[$b].model_flag // "-m"' "$DELEGATE_POLICY"; }
+AMPLO_FLAG=$(flag_de "$AMPLO_1"); PADRAO_FLAG=$(flag_de "$PADRAO_1")
 [[ "$AMPLO_1" != "$PADRAO_1" ]] && ok "tier amplo entra por modelo diferente do padrão" \
   || fail "amplo e padrão entram pelo mesmo modelo: o tier não muda nada"
-out=$(run --task implement --tier amplo -)
-assert_contains "amplo entra no $AMPLO_1" "$out" "[-]m $AMPLO_1"
+out=$(MOCK_CLAUDE=ok run --task implement --tier amplo -)
+assert_contains "amplo entra no $AMPLO_1" "$out" "$AMPLO_FLAG $AMPLO_1"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
-out=$(run --task implement --tier padrao -)
-assert_contains "padrão entra no $PADRAO_1" "$out" "[-]m $PADRAO_1"
+out=$(MOCK_CLAUDE=ok run --task implement --tier padrao -)
+assert_contains "padrão entra no $PADRAO_1" "$out" "$PADRAO_FLAG $PADRAO_1"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
-out=$(run --task implement -)
-assert_contains "sem --tier resolve a mesma fila do padrão" "$out" "[-]m $PADRAO_1"
+out=$(MOCK_CLAUDE=ok run --task implement -)
+assert_contains "sem --tier resolve a mesma fila do padrão" "$out" "$PADRAO_FLAG $PADRAO_1"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 run_nostdin --task implement --tier gigante --paths "$A" --question "q" >/dev/null 2>&1; rc=$?
 assert_eq "tier inválido é erro de uso (exit 1), não fila silenciosa" "$rc" "1"

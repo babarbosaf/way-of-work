@@ -114,6 +114,11 @@
     ],
     "implement": [
       {
+        "backend": "claude",
+        "model": "claude-sonnet-5",
+        "effort": "medium"
+      },
+      {
         "backend": "codex",
         "model": "gpt-5.6-terra",
         "effort": "medium"
@@ -121,11 +126,6 @@
       {
         "backend": "agy",
         "model": "Gemini 3.1 Pro (High)"
-      },
-      {
-        "backend": "claude",
-        "model": "claude-sonnet-5",
-        "effort": "medium"
       }
     ],
     "scan": [
@@ -251,10 +251,18 @@
     "$comment": "Régua por balde: pico de chamadas que chegaram a worker em janela móvel de 300 minutos, apurado do gate/delegate.log em 21/set/2026. `unavailable` não conta, porque a cascata esgotou antes de alcançar worker. window_mins é escolha declarada, a forma da janela dos planos, e não medição. O balde claude não tem uma única linha gravada em sete meses: ele fica sem régua e vale como livre, igual a log ilegível, porque régua zero por falta de amostra bloquearia o plano principal justamente na fila que ele vai liderar. Quem recalcula isto é o apura_log.py, e o --check dele falha na divergência.",
     "window_mins": 300,
     "pools": {
-      "codex": {"max_calls": 10},
-      "agy:gemini": {"max_calls": 4},
-      "agy:claude_gpt": {"max_calls": 2},
-      "claude": {"status": "sem_amostra"}
+      "codex": {
+        "max_calls": 10
+      },
+      "agy:gemini": {
+        "max_calls": 4
+      },
+      "agy:claude_gpt": {
+        "max_calls": 2
+      },
+      "claude": {
+        "status": "sem_amostra"
+      }
     }
   },
   "cooldowns": {
