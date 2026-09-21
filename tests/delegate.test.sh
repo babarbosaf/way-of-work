@@ -454,6 +454,97 @@ rem=$(( ${armed#expiry:} - $(date +%s) ))
   || fail "sonda não aplicou prazo transiente ao rc=124 (rem=${rem}s)"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 
+echo "T: despacho assíncrono devolve identificador e não fica pendurado"
+SLOT="$HERE/../skills/delegate/scripts/lib-slot.sh"
+[[ -f "$SLOT" ]] && ok "biblioteca de slot existe" || fail "biblioteca de slot ausente"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR/delegate.log"
+mock_demorado() { # backend segundos
+  cat > "$MOCKBIN/$1" <<EOF
+#!/usr/bin/env bash
+cat >/dev/null; sleep $2; echo "$1-resposta:\$*"; exit 0
+EOF
+  chmod +x "$MOCKBIN/$1"
+}
+mock_demorado codex 4
+t0=$SECONDS
+out=$(run --task _probe --model codex --async -); rc=$?
+gastou=$(( SECONDS - t0 ))
+assert_eq "exit 0 no despacho assíncrono" "$rc" "0"
+assert_contains "devolve identificador da task" "$out" "^task: "
+[[ $gastou -lt 3 ]] && ok "não esperou o worker terminar (${gastou}s)" \
+  || fail "ficou pendurado ${gastou}s, o worker leva 4s"
+
+echo "T: um slot por balde, e o balde ocupado não recebe um segundo worker"
+espera_slot() { local i; for i in 1 2 3 4 5 6 7 8 9 10; do [[ -f "$DELEGATE_GATE_DIR/slot.$1" ]] && return 0; sleep 0.3; done; return 1; }
+espera_slot codex && ok "o balde em curso tem slot no disco" || fail "nenhum slot foi tomado"
+id2=$(run --task _probe --model codex --async - | sed -n 's/^task: //p')
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  grep -q '^estado=' "$DELEGATE_GATE_DIR/tasks/$id2/meta" 2>/dev/null \
+    && ! grep -q '^estado=em curso' "$DELEGATE_GATE_DIR/tasks/$id2/meta" && break
+  sleep 0.3
+done
+estado2=$(sed -n 's/^estado=//p' "$DELEGATE_GATE_DIR/tasks/$id2/meta" 2>/dev/null)
+[[ "$estado2" == falhou ]] && ok "o segundo despacho no balde ocupado não virou worker (estado=$estado2)" \
+  || fail "o segundo despacho no balde ocupado terminou em '$estado2'"
+assert_contains "o motivo do pulo fica no report da task" "$(cat "$DELEGATE_GATE_DIR/tasks/$id2/report.txt" 2>/dev/null)" "ocupado"
+[[ "$(ls "$DELEGATE_GATE_DIR"/slot.codex* 2>/dev/null | wc -l | tr -d ' ')" == "1" ]] \
+  && ok "um slot só no balde, nunca dois" || fail "o balde ganhou mais de um slot"
+
+echo "T: três tasks em baldes diferentes correm ao mesmo tempo"
+mock_demorado agy 4
+mock_demorado claude 4
+run --task _probe --model agy --async - >/dev/null
+run --task _probe --model claude --async - >/dev/null
+espera_slot "agy:gemini"; espera_slot claude
+ocupados=$(ls "$DELEGATE_GATE_DIR"/slot.* 2>/dev/null | wc -l | tr -d ' ')
+[[ "$ocupados" == "3" ]] && ok "três baldes ocupados ao mesmo tempo" \
+  || fail "esperava 3 baldes em curso, achei $ocupados"
+wait 2>/dev/null
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+
+echo "T: slot de worker morto volta a ficar livre sem intervenção"
+printf 'pid=999999\nid=fantasma\nprazo=%s\nbalde=codex\n' "$(( $(date +%s) + 9999 ))" > "$DELEGATE_GATE_DIR/slot.codex"
+mock_codex
+out=$(run --task _probe --model codex -)
+assert_eq "exit 0: slot de processo morto foi tomado" "$?" "0"
+printf 'pid=%s\nid=vencido\nprazo=1\nbalde=codex\n' "$$" > "$DELEGATE_GATE_DIR/slot.codex"
+out=$(run --task _probe --model codex -)
+assert_eq "exit 0: slot com prazo vencido foi tomado" "$?" "0"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+
+echo "T: o caminho assíncrono também não deixa a chave da API chegar ao worker"
+cat > "$MOCKBIN/claude" <<'EOF'
+#!/usr/bin/env bash
+case "${MOCK_CLAUDE:-fail}" in
+  ok) cat >/dev/null; echo "claude-resposta:$* key=${ANTHROPIC_API_KEY:-unset}"; exit 0 ;;
+  *) cat >/dev/null; echo "erro interno claude"; exit 1 ;;
+esac
+EOF
+chmod +x "$MOCKBIN/claude"
+id_async=$(ANTHROPIC_API_KEY=segredo-async MOCK_CLAUDE=ok run --task _probe --model claude --async - | sed -n 's/^task: //p')
+[[ -n "$id_async" ]] && ok "o despacho assíncrono devolveu id" || fail "nenhum id no despacho assíncrono"
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  [[ -s "$DELEGATE_GATE_DIR/tasks/$id_async/out.txt" ]] && break
+  sleep 1
+done
+material=$(cat "$DELEGATE_GATE_DIR/tasks/$id_async/out.txt" 2>/dev/null)
+assert_contains "a chave não chegou ao worker no caminho assíncrono" "$material" "key=unset"
+grep -q "segredo-async" <<<"$material" && fail "a chave vazou pro worker assíncrono" \
+  || ok "nenhum rastro da chave no worker assíncrono"
+
+echo "T: variável de ambiente devolve o despacho pro modo serial"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+mock_demorado codex 3
+t0=$SECONDS
+out=$(DELEGATE_SERIAL=1 run --task _probe --model codex --async -); rc=$?
+gastou=$(( SECONDS - t0 ))
+assert_eq "exit 0 no modo serial" "$rc" "0"
+[[ $gastou -ge 3 ]] && ok "no modo serial o despacho espera o worker (${gastou}s)" \
+  || fail "o modo serial não esperou (${gastou}s)"
+assert_contains "o modo serial ainda devolve identificador" "$out" "^task: "
+mock_codex; mock_agy
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
 echo "T: a fila de implementação lidera pelo plano principal, e só ela mudou"
 # A ordem só pôde virar depois de o caminho do plano principal rodar pelo próprio
 # despachante em árvore isolada, medido em 21/set/2026: status ok, pool claude,

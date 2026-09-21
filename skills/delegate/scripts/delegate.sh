@@ -46,6 +46,7 @@ LIMITES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 [[ -f "$LIMITES_DIR/lib-limites.sh" ]] || LIMITES_DIR="$LIMITES_DIR/../skills/delegate/scripts"
 source "$LIMITES_DIR/lib-limites.sh"
 source "$LIMITES_DIR/lib-orcamento.sh"
+source "$LIMITES_DIR/lib-slot.sh"
 # Override project-specific (finding_routing) vive em
 # <base>.local.json (gitignored). Merge base * local (deep; arrays do local vencem).
 # Espelho consciente de model-policy-effective.sh — manter em sincronia.
@@ -68,6 +69,7 @@ WT_ROOT="${DELEGATE_WT_ROOT:-$HOME/.delegate-wt}"
 wt_nome_repo() { local n; n=$(basename "$(cd "$1" && pwd)"); echo "${n#.}"; }
 LOG="$GATE_DIR/delegate.log"
 mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
+slot_configurar "$GATE_DIR"
 
 die() { echo "delegate: $*" >&2; exit 1; }
 
@@ -111,6 +113,7 @@ is_sem_resposta() { grep -qiE "(run ended with no output|no recorded error|no ou
 
 # --- args ---
 TASK="" TIER="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
+ASYNC=0
 QUESTION="" REFERENCE="" PATHS=() EXPECT_LINES="" EXPECT_REGEX=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -124,6 +127,7 @@ while [[ $# -gt 0 ]]; do
         --paths) shift; while [[ $# -gt 0 && "$1" != -* ]]; do PATHS+=("$1"); shift; done ;;
         --model) FORCE_MODEL="$2"; shift 2 ;;
         --worktree) WORKTREE="$2"; shift 2 ;;
+--async) ASYNC=1; shift ;;
         --continue) CONTINUE_SLUG="$2"; shift 2 ;;
         --timeout) TIMEOUT="$2"; shift 2 ;;
         --gc) GC="$2"; shift 2 ;;
@@ -134,6 +138,10 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -n "$GC" ]]; then
+    find "$GATE_DIR/tasks" -mindepth 1 -maxdepth 1 -type d -mtime +7 -exec rm -rf {} + 2>/dev/null
+    for _s in "$GATE_DIR"/slot.*; do
+        [[ -f "$_s" ]] && slot_orfao "$(sed -n 's/^balde=//p' "$_s")" && rm -f "$_s"
+    done
     git -C "$GC" worktree prune
     git -C "$GC" worktree list | grep 'delegate/' || echo "nenhuma worktree delegate/ ativa"
     exit 0
@@ -245,8 +253,19 @@ if command -v gtimeout >/dev/null 2>&1; then TIMEOUT_CMD="gtimeout $TIMEOUT"
 elif command -v timeout >/dev/null 2>&1; then TIMEOUT_CMD="timeout $TIMEOUT"
 else TIMEOUT_CMD=""; fi
 
-PROMPT_FILE=$(mktemp); TMP_OUT=$(mktemp)
-trap 'rm -f "$PROMPT_FILE" "$TMP_OUT"' EXIT
+# Identidade da task e casa durável do material dela. O output capturado deixa de
+# ser mktemp: despachar sem esperar e jogar o material num arquivo que morre no
+# fim do processo é perder o trabalho, e é esse caminho que a consulta por
+# identificador vai ler depois. O prompt segue transitório de propósito, porque
+# ele carrega conteúdo do repo e guardar isso não serve a diagnóstico nenhum.
+TASK_ID="$TASK-$(date +%s | tail -c 7)$RANDOM"
+TASK_DIR="$GATE_DIR/tasks/$TASK_ID"
+mkdir -p "$TASK_DIR"; chmod 700 "$TASK_DIR"
+PROMPT_FILE=$(mktemp); TMP_OUT="$TASK_DIR/out.txt"; : > "$TMP_OUT"; chmod 600 "$TMP_OUT"
+SLOT_TOMADO=""; HOUVE_PRAZO=0
+trap 'rm -f "$PROMPT_FILE"; [[ -n "$SLOT_TOMADO" ]] && slot_soltar "$SLOT_TOMADO"' EXIT
+task_estado() { printf 'estado=%s\nrc=%s\nbalde=%s\nterminou=%s\n' "$1" "${2:-}" "${USED_POOL:-}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TASK_DIR/meta"; }
+printf 'estado=em curso\nid=%s\ntask=%s\ncomecou=%s\n' "$TASK_ID" "$TASK" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TASK_DIR/meta"
 abs_path() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$PWD" "$1" ;; esac; }
 
 build_bulk_prompt() { # pergunta + corpus em tag XML + contrato de saída
@@ -332,6 +351,13 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
         echo "▶ $pkey sem saldo na janela de ${ORCAMENTO_WINDOW_MINS}min, pulando sem gastar chamada" >&2
         return 3
     fi
+    # Um worker por balde. Vale no despacho serial também, porque duas sessões
+    # despachando ao mesmo tempo colidem do mesmo jeito que duas tasks de uma só.
+    if ! slot_tomar "$pkey" "$TASK_ID" "$TIMEOUT"; then
+        echo "▶ $pkey ocupado por outro worker, pulando sem gastar chamada" >&2
+        return 3
+    fi
+    SLOT_TOMADO="$pkey"
     backend_enabled "$backend" || { echo "▶ $backend desabilitado na policy" >&2; return 4; }
     local bin; bin=$(backend_field "$backend" bin)
     command -v "${bin:-$backend}" >/dev/null 2>&1 || return 4
@@ -386,6 +412,7 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     # o despachante não armava nada aqui, o mesmo rc=124 castigava num invocador
     # e passava batido no outro: dois comportamentos pro mesmo sinal.
     if [[ $rc -eq 124 ]]; then
+        HOUVE_PRAZO=1
         armar_limite "$pkey" "$TMP_OUT" "$rc" >/dev/null
         echo "⚠️  $backend timeout (${TIMEOUT}s), cooldown de tropeço armado pela policy" >&2
         return 3
@@ -521,47 +548,93 @@ run_cascade() {
         fi
         DUR_S=$(( SECONDS - t0 ))
         [[ $rc -eq 0 ]] && { USED="$backend"; USED_POOL=$(pool_key "$backend" "$model"); USED_MODEL="$model"; return 0; }
+        # Degrau que não deu certo devolve o balde na hora. Soltar só no fim
+        # deixaria um erro prender o balde pelo resto da chamada, e a cascata
+        # desceria por um motivo que já passou.
+        [[ -n "$SLOT_TOMADO" ]] && { slot_soltar "$SLOT_TOMADO"; SLOT_TOMADO=""; }
         trilha_add "$(pool_key "$backend" "$model")" "rc$rc"
     done < <(jq -c '.[]' <<<"$CASCADE")
     return 1
 }
 
 USED="" USED_POOL="" USED_MODEL="" SALDO_NA_ESCOLHA=""
-if run_cascade; then
-    echo "worker: $USED" >&2   # linha estável pra consumidores (peer-review) — não reformatar
-    if [[ -n "$WT_DIR" ]]; then
-        ( cd "$WT_DIR" && git add -A && git -c user.name=delegate -c user.email=delegate@local commit -qm "delegate($TASK): output de $USED" ) || true
 
-        # diff vazio ≠ sucesso: worker pode devolver rc=0 sem ter feito nada (falha silenciosa).
-        if [[ -z "$(git -C "$WT_DIR" status --porcelain)" ]] && \
-           [[ -z "$(git -C "$WORKTREE" diff --name-only "$base_ref...$WT_BRANCH" 2>/dev/null)" ]]; then
-            echo "⚠️  worker ($USED) produced no changes (suspected silent failure)" >&2
-            echo "branch: $WT_BRANCH (base=$base_ref @ $WT_BASE_SHA)" >&2
-            echo "--- resumo do worker ---" >&2
-            cat "$TMP_OUT" >&2
-            log_usage "$TASK" "$USED" "empty_diff" "${USED_MODEL:+model=$USED_MODEL }branch=$WT_BRANCH base=$base_ref saldo=${SALDO_NA_ESCOLHA:-livre}" "$USED_POOL" 0 0 "${DUR_S:-0}"
-            exit 5
+# O corpo da chamada vira função porque ele roda em dois lugares: aqui, quando o
+# despacho é serial, e num filho, quando é assíncrono. Duplicar isso seria manter
+# dois caminhos de report que divergem calados.
+executar() {
+    if run_cascade; then
+        echo "worker: $USED" >&2   # linha estável pra consumidores (peer-review) — não reformatar
+        if [[ -n "$WT_DIR" ]]; then
+            ( cd "$WT_DIR" && git add -A && git -c user.name=delegate -c user.email=delegate@local commit -qm "delegate($TASK): output de $USED" ) || true
+
+            # diff vazio ≠ sucesso: worker pode devolver rc=0 sem ter feito nada (falha silenciosa).
+            if [[ -z "$(git -C "$WT_DIR" status --porcelain)" ]] && \
+               [[ -z "$(git -C "$WORKTREE" diff --name-only "$base_ref...$WT_BRANCH" 2>/dev/null)" ]]; then
+                echo "⚠️  worker ($USED) produced no changes (suspected silent failure)" >&2
+                echo "branch: $WT_BRANCH (base=$base_ref @ $WT_BASE_SHA)" >&2
+                echo "--- resumo do worker ---" >&2
+                cat "$TMP_OUT" >&2
+                log_usage "$TASK" "$USED" "empty_diff" "${USED_MODEL:+model=$USED_MODEL }branch=$WT_BRANCH base=$base_ref saldo=${SALDO_NA_ESCOLHA:-livre}" "$USED_POOL" 0 0 "${DUR_S:-0}"
+                task_estado falhou 5
+                exit 5
+            fi
+
+            echo "worker: $USED"
+            echo "branch: $WT_BRANCH"
+            echo "base: $base_ref @ $WT_BASE_SHA"
+            echo "worktree: $WT_DIR"
+            echo "--- resumo do worker ---"
+            cat "$TMP_OUT"
+            echo "--- diff stat ---"
+            git -C "$WORKTREE" diff --stat "$base_ref...$WT_BRANCH" 2>/dev/null || true
+            echo "ℹ️  Revisar o diff, rodar verify e integrar manualmente; depois: git worktree remove '$WT_DIR' && git branch -d '$WT_BRANCH'" >&2
+        else
+            cat "$TMP_OUT"
         fi
-
-        echo "worker: $USED"
-        echo "branch: $WT_BRANCH"
-        echo "base: $base_ref @ $WT_BASE_SHA"
-        echo "worktree: $WT_DIR"
-        echo "--- resumo do worker ---"
-        cat "$TMP_OUT"
-        echo "--- diff stat ---"
-        git -C "$WORKTREE" diff --stat "$base_ref...$WT_BRANCH" 2>/dev/null || true
-        echo "ℹ️  Revisar o diff, rodar verify e integrar manualmente; depois: git worktree remove '$WT_DIR' && git branch -d '$WT_BRANCH'" >&2
-    else
-        cat "$TMP_OUT"
+        log_usage "$TASK" "$USED" "ok" "${USED_MODEL:+model=$USED_MODEL}${WT_BRANCH:+ branch=$WT_BRANCH} saldo=${SALDO_NA_ESCOLHA:-livre}" "$USED_POOL" \
+            "$(wc -c < "$PROMPT_FILE")" "$(wc -c < "$TMP_OUT")" "${DUR_S:-0}"
+        task_estado pronta 0
+        exit 0
     fi
-    log_usage "$TASK" "$USED" "ok" "${USED_MODEL:+model=$USED_MODEL}${WT_BRANCH:+ branch=$WT_BRANCH} saldo=${SALDO_NA_ESCOLHA:-livre}" "$USED_POOL" \
-        "$(wc -c < "$PROMPT_FILE")" "$(wc -c < "$TMP_OUT")" "${DUR_S:-0}"
+
+    # cascata esgotada — só remove worktree criada nesta chamada; --continue nunca apaga trabalho reaproveitado
+    [[ -n "$WT_DIR" && "$WT_FRESH" == "1" ]] && { git -C "$WORKTREE" worktree remove --force "$WT_DIR" 2>/dev/null; git -C "$WORKTREE" branch -D "$WT_BRANCH" 2>/dev/null; } >/dev/null
+    echo "⚠️  Nenhum worker disponível na cascata pra task '$TASK'. A sessão assume." >&2
+    log_usage "$TASK" "-" "unavailable" "cascata esgotada: ${TRILHA:-nenhum degrau elegível}"
+    # Dos quatro estados terminais, prazo estourado é o único que a cascata sabe
+    # separar de falha comum, e separar importa: prazo diz que o worker estava
+    # trabalhando, falha diz que ele não assumiu.
+    if [[ "$HOUVE_PRAZO" == 1 ]]; then task_estado "estourou o prazo" 2; else task_estado falhou 2; fi
+    exit 2
+}
+
+if [[ "$ASYNC" == 1 ]]; then
+    echo "task: $TASK_ID"
+    if [[ -n "${DELEGATE_SERIAL:-}" ]]; then
+        # Escape hatch do rollback: devolve o despacho pro modo serial sem que o
+        # chamador precise mudar de flag.
+        echo "▶ DELEGATE_SERIAL ligado, despachando em modo serial" >&2
+        executar
+        exit $?
+    fi
+    # O prompt muda de casa antes do fork: o trap do pai apagaria ele debaixo do
+    # filho. O filho apaga quando termina, porque prompt guardado é conteúdo do
+    # repo parado no disco sem servir a diagnóstico nenhum.
+    mv "$PROMPT_FILE" "$TASK_DIR/prompt.txt" && PROMPT_FILE="$TASK_DIR/prompt.txt"
+    # Sem redirecionar, a substituição de comando do chamador esperaria o filho
+    # fechar o pipe, e o despacho continuaria pendurado com outro nome.
+    trap - EXIT
+    # O redirecionamento é do subshell INTEIRO, e não só do executar: qualquer
+    # comando do filho que ainda enxergue o pipe do pai mantém ele aberto, e a
+    # substituição de comando do chamador segue esperando, com o despacho
+    # pendurado sob outro nome.
+    # O trap vai DENTRO do filho porque o executar termina em exit, e comando
+    # depois dele no subshell nunca roda: sem isso o balde só voltava a ficar
+    # livre por expiração, e o slot ficava no disco sem dono.
+    ( trap 'rm -f "$TASK_DIR/prompt.txt"; [[ -n "$SLOT_TOMADO" ]] && slot_soltar "$SLOT_TOMADO"' EXIT
+      executar ) >"$TASK_DIR/report.txt" 2>&1 <&- &
+    disown 2>/dev/null || true
     exit 0
 fi
-
-# cascata esgotada — só remove worktree criada nesta chamada; --continue nunca apaga trabalho reaproveitado
-[[ -n "$WT_DIR" && "$WT_FRESH" == "1" ]] && { git -C "$WORKTREE" worktree remove --force "$WT_DIR" 2>/dev/null; git -C "$WORKTREE" branch -D "$WT_BRANCH" 2>/dev/null; } >/dev/null
-echo "⚠️  Nenhum worker disponível na cascata pra task '$TASK'. A sessão assume." >&2
-log_usage "$TASK" "-" "unavailable" "cascata esgotada: ${TRILHA:-nenhum degrau elegível}"
-exit 2
+executar
