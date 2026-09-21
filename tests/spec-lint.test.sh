@@ -112,6 +112,11 @@ esperado_pega "closes fantasma"         "AC-09"               --chain fixtures/c
 esperado_pega "aceite sem ticket"       "nenhum ticket fecha" --chain fixtures/cadeia-ruim
 esperado_pega "rastro no backlog"       "rastro"              --chain fixtures/cadeia-ruim
 esperado_pega "spec feita sem colheita" "harvest"             --chain fixtures/cadeia-ruim
+# Dois aceites com o mesmo ID, e dois tickets fechando o mesmo aceite. Passou
+# batido numa spec real: o ID novo colidiu com um já contratado, e o lint disse
+# limpo nas duas pontas, porque ele indexava por ID e o segundo sumia no índice.
+esperado_pega "aceite com ID repetido"  "ID repetido"         --chain fixtures/cadeia-ruim
+esperado_pega "aceite disputado"        "dois tickets"        --chain fixtures/cadeia-ruim
 
 echo "uso"
 if $LINT --spec fixtures/nao-existe.md >/dev/null 2>&1; then

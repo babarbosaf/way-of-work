@@ -157,6 +157,9 @@ def check_spec(path: Path, ach: Achados) -> None:
 # ------------------------------------------------------------------ tickets
 
 AC = re.compile(r"\bAC-(\d{2})\b")
+# Só a LINHA QUE DEFINE o aceite, que é o que pode duplicar. O `AC` solto casa
+# também com menção em prosa, e toda seção de revisão cita aceite por ID.
+AC_DEF = re.compile(r"^\s*[-*]\s+\*\*AC-(\d{2})\*\*")
 CAMPOS = ["spec", "closes", "files", "blocked_by", "delega", "verify"]
 # `tier:` só é obrigatório onde o task-type do `delega:` declara tier na policy:
 # parseado sempre, cobrado condicionalmente.
@@ -346,7 +349,18 @@ def check_chain(raiz: Path, ach: Achados) -> None:
                 if slugify(ancora) not in vivas:
                     ach.add(rel, 0, f"âncora morta em `prd: {alvo}`")
 
-        # 2. aceite com ID estável e numeração sem furo
+        # 2. aceite com ID estável, numeração sem furo, e ID que não repete.
+        # ID repetido é pior que furo: o índice guarda um e o outro desaparece,
+        # então dois tickets podem fechar coisas diferentes sob o mesmo número e
+        # os dois lints saem limpos.
+        vistos: dict[str, int] = {}
+        for n, ln in enumerate(texto.splitlines(), 1):
+            if m := AC_DEF.match(ln):
+                chave = f"AC-{m.group(1)}"
+                if chave in vistos:
+                    ach.add(rel, n, f"{chave}: ID repetido, já definido na linha {vistos[chave]}")
+                else:
+                    vistos[chave] = n
         acs = acs_da_spec(texto)
         if not acs:
             ach.add(rel, 0, "nenhum critério de aceite com ID `AC-NN`; sem ID o ticket não tem o que fechar")
@@ -363,7 +377,7 @@ def check_chain(raiz: Path, ach: Achados) -> None:
 
         # 4. ticket declara a spec que serve e os aceites que fecha
         rascunho = fm.get("status", "").strip().lower() in STATUS_RASCUNHO
-        fechados: set[str] = set()
+        fechados: dict[str, str] = {}
         tickets = sorted((spec.parent / "tickets").glob("*.md")) if (spec.parent / "tickets").is_dir() else []
         # Spec entregue perde os tickets por desenho: quem prova a entrega é o
         # harvest, e cobrar ticket de spec fechada é cobrar lixo de volta.
@@ -389,11 +403,13 @@ def check_chain(raiz: Path, ach: Achados) -> None:
                 chave = f"AC-{nn}"
                 if chave not in acs:
                     ach.add(rel_t, 0, f"`closes: {chave}` e a spec não tem esse aceite")
+                elif chave in fechados:
+                    ach.add(rel_t, 0, f"{chave} fechado por dois tickets, e o outro é {fechados[chave]}")
                 else:
-                    fechados.add(chave)
+                    fechados[chave] = t.name
 
         if not terminal and not rascunho:
-            for chave in sorted(set(acs) - fechados):
+            for chave in sorted(set(acs) - set(fechados)):
                 ach.add(rel, acs[chave], f"{chave}: nenhum ticket fecha esse aceite")
 
         # 5. invariante de estágio único: promover é mover, não copiar

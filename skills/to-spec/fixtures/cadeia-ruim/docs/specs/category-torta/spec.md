@@ -23,6 +23,7 @@ Passa a bater.
 
 - **AC-01** SIM: o caminho DTR preenche
 - **AC-03** SIM: o caminho PDV preenche
+- **AC-03** SIM: o caminho PDV preenche, escrito de novo com outro texto
 
 ## Fora de escopo
 
