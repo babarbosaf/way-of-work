@@ -10,9 +10,10 @@
 # slot é atômico, a camada de terminal tem de onde ler as tasks em curso, e slot
 # de worker morto se libera pelo mesmo raciocínio de expiração do castigo.
 
+# Só aponta o diretório. Criar é de quem escreve, porque a camada de terminal
+# pergunta o estado do gate e consulta não pode deixar diretório atrás de si.
 slot_configurar() { # gate_dir
     SLOT_DIR="$1"
-    mkdir -p "$SLOT_DIR"
 }
 
 slot_arquivo() { echo "$SLOT_DIR/slot.$1"; }

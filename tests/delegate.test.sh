@@ -28,6 +28,7 @@ case "${MOCK_CODEX:-ok}" in
   ok) cat >/dev/null
      [[ -n "${MOCK_SESSIONS:-}" ]] && printf '{"cwd":"%s"}\n' "$PWD" > "$MOCK_SESSIONS/rollout-$$.jsonl"
      echo "codex-resposta:$*"; exit 0 ;;
+  eco) cat; echo "codex-resposta:$*"; exit 0 ;;
   multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
   tierreset) echo "quota exceeded; reset at 2100-01-01T00:00:00Z"; exit 1 ;;
@@ -1016,6 +1017,58 @@ diverg=$(jq -r '[(.tasks|to_entries[]|select((.value|type)=="array")|.value[]),
   --argjson suge "$(jq -c '.suggested_effort | with_entries(select(.key|startswith("$")|not))' "$DELEGATE_POLICY")" \
   "$DELEGATE_POLICY")
 [[ -z "$diverg" ]] && ok "nenhuma entrada diverge do esforço sugerido" || fail "entrada divergindo: $diverg"
+
+echo "T: prompt que carrega frase de limite não castiga balde nem descarta resposta"
+# Medido em 21/set/2026: revisar o diff deste despachante mandou pro worker a
+# linha do próprio detector de desculpa, o codex ecoou o prompt no stdout como
+# sempre faz, e o detector casou com ele mesmo. A revisão inteira foi pro lixo e
+# o balde levou 60min de castigo. A população do classificador é o que o worker
+# acrescentou, nunca o prompt de volta.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+mock_codex
+out=$(printf 'Revise este trecho:\nis_sem_resposta() { grep -qiE "(run ended with no output|no recorded error)" "$1"; }\nquota exceeded aparece aqui como dado, nao como resposta\n' \
+  | MOCK_CODEX=eco bash "$DELEGATE" --task _probe --model codex - 2>"$TMP/err"); rc=$?
+assert_eq "resposta boa com frase de limite no prompt: exit 0" "$rc" "0"
+assert_contains "a resposta do worker sobreviveu" "$out" "codex-resposta"
+[[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] \
+  && fail "o prompt ecoado castigou o balde por 60min" \
+  || ok "frase de limite no prompt não arma cooldown"
+# Contraprova no mesmo par: a MESMA frase, agora dita pelo worker, continua
+# castigando. Sem isso o conserto seria só desligar o detector.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+echo x | MOCK_CODEX=desculpa bash "$DELEGATE" --task _probe --model codex - >/dev/null 2>&1
+[[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] \
+  && ok "desculpa dita pelo worker continua armando cooldown" \
+  || fail "o detector morreu: desculpa do worker não arma mais nada"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: o leitor de tasks não cria nem toca em nada no gate"
+# A revisão do codex reproduziu: antes do desvio da flag o script fazia mkdir no
+# gate, touch no log e mktemp da policy fundida. Num pane lendo a cada 2s isso é
+# um temporário novo por leitura. O assert de antes preparava o gate primeiro,
+# então media conteúdo e nunca criação.
+virgem="$TMP/gate-virgem"
+rm -rf "$virgem"
+saida=$(DELEGATE_GATE_DIR="$virgem" bash "$DELEGATE" --tasks 2>&1); rc=$?
+assert_eq "gate inexistente: a leitura sai 0" "$rc" "0"
+assert_contains "e diz que não tem nada em curso" "$saida" "nenhuma task em curso"
+[[ -e "$virgem" ]] && fail "a leitura criou o gate que não existia" \
+  || ok "a leitura não criou o gate"
+# Log intocado: mtime é o que um laço de 2s mexeria, e conteúdo não pega isso.
+touch -t 202001010000 "$DELEGATE_GATE_DIR/delegate.log"
+antes_mtime=$(stat -f %m "$DELEGATE_GATE_DIR/delegate.log" 2>/dev/null || stat -c %Y "$DELEGATE_GATE_DIR/delegate.log")
+bash "$DELEGATE" --tasks >/dev/null 2>&1
+depois_mtime=$(stat -f %m "$DELEGATE_GATE_DIR/delegate.log" 2>/dev/null || stat -c %Y "$DELEGATE_GATE_DIR/delegate.log")
+assert_eq "a leitura não toca o mtime do log" "$depois_mtime" "$antes_mtime"
+# Policy local presente: a fusão nasce de um mktemp por chamada, e leitura não
+# tem por que criar nenhum.
+cp "$DELEGATE_POLICY" "$TMP/policy-backup.json"
+echo '{"budgets":{"window_mins":300}}' > "${DELEGATE_POLICY%.json}.local.json"
+tmp_antes=$(ls -1 "${TMPDIR:-/tmp}" 2>/dev/null | wc -l | tr -d ' ')
+bash "$DELEGATE" --tasks >/dev/null 2>&1
+tmp_depois=$(ls -1 "${TMPDIR:-/tmp}" 2>/dev/null | wc -l | tr -d ' ')
+assert_eq "a leitura não deixa temporário de policy fundida" "$tmp_depois" "$tmp_antes"
+rm -f "${DELEGATE_POLICY%.json}.local.json"
 
 echo "T: flag que consome argumento e não recebe sai com erro de uso, não unbound variable"
 # O script roda com `set -u`, então `"$2"` sem valor estourava antes de qualquer

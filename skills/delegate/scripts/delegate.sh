@@ -54,10 +54,15 @@ source "$LIMITES_DIR/lib-slot.sh"
 # Override project-specific (finding_routing) vive em
 # <base>.local.json (gitignored). Merge base * local (deep; arrays do local vencem).
 # Espelho consciente de model-policy-effective.sh — manter em sincronia.
-_LOCAL_POLICY="${POLICY%.json}.local.json"
-if [[ -f "$_LOCAL_POLICY" ]] && jq -e . "$POLICY" >/dev/null 2>&1 && jq -e . "$_LOCAL_POLICY" >/dev/null 2>&1; then
-    _EFF=$(mktemp); jq -s '.[0] * .[1]' "$POLICY" "$_LOCAL_POLICY" > "$_EFF" && POLICY="$_EFF"
-fi
+# Roda depois das flags de leitura, e não aqui: a fusão cria um temporário por
+# chamada, e a camada de terminal lê a cada 2s. Medido, era um arquivo novo em
+# $TMPDIR por leitura, pra responder pergunta que não olha policy.
+policy_efetiva() {
+    local local_policy="${POLICY%.json}.local.json"
+    [[ -f "$local_policy" ]] || return 0
+    jq -e . "$POLICY" >/dev/null 2>&1 && jq -e . "$local_policy" >/dev/null 2>&1 || return 0
+    _EFF=$(mktemp); jq -s '.[0] * .[1]' "$POLICY" "$local_policy" > "$_EFF" && POLICY="$_EFF"
+}
 INBOX="${DELEGATE_INBOX:-$HOME/.claude/INBOX.md}"
 # A árvore de trabalho nasce FORA do repositório. Medido em 21/set/2026: o
 # worker do plano principal recusa escrita dentro do diretório de configuração
@@ -72,9 +77,11 @@ WT_ROOT="${DELEGATE_WT_ROOT:-$HOME/.delegate-wt}"
 # existe pra evitar.
 wt_nome_repo() { local n; n=$(basename "$(cd "$1" && pwd)"); echo "${n#.}"; }
 LOG="$GATE_DIR/delegate.log"
-TMP_OUT=""; MATERIAL=""
-mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
+TMP_OUT=""; MATERIAL=""; _EFF=""
+# `slot_configurar` só aponta o diretório, e quem cria é quem escreve: consultar
+# o estado do gate não pode deixar rastro, e criar diretório é rastro.
 slot_configurar "$GATE_DIR"
+gate_para_escrita() { mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"; }
 
 die() { echo "delegate: $*" >&2; exit 1; }
 # Guarda de flag que consome valor: sob `set -u`, referenciar "$2" sem ele
@@ -206,6 +213,11 @@ if [[ -n "$GC" ]]; then
     exit 0
 fi
 
+# Daqui pra baixo o script escreve: gate, log e policy fundida nascem agora, e
+# não no topo, pra que `--tasks` e `--status` sejam leitura de verdade.
+gate_para_escrita
+policy_efetiva
+
 if [[ "${DELEGATE_DISABLED:-0}" == "1" ]]; then
     echo "delegate: desabilitado via DELEGATE_DISABLED, a sessão assume." >&2
     log_usage "${TASK:-?}" "-" "disabled" "kill switch"
@@ -326,7 +338,7 @@ TASK_ID=$(basename "$TASK_DIR")
 mkdir -p "$TASK_DIR"; chmod 700 "$TASK_DIR"
 PROMPT_FILE=$(mktemp); TMP_OUT="$TASK_DIR/out.txt"; : > "$TMP_OUT"; chmod 600 "$TMP_OUT"
 SLOT_TOMADO=""; HOUVE_PRAZO=0
-trap 'rm -f "$PROMPT_FILE"; [[ -n "$SLOT_TOMADO" ]] && slot_soltar "$SLOT_TOMADO"' EXIT
+trap 'rm -f "$PROMPT_FILE" ${_EFF:+"$_EFF"}; [[ -n "$SLOT_TOMADO" ]] && slot_soltar "$SLOT_TOMADO"' EXIT
 # O estado terminal reescreve o arquivo, então o que veio antes e continua
 # valendo tem que ser recomposto aqui: `comecou` era perdido, e o leitor procurava
 # um campo que a escrita terminal nunca produzia. O `id` saiu porque é o nome do
@@ -455,6 +467,20 @@ transcript_de() { # backend cwd marco → caminho do transcript, ou nada
     return 0
 }
 
+# O worker devolve o prompt junto: o codex ecoa a entrada inteira no stdout. E a
+# frase que classifica limite pode estar no prompt, não na resposta. Medido em
+# 21/set/2026: revisar o diff deste despachante mandou pro worker a linha do
+# próprio detector de desculpa, o detector casou com ela no eco e jogou fora uma
+# revisão completa, de brinde castigando o balde por 60min. A população da
+# classificação é só o que o worker acrescentou, e a subtração é por linha
+# literal, porque não depende de conhecer o formato de eco de cada CLI.
+resposta_pura() { # → caminho de um arquivo com as linhas que o worker acrescentou
+    local pura="$TASK_DIR/resposta.txt"
+    [[ -s "$PROMPT_FILE" && -f "$TMP_OUT" ]] || { printf '%s\n' "$TMP_OUT"; return 0; }
+    grep -vxF -f "$PROMPT_FILE" "$TMP_OUT" > "$pura" 2>/dev/null || true
+    printf '%s\n' "$pura"
+}
+
 invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit, 4 ausente, 1 falha)
     local backend="$1" model="$2" effort="${3:-}" rem cmd model_flag effort_config
     # cooldown por pool (backend:pool), não por backend inteiro — agy tem pools
@@ -531,16 +557,18 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     # Prazo estourado é tropeço de provider, e a sonda já tratava assim. Enquanto
     # o despachante não armava nada aqui, o mesmo rc=124 castigava num invocador
     # e passava batido no outro: dois comportamentos pro mesmo sinal.
+    local resposta; resposta=$(resposta_pura)
+
     if [[ $rc -eq 124 ]]; then
         HOUVE_PRAZO=1
-        armar_limite "$pkey" "$TMP_OUT" "$rc" >/dev/null
+        armar_limite "$pkey" "$resposta" "$rc" >/dev/null
         echo "⚠️  $backend timeout (${TIMEOUT}s), cooldown de tropeço armado pela policy" >&2
         return 3
     fi
     if [[ $rc -ne 0 ]]; then
-        local limite; limite=$(classificar_limite "$TMP_OUT")
+        local limite; limite=$(classificar_limite "$resposta")
         if [[ "$limite" != desconhecido ]]; then
-            armar_limite "$pkey" "$TMP_OUT" >/dev/null
+            armar_limite "$pkey" "$resposta" >/dev/null
             echo "⚠️  $pkey em limite $limite, cooldown armado pela policy" >&2
             return 3
         fi
@@ -555,13 +583,13 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     # cascata desce); nunca desabilita o pool na policy — tier reseta (ex.:
     # semanal), cooldown reativo já revalida sozinho na próxima chamada após
     # expirar, sem precisar de intervenção manual.
-    if [[ -z "$WORKTREE" ]] && ! grep -qE '[^[:space:]]' "$TMP_OUT"; then
+    if [[ -z "$WORKTREE" ]] && ! grep -qE '[^[:space:]]' "$resposta"; then
         arm_cooldown_longo "$pkey"
         echo "⚠️  $pkey devolveu vazio (rc=0, falha silenciosa), cooldown armado pela policy" >&2
         return 3
     fi
 
-    if [[ -z "$WORKTREE" ]] && is_sem_resposta "$TMP_OUT"; then
+    if [[ -z "$WORKTREE" ]] && is_sem_resposta "$resposta"; then
         arm_cooldown_longo "$pkey"
         echo "⚠️  $pkey devolveu desculpa em vez de resposta (rc=0), cooldown armado pela policy" >&2
         return 3
@@ -690,7 +718,7 @@ USED="" USED_POOL="" USED_MODEL="" SALDO_NA_ESCOLHA=""
 # dois caminhos de report que divergem calados.
 executar() {
     if run_cascade; then
-        echo "worker: $USED" >&2   # linha estável pra consumidores (peer-review) — não reformatar
+        echo "worker: $USED" >&2   # linha estável pra consumidores (peer-review), não reformatar
         # Uma vez, e depois de saber quem atendeu. Dentro do laço da cascata a
         # função rodava por degrau e só o último valor virava log, então num
         # despacho que pula todos os baldes dois terços do trabalho dela era
@@ -729,7 +757,7 @@ executar() {
         exit 0
     fi
 
-    # cascata esgotada — só remove worktree criada nesta chamada; --continue nunca apaga trabalho reaproveitado
+    # cascata esgotada: só remove worktree criada nesta chamada; --continue nunca apaga trabalho reaproveitado
     [[ -n "$WT_DIR" && "$WT_FRESH" == "1" ]] && { git -C "$WORKTREE" worktree remove --force "$WT_DIR" 2>/dev/null; git -C "$WORKTREE" branch -D "$WT_BRANCH" 2>/dev/null; } >/dev/null
     echo "⚠️  Nenhum worker disponível na cascata pra task '$TASK'. A sessão assume." >&2
     log_usage "$TASK" "-" "unavailable" "cascata esgotada: ${TRILHA:-nenhum degrau elegível}"
