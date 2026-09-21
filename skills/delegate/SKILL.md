@@ -165,6 +165,12 @@ quebraria em runtime. Por isso o `delegate.sh` faz três coisas juntas: `cd` na
 worktree, `--add-dir {worktree}` no comando, e o caminho absoluto escrito no
 começo do prompt. Nenhuma das três sozinha resolve.
 
+**No modo worktree o worker do plano roda comando, e no modo sem escrita não.**
+Sem isso o bloco de verificação do report dele é promessa: o harness recusa todo
+binário fora de um allowlist mínimo, a sessão é headless e não tem quem aprove,
+então `bash tests/...` voltava negado. A permissão vale só onde existe árvore
+isolada pra estragar, e a confinação continua sendo a worktree.
+
 **Protocolo de integração (obrigatório, nunca pular):**
 0. `git status` na **árvore principal**. Worker que escapou aparece aqui, e
    descobrir isso depois de rodar teste custa muito mais.

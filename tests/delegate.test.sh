@@ -1046,6 +1046,46 @@ echo x | MOCK_CODEX=desculpa bash "$DELEGATE" --task _probe --model codex - >/de
   || fail "o detector morreu: desculpa do worker não arma mais nada"
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
 
+echo "T: o worker do plano roda comando na árvore dele, e só nela"
+# Medido em 21/set/2026, num despacho real: o worker devolveu a implementação com
+# a verificação declarada e NÃO executada, porque o harness dele recusa todo
+# binário fora de um allowlist mínimo e a sessão é headless, sem ninguém pra
+# aprovar. `bash`, `sh`, `git`, `ls` e `grep` todos negados. Sem permissão de
+# comando, o bloco de verify do report é promessa.
+[[ "$(jq -r '.backends.claude.worktree_invoke' "$HERE/../config/model-policy.json")" == *"--allowedTools Bash"* ]] \
+  && ok "o modo worktree do worker do plano carrega permissão de comando" \
+  || fail "o modo worktree não passa permissão de comando: o verify do worker não roda"
+[[ "$(jq -r '.backends.claude.invoke' "$HERE/../config/model-policy.json")" == *"allowedTools"* ]] \
+  && fail "o modo sem escrita ganhou permissão de comando, e ali não há árvore isolada" \
+  || ok "o modo sem escrita não ganha permissão nenhuma"
+for _b in codex agy; do
+  [[ "$(jq -r --arg b "$_b" '.backends[$b].worktree_invoke // ""' "$HERE/../config/model-policy.json")" == *"allowedTools"* ]] \
+    && fail "$_b mudou de invocação, e a mudança era só do worker do plano" \
+    || ok "$_b segue com a invocação de antes"
+done
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+REPO_P="$TMP/repo-permissao"; rm -rf "$REPO_P"; mkdir -p "$REPO_P"
+git -C "$REPO_P" init -q -b main; echo base > "$REPO_P/f.txt"
+git -C "$REPO_P" add -A; git -C "$REPO_P" -c user.email=t@t -c user.name=t commit -qm base
+export CLAUDE_ARGV_DUMP="$TMP/claude-argv.txt"
+cat > "$MOCKBIN/claude" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null; printf '%s\n' "$@" > "$CLAUDE_ARGV_DUMP"
+echo mudanca > worker-claude.txt; echo "claude-worktree-ok"; exit 0
+EOF
+chmod +x "$MOCKBIN/claude"
+echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO_P" --model claude - >/dev/null 2>&1
+argv_wt=$(cat "$CLAUDE_ARGV_DUMP" 2>/dev/null)
+assert_contains "o dispatch em worktree passa a permissão ao binário" "$argv_wt" "allowedTools"
+: > "$CLAUDE_ARGV_DUMP"
+echo "task de teste" | MOCK_CLAUDE=ok bash "$DELEGATE" --task _probe --model claude - >/dev/null 2>&1
+argv_one=$(cat "$CLAUDE_ARGV_DUMP" 2>/dev/null)
+grep -q 'allowedTools' <<<"$argv_one" && fail "o dispatch sem worktree passou permissão de comando" \
+  || ok "o dispatch sem worktree não passa permissão"
+git -C "$REPO_P" worktree remove --force "$(git -C "$REPO_P" worktree list | grep 'delegate/' | awk '{print $1}')" 2>/dev/null
+mock_claude
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
 echo "T: a árvore do worker nasce no HEAD de quem despachou, não no trunk"
 # Medido em 21/set/2026, no primeiro despacho real: a sessão estava na branch da
 # spec, a base saiu do trunk do project.yaml, e o worker construiu contra um

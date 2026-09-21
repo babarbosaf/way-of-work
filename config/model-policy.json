@@ -79,7 +79,7 @@
         "worktree"
       ],
       "invoke": "claude -p",
-      "worktree_invoke": "claude -p --add-dir {worktree} --permission-mode acceptEdits",
+      "worktree_invoke": "claude -p --add-dir {worktree} --allowedTools Bash --permission-mode acceptEdits",
       "prompt_via": "stdin",
       "bin": "claude",
       "model_flag": "--model",
