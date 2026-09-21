@@ -27,6 +27,7 @@ memória durável entre sessões.
 | `FEEDBACK.example.md` | Formato do buffer de correção do projeto: uma linha por entrada com o gatilho embutido, teto de 10, regra de promoção. O `FEEDBACK.md` real é gitignored. |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
 | `config/plugins.json` | Manifesto de plugins e de servidores MCP, com o porquê de cada um, aplicado por `scripts/bootstrap-plugins.sh`. Todos opcionais. |
+| `config/rtk.json` | Contrato do `rtk`: versão mínima e o que sai do rewrite, aplicado por `scripts/bootstrap-rtk.sh`. Opcional. |
 | `hooks/` | **Claude Code.** Cinco hooks de enforcement em runtime: grep-first em read grande, no-op bloqueado, lembrete de doc atualizada, append obrigatório no log de memória e guarda de tamanho do `CLAUDE.md`. A mensagem de bloqueio diz o que fazer no lugar, e cada um tem kill switch (ver Pré-requisitos). |
 | `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. |
 
@@ -111,6 +112,14 @@ scripts/bootstrap-plugins.sh --apply             # instala plugins e MCP
 scripts/bootstrap-plugins.sh --update --apply    # puxa upstream do que já está instalado
 ```
 
+O `bootstrap-plugins.sh` termina delegando pro `bootstrap-rtk.sh` com as mesmas flags:
+tudo que vem de fora atualiza no mesmo comando. Pra mexer só no rtk:
+
+```bash
+scripts/bootstrap-rtk.sh --apply                 # instala o rtk e aplica config/rtk.json
+scripts/bootstrap-rtk.sh --update --apply        # brew upgrade rtk, e reaplica a config
+```
+
 O bloco `mcp` do manifesto declara servidor remoto (`url`) e local (`command`), instalado
 no escopo `user`. `--update` não mexe neles: cada servidor resolve versão sozinho.
 
@@ -138,7 +147,7 @@ sobre a base, mesma convenção do `model-policy`.
 | ferramenta | pra quê | sem ela |
 |---|---|---|
 | `python3` | os cinco hooks de enforcement e o linter de escrita | hook e linter não rodam |
-| `jq` | merge dos overlays `*.local.json` (`model-policy`, `plugins`) | `model-policy-effective.sh` e `bootstrap-plugins.sh` abortam |
+| `jq` | merge dos overlays `*.local.json` (`model-policy`, `plugins`) e leitura de `config/rtk.json` | `model-policy-effective.sh`, `bootstrap-plugins.sh` e `bootstrap-rtk.sh` abortam |
 | context7 MCP | a doutrina manda consultar doc de lib atualizada antes de escolher API | a regra existe e não tem como ser cumprida |
 | `rtk` | comprime a saída dos comandos antes de entrar no transcript | nada: o hook sai limpo e o comando roda normal |
 
@@ -150,8 +159,10 @@ claude mcp add --scope user --header "CONTEXT7_API_KEY: SUA_KEY" \
   --transport http context7 https://mcp.context7.com/mcp
 ```
 
-Detalhes e a alternativa local por `npx` em [`docs/research/context7.md`](docs/research/context7.md).
-O `rtk` é opcional e sai por `brew install rtk` (ver [`docs/rtk.md`](docs/rtk.md)).
+Detalhes e a alternativa local por `npx` em [`docs/context7.md`](docs/context7.md).
+O `rtk` é opcional e entra junto do `bootstrap-plugins.sh --apply`, que delega pro
+`bootstrap-rtk.sh`: instala o binário e aplica `config/rtk.json` no `config.toml` dele
+(ver [`docs/rtk.md`](docs/rtk.md)).
 
 Cada hook tem kill switch por variável de ambiente, pra quando o enforcement estorvar em
 vez de ajudar: `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,

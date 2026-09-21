@@ -302,20 +302,74 @@ else
 fi
 
 echo "== rtk-hook-wrapper: leitura de arquivo sai do rewrite =="
+# O bypass vem de `[hooks] exclude_commands` no config.toml do RTK, materializado
+# por scripts/bootstrap-rtk.sh a partir de config/rtk.json. Estes asserts são o
+# leitor desse contrato: falharam, ou o bootstrap não rodou nesta máquina, ou o
+# upstream mudou o casamento de exclude_commands.
 W="$HERE/../scripts/rtk-hook-wrapper.sh"
 wrap() { OUT=$(printf '%s' "$1" | bash "$W" 2>/dev/null); RC=$?; }
-wrap "$(p_cmd "cat $GRANDE")"
-[[ -z "$OUT" ]] && ok "cat não é mais reescrito pro rtk read" || fail "cat ainda reescrito ($OUT)"
-wrap "$(p_cmd "head -20 $GRANDE")"
-[[ -z "$OUT" ]] && ok "head não é reescrito" || fail "head ainda reescrito ($OUT)"
-wrap "$(p_cmd 'git commit -m x')"
-[[ -z "$OUT" ]] && ok "git commit segue bypassado" || fail "git commit foi reescrito ($OUT)"
+
+OUT=$(printf '%s' "$(p_cmd 'git status')" | PATH=/usr/bin:/bin bash "$W" 2>/dev/null); RC=$?
+[[ -z "$OUT" && $RC -eq 0 ]] && ok "rtk fora do PATH: wrapper sai limpo, sem rc=127" \
+  || fail "wrapper sem rtk no PATH devolveu rc=$RC ($OUT)"
+
 if command -v rtk >/dev/null 2>&1; then
+  wrap "$(p_cmd "cat $GRANDE")"
+  [[ -z "$OUT" ]] && ok "cat não é reescrito pro rtk read" || fail "cat ainda reescrito ($OUT)"
+  wrap "$(p_cmd "FOO=1 cat $GRANDE")"
+  [[ -z "$OUT" ]] && ok "env-prefix não fura o bypass de cat" || fail "FOO=1 cat foi reescrito ($OUT)"
+  wrap "$(p_cmd "head -20 $GRANDE")"
+  [[ -z "$OUT" ]] && ok "head não é reescrito" || fail "head ainda reescrito ($OUT)"
+  wrap "$(p_cmd 'git commit -m x')"
+  [[ -z "$OUT" ]] && ok "git commit segue bypassado" || fail "git commit foi reescrito ($OUT)"
+  wrap "$(p_cmd 'git add -n .')"
+  [[ -z "$OUT" ]] && ok "git add fora do rewrite: dry-run não volta vazio" \
+    || fail "git add foi reescrito, e o -n volta a mentir ($OUT)"
+  wrap "$(p_cmd 'gh pr create --title x --body y')"
+  [[ -z "$OUT" ]] && ok "gh pr create segue bypassado" || fail "gh pr create foi reescrito ($OUT)"
   wrap "$(p_cmd 'git status')"
   [[ "$OUT" == *"rtk git status"* ]] && ok "git status segue reescrito pro rtk" \
     || fail "git status deixou de ser reescrito ($OUT)"
 else
-  ok "rtk ausente: rewrite de git status não testável nesta máquina (skip)"
+  ok "rtk ausente: rewrite não testável nesta máquina (skip)"
+fi
+
+echo "== bootstrap-rtk: manifesto e config.toml não divergem =="
+if command -v rtk >/dev/null 2>&1; then
+  MIN=$(jq -r '.versao_minima' "$HERE/../config/rtk.json")
+  MED=$(jq -r '.versao_medida' "$HERE/../config/rtk.json")
+  INST=$(rtk --version 2>/dev/null | awk '{print $2}')
+  if [[ "$(printf '%s\n%s\n' "$MIN" "$INST" | sort -V | head -1)" == "$MIN" ]]; then
+    ok "rtk $INST atende a mínima $MIN do manifesto"
+  else
+    fail "rtk $INST é anterior à mínima $MIN: rode scripts/bootstrap-rtk.sh --update --apply"
+  fi
+  # docs/rtk.md afirma coisas sobre um binário específico. Binário novo, afirmação
+  # sem dono: o gate é falhar aqui, e a saída diz o que remedir.
+  [[ "$INST" == "$MED" ]] && ok "rtk $INST é a versão em que docs/rtk.md foi medido" \
+    || fail "rtk $INST ≠ versao_medida $MED: remeça as afirmações de docs/rtk.md e atualize config/rtk.json"
+  # As duas medições que sustentam o exclude_commands. Elas são a razão de `cat` e
+  # `git add` estarem fora do rewrite: se o upstream consertar qualquer uma, este
+  # assert cai e a decisão volta pra mesa junto com o doc.
+  alvo="$HERE/../AGENTS.md"
+  b_cat=$(command cat "$alvo" | wc -c | tr -d ' ')
+  b_rtk=$(rtk read "$alvo" 2>/dev/null | wc -c | tr -d ' ')
+  [[ "$b_cat" == "$b_rtk" ]] && ok "docs/rtk.md: rtk read devolve os mesmos bytes do cat ($b_cat)" \
+    || fail "rtk read mudou ($b_cat -> $b_rtk): remeça docs/rtk.md e reveja cat no exclude_commands"
+
+  REPO="$TMP/rtk-gitadd"; mkdir -p "$REPO"
+  ( cd "$REPO" && /usr/bin/git init -q . && echo x > novo.txt ) >/dev/null 2>&1
+  saida=$( cd "$REPO" && rtk git add -n . 2>&1 )
+  [[ -z "$saida" ]] && ok "docs/rtk.md: rtk git add -n segue devolvendo vazio" \
+    || fail "rtk git add -n voltou a listar ($saida): remeça docs/rtk.md e reveja git add no exclude_commands"
+
+  if bash "$HERE/../scripts/bootstrap-rtk.sh" --apply 2>&1 | grep -q "já casa com o manifesto"; then
+    ok "config.toml do rtk casa com config/rtk.json"
+  else
+    fail "config do rtk divergia do manifesto (o --apply acabou de corrigir; rode de novo)"
+  fi
+else
+  ok "rtk ausente: manifesto não aplicável nesta máquina (skip)"
 fi
 
 echo

@@ -79,6 +79,22 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **O bypass do RTK sai do wrapper e vira contrato versionado.** O binário subiu de
+  0.40.0 pra 0.49.0, e `scripts/rtk-hook-wrapper.sh` encolheu de 40 linhas para a única
+  coisa que só ele faz: sair limpo quando o `rtk` não está no PATH. O regex que listava
+  `cat`, `head` e `git commit` casava só o começo da linha e deixava passar `FOO=1 cat x`,
+  `uv run pytest` e segmento de pipe; o RTK casa a forma peeled desde a 0.47, então a
+  lista passou a morar em `config/rtk.json` e é aplicada no `config.toml` dele por
+  `scripts/bootstrap-rtk.sh` (dry-run por default, `--update` puxa o upstream). `git add`
+  entrou na lista por medida: `rtk git add -n .` devolvia vazio com cinco arquivos a
+  stagear, um dry-run que mente. Sete asserts novos em `tests/hooks.test.sh`, incluindo o
+  que cobra a igualdade entre manifesto e config ativa, e o que prova que o wrapper sem
+  `rtk` no PATH não deixa o harness com rc=141. `bootstrap-plugins.sh` passa a delegar
+  pro `bootstrap-rtk.sh` com as mesmas flags, então o que vem de fora atualiza num
+  comando só, e a suíte de plugins ganhou mocks de `rtk` e `brew` pra não tocar a
+  máquina. O doc não apodrece em silêncio: `versao_medida` no manifesto e dois asserts
+  que remedem o que `docs/rtk.md` afirma (`rtk read` == `cat` em bytes, `rtk git add -n`
+  vazio) derrubam a suíte quando o binário muda, e a saída diz o que remedir.
 - **O quadrante vazio do roteamento ganhou portão.** `to-spec`, `to-tickets` e
   `execute` excluíam, cada um com essas palavras, a "tarefa que cabe numa sessão e
   vai direto pro código": as skills eram mutuamente excludentes e não coletivamente

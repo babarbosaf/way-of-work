@@ -22,7 +22,27 @@ echo "$*" >> "$MOCK_LOG"
 exit "${MOCK_RC:-0}"
 MOCK
 chmod +x "$MOCKBIN/claude"
+
+# `rtk` e `brew` também são mockados: o bootstrap delega o rtk no fim, e nenhum
+# teste pode tocar o binário real nem o config.toml da máquina.
+cat > "$MOCKBIN/rtk" <<'MOCK'
+#!/usr/bin/env bash
+echo "rtk $*" >> "$RTK_LOG"
+case "${1:-}" in
+  --version) echo "rtk 99.0.0" ;;
+  config) echo "Config: $RTK_MOCK_CONFIG" ;;
+esac
+exit 0
+MOCK
+cat > "$MOCKBIN/brew" <<'MOCK'
+#!/usr/bin/env bash
+echo "brew $*" >> "$RTK_LOG"
+exit 0
+MOCK
+chmod +x "$MOCKBIN/rtk" "$MOCKBIN/brew"
 export PATH="$MOCKBIN:$PATH" MOCK_LOG="$TMP/chamadas.log"
+export RTK_MOCK_CONFIG="$TMP/rtk-config.toml" RTK_LOG="$TMP/rtk.log"
+printf '[hooks]\nexclude_commands = []\n' > "$RTK_MOCK_CONFIG"
 
 cat > "$TMP/base.json" <<'JSON'
 {
@@ -156,6 +176,21 @@ if [[ -f "$PLUG" && -f "$MKT" ]]; then
 else
   fail "manifestos de plugin ausentes: $PLUG"
 fi
+
+echo "== delegação pro bootstrap-rtk =="
+printf '[hooks]\nexclude_commands = []\n' > "$RTK_MOCK_CONFIG"
+: > "$MOCK_LOG"
+out=$(bash "$BOOT" --manifest="$TMP/base.json")
+assert_contains "dry-run anuncia a etapa do rtk" "$out" "== rtk =="
+grep -q "exclude_commands = \[\]" "$RTK_MOCK_CONFIG" && ok "dry-run não escreve no config do rtk" \
+  || fail "dry-run mexeu no config do rtk"
+: > "$MOCK_LOG"
+bash "$BOOT" --manifest="$TMP/base.json" --apply >/dev/null
+assert_contains "--apply aplica o manifesto do rtk" "$(cat "$RTK_MOCK_CONFIG")" "git add"
+: > "$MOCK_LOG"
+: > "$RTK_LOG"
+bash "$BOOT" --manifest="$TMP/base.json" --update --apply >/dev/null
+assert_contains "--update chega no brew" "$(cat "$RTK_LOG")" "brew upgrade rtk"
 
 echo "== manifesto do repo =="
 out=$(bash "$BOOT" 2>&1); rc=$?

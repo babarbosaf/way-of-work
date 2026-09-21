@@ -99,9 +99,24 @@ else
     | if .value.url then "http\t\(.key)\t\(.value.url)" else "stdio\t\(.key)\t\(.value.command)" end' <<<"$EFETIVO")
 fi
 
+# O rtk vem de fora como plugin e marketplace vêm, e é o mesmo gesto: um comando
+# só pra tudo que este repo não versiona. Mesmas flags, mesmo dry-run. O contrato
+# dele é config/rtk.json, e o script sai limpo se o manifesto não existir.
+delega_rtk() {
+  local sh="$(dirname "${BASH_SOURCE[0]}")/bootstrap-rtk.sh"
+  [[ -f "$sh" ]] || return 0
+  local flags=()
+  (( APPLY == 1 )) && flags+=(--apply)
+  (( UPDATE == 1 )) && flags+=(--update)
+  echo
+  echo "== rtk =="
+  bash "$sh" "${flags[@]+"${flags[@]}"}" || echo "bootstrap-rtk: falhou. Segue." >&2
+}
+
 if (( APPLY == 0 )); then
   echo "# dry-run: nada foi executado. Rode com --apply pra valer."
   printf '%s\n' "${CMDS[@]}"
+  delega_rtk
   exit 0
 fi
 
@@ -114,3 +129,4 @@ for cmd in "${CMDS[@]}"; do
   fi
 done
 echo "bootstrap-plugins: ${#CMDS[@]} comando(s), $falhas com falha."
+delega_rtk
