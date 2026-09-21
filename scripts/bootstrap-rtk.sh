@@ -12,30 +12,20 @@
 # `uv run`, segmento de pipe). Regex de shell no wrapper não fazia isso.
 set -uo pipefail
 
+PROG=bootstrap-rtk
+HELP_ATE=12
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MANIFEST="${MANIFEST:-$RAIZ/config/rtk.json}"
-APPLY=0
-UPDATE=0
-for arg in "$@"; do
-  case "$arg" in
-    --apply) APPLY=1 ;;
-    --update) UPDATE=1 ;;
-    --manifest=*) MANIFEST="${arg#--manifest=}" ;;
-    -h|--help) sed -n '2,13p' "${BASH_SOURCE[0]}"; exit 0 ;;
-    *) echo "uso: $(basename "$0") [--apply] [--update] [--manifest=PATH]" >&2; exit 1 ;;
-  esac
-done
-
-command -v jq >/dev/null || { echo "bootstrap-rtk: jq é pré-requisito" >&2; exit 1; }
-[[ -f "$MANIFEST" ]] || { echo "bootstrap-rtk: manifesto não encontrado: $MANIFEST" >&2; exit 1; }
-jq -e . "$MANIFEST" >/dev/null 2>&1 || { echo "bootstrap-rtk: JSON inválido: $MANIFEST" >&2; exit 1; }
+. "$RAIZ/scripts/bootstrap-common.sh"
+bootstrap_args "$@"
+bootstrap_prereq
 
 MINIMA=$(jq -r '.versao_minima // ""' "$MANIFEST")
 
 # Instalação: o RTK é opcional, então ausência não é erro — é trabalho a fazer.
 if ! command -v rtk >/dev/null 2>&1; then
   if (( APPLY == 0 )); then
-    echo "# dry-run: nada foi executado. Rode com --apply pra valer."
+    dry_run_banner
     echo "brew install rtk"
     echo "# (config só depois do binário; rode de novo pra ver o resto)"
     exit 0
@@ -46,7 +36,7 @@ fi
 
 if (( UPDATE == 1 )); then
   if (( APPLY == 0 )); then
-    echo "# dry-run: nada foi executado. Rode com --apply pra valer."
+    dry_run_banner
     echo "brew upgrade rtk"
   else
     echo "+ brew upgrade rtk"
@@ -75,7 +65,7 @@ CONFIG=$(rtk config 2>/dev/null | sed -n '1s/^Config: //p')
 DESEJADO=$(jq -r '.hooks.exclude_commands[]' "$MANIFEST")
 
 if (( APPLY == 0 )); then
-  echo "# dry-run: nada foi executado. Rode com --apply pra valer."
+  dry_run_banner
   echo "# config: $CONFIG"
   echo "# [hooks] exclude_commands ="
   while IFS= read -r c; do echo "#   $c"; done <<<"$DESEJADO"

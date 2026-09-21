@@ -16,22 +16,12 @@
 # é reportada sem abortar o resto.
 set -uo pipefail
 
+PROG=bootstrap-plugins
+HELP_ATE=16
 MANIFEST="${MANIFEST:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)/config/plugins.json}"
-APPLY=0
-UPDATE=0
-for arg in "$@"; do
-  case "$arg" in
-    --apply) APPLY=1 ;;
-    --update) UPDATE=1 ;;
-    --manifest=*) MANIFEST="${arg#--manifest=}" ;;
-    -h|--help) sed -n '2,17p' "${BASH_SOURCE[0]}"; exit 0 ;;
-    *) echo "uso: $(basename "$0") [--apply] [--update] [--manifest=PATH]" >&2; exit 1 ;;
-  esac
-done
-
-command -v jq >/dev/null || { echo "bootstrap-plugins: jq é pré-requisito" >&2; exit 1; }
-[[ -f "$MANIFEST" ]] || { echo "bootstrap-plugins: manifesto não encontrado: $MANIFEST" >&2; exit 1; }
-jq -e . "$MANIFEST" >/dev/null 2>&1 || { echo "bootstrap-plugins: JSON inválido: $MANIFEST" >&2; exit 1; }
+. "$(dirname "${BASH_SOURCE[0]}")/bootstrap-common.sh"
+bootstrap_args "$@"
+bootstrap_prereq
 
 LOCAL="${MANIFEST%.json}.local.json"
 if [[ -f "$LOCAL" ]] && jq -e . "$LOCAL" >/dev/null 2>&1; then
@@ -114,7 +104,7 @@ delega_rtk() {
 }
 
 if (( APPLY == 0 )); then
-  echo "# dry-run: nada foi executado. Rode com --apply pra valer."
+  dry_run_banner
   printf '%s\n' "${CMDS[@]}"
   delega_rtk
   exit 0

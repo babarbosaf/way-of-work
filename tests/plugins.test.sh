@@ -201,6 +201,33 @@ else
   fail "config/plugins.local.json NÃO é gitignored"
 fi
 
+echo "== convenção compartilhada dos bootstraps =="
+# bootstrap-common.sh é sourced pelos dois, e o modo de falhar é o -h imprimir o
+# cabeçalho DELE em vez do cabeçalho de quem o usuário rodou, ou a linha de uso
+# nomear o arquivo sourced. Os dois saem da mesma pilha do BASH_SOURCE.
+RTKBOOT="$ROOT/scripts/bootstrap-rtk.sh"
+COMUM="$ROOT/scripts/bootstrap-common.sh"
+[[ -f "$COMUM" ]] && ok "bootstrap-common.sh existe" || fail "bootstrap-common.sh ausente"
+for sh in "$BOOT" "$RTKBOOT"; do
+  nome=$(basename "$sh")
+  h=$(bash "$sh" -h 2>&1)
+  assert_contains "$nome -h abre com o cabeçalho dele" "$h" "^# Aplica "
+  grep -q 'Convenção compartilhada' <<<"$h" && fail "$nome -h imprimiu o cabeçalho do arquivo sourced" \
+    || ok "$nome -h não imprime o cabeçalho do bootstrap-common"
+  grep -q 'set -uo pipefail' <<<"$h" && fail "$nome -h passou do fim do cabeçalho (HELP_ATE errado)" \
+    || ok "$nome -h para no fim do cabeçalho"
+  u=$(bash "$sh" --flag-que-nao-existe 2>&1); rc=$?
+  assert_rc "$nome recusa flag desconhecida" "$rc" "1"
+  assert_contains "a linha de uso nomeia $nome, não o arquivo sourced" "$u" "uso: $nome"
+  e=$(MANIFEST=/tmp/nao-existe-$$.json bash "$sh" --manifest=/tmp/nao-existe-$$.json 2>&1); rc=$?
+  assert_rc "$nome recusa manifesto ausente" "$rc" "1"
+  assert_contains "o erro de manifesto abre com o PROG de $nome" "$e" "^${nome%.sh}: manifesto"
+done
+# banner de dry-run é função, e não literal repetido em cada ramo
+literais=$(grep -rn 'dry-run: nada foi executado' "$BOOT" "$RTKBOOT" | wc -l | tr -d ' ')
+[[ "$literais" == "0" ]] && ok "nenhum bootstrap repete o literal do banner de dry-run" \
+  || fail "$literais literal(is) do banner fora do dry_run_banner"
+
 echo
 echo "== $PASS passed, $FAIL failed =="
 [[ $FAIL -eq 0 ]]

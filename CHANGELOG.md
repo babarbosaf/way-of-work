@@ -7,6 +7,12 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **`scripts/bootstrap-common.sh`, a convenção compartilhada dos bootstraps.** Flags,
+  pré-requisito de manifesto e banner de dry-run viviam em cópia nos dois
+  `bootstrap-*.sh`, e o banner aparecia quatro vezes como literal. O dono mandou
+  resolver antes da 3ª repetição, que é a régua do `AGENTS.md`: agora o `-h` de cada
+  script imprime o cabeçalho dele e a linha de uso nomeia quem foi rodado, os dois
+  saindo da pilha do `BASH_SOURCE`, com teste pra cada um desses modos de falhar.
 - **`check-links.py` passou a cobrar caminho de script citado em code span.** O repo
   mantém dois caminhos válidos pro mesmo arquivo, o canônico dentro da skill e o symlink
   em `scripts/`, e o modo de falhar é um doc citar o curto onde o symlink não existe. O
@@ -102,6 +108,9 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   plano. A guarda tinha nascido presa ao `delegate.sh`, e não à regra: agora
   `tests/delegate.test.sh` cobra `env -u ANTHROPIC_API_KEY` em todo invocador de
   backend, e não num só.
+- **O `-h` dos dois bootstraps imprimia um `set -uo pipefail` solto no fim.** A faixa
+  do `sed` passava uma linha do fim do cabeçalho, nos dois, desde que existem. Achado
+  pelo teste novo da convenção compartilhada.
 - **O log de uso não dizia qual modelo respondeu.** `USED_MODEL` era atribuída e nunca
   lida, e o campo `pool` do codex é `codex` pros quatro modelos dele, então `dur_s` não
   se atribuía a modelo nenhum, que é a pergunta que `dur_s` existe pra responder. O
