@@ -663,6 +663,71 @@ diverg=$(jq -r '[(.tasks|to_entries[]|select((.value|type)=="array")|.value[]),
   "$DELEGATE_POLICY")
 [[ -z "$diverg" ]] && ok "nenhuma entrada diverge do esforço sugerido" || fail "entrada divergindo: $diverg"
 
+echo "T: apurador lê histórico sem invocar worker"
+APURADOR="$HERE/../skills/delegate/scripts/apura_log.py"
+APURA_LOG="$TMP/apura.log"
+APURA_POLICY="$TMP/apura-policy.json"
+cat > "$APURA_LOG" <<'EOF'
+{"ts":"2026-09-20T00:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":10}
+{"ts":"2026-09-20T01:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":12}
+{"ts":"2026-09-20T06:01:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":9}
+{"ts":"2026-09-20T02:00:00Z","task":"scan","backend":"agy","status":"ok","detail":"model=gm","pool":"agy:gemini","bytes_in":1,"bytes_out":1,"dur_s":8}
+{"ts":"2026-09-20T02:01:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:02:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:03:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:04:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:05:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:06:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:07:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:08:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:09:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-19T00:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T01:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T02:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T03:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T04:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T05:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-20T02:10:00Z","task":"scan","backend":"agy","status":"unavailable","detail":"model=fantasma","pool":"agy:gemini","bytes_in":1,"bytes_out":0,"dur_s":1}
+EOF
+cat > "$APURA_POLICY" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":11},"agy:gemini":{"max_calls":1},"agy:claude_gpt":{"status":"sem_amostra"},"claude":{"status":"sem_amostra"}}},"timeouts":{"scan":24,"review":600},"tasks":{"scan":[{"backend":"codex","model":"m1"},{"backend":"agy","model":"fantasma"}],"review":[{"backend":"codex","model":"m1"}]},"tiers":{"implement":{"amplo":[{"backend":"claude","model":"ausente"}]}}}
+EOF
+apurado=$(python3 "$APURADOR" --log "$APURA_LOG" --policy "$APURA_POLICY")
+assert_eq "apurador sai 0" "$?" "0"
+jq -e '.budgets.pools.codex.max_calls == 11 and .timeouts.scan.seconds == 24 and .timeouts.scan.status == "medido" and .timeouts.review.status == "estimativa"' <<<"$apurado" >/dev/null \
+  && ok "pico e teto medido, revisão estimada" || fail "pico, teto ou estimativa incorretos: $apurado"
+assert_contains "lista modelo nunca invocado" "$apurado" "fantasma"
+assert_contains "lista degrau de tier nunca invocado" "$apurado" "ausente"
+python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$APURA_POLICY" >/dev/null
+assert_eq "--check aceita policy apurada" "$?" "0"
+
+# O detail de verdade não é só "model=X": em modo worktree ele carrega branch, e
+# desde o gate de saldo carrega saldo também. Fixture com a forma curta deixa o
+# extrator de modelo passar verde provando nada, e aí degrau JÁ provado aparece
+# como buraco, que é o pior erro possível pra quem vai virar a ordem da fila.
+APURA_LOG2="$TMP/apura-real.log"
+cat > "$APURA_LOG2" <<'EOF'
+{"ts":"2026-09-20T03:00:00Z","task":"implement","backend":"codex","status":"ok","detail":"model=m1 branch=delegate/implement-123 saldo=8","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":30}
+{"ts":"2026-09-20T03:10:00Z","task":"implement","backend":"codex","status":"empty_diff","detail":"model=m1 branch=delegate/implement-124 base=main saldo=7","pool":"codex","bytes_in":1,"bytes_out":0,"dur_s":99999}
+EOF
+cat > "$TMP/apura-policy2.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":2}}},"timeouts":{"implement":60},"tasks":{"implement":[{"backend":"codex","model":"m1"}]}}
+EOF
+apurado2=$(python3 "$APURADOR" --log "$APURA_LOG2" --policy "$TMP/apura-policy2.json")
+grep -q '"model": "m1"' <<<"$apurado2" \
+  && fail "degrau já invocado apareceu como não provado: o extrator de modelo engoliu o resto do detail" \
+  || ok "detail com branch e saldo ainda prova o degrau"
+jq -e '[.unproven_entries[]] | length == 0' <<<"$apurado2" >/dev/null \
+  && ok "nenhum degrau provado entra na lista de não provados" \
+  || fail "lista de não provados tem entrada provada: $apurado2"
+jq -e '.timeouts.implement.calls == 1' <<<"$apurado2" >/dev/null \
+  && ok "chamada de diff vazio não entra na amostra de duração" \
+  || fail "empty_diff contado como chamada que terminou bem: $(jq -c .timeouts <<<"$apurado2")"
+
+jq '.budgets.pools.codex.max_calls = 9' "$APURA_POLICY" > "$TMP/apura-policy-divergente.json"
+python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$TMP/apura-policy-divergente.json" >/dev/null 2>&1; rc=$?
+assert_eq "--check falha com policy divergente" "$rc" "1"
+
 echo ""
 echo "== $PASS passed, $FAIL failed =="
 [[ $FAIL -eq 0 ]]
