@@ -27,8 +27,6 @@
 !skills/**
 !docs/
 !docs/**
-!specs/
-!specs/**
 !tests/
 !tests/**
 
@@ -46,6 +44,10 @@ skills/_archive/
 # não doutrina do repo.
 skills/synced/
 docs/_archive/
+# pesquisa e spec são trabalho desta máquina, não doutrina transferível: o que
+# elas decidem vira instrução em docs/ e skills/, e o resto mora no git local.
+docs/research/
+specs/
 hooks/__pycache__/
 **/__pycache__/
 **/*.log

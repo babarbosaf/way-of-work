@@ -38,7 +38,7 @@ Child AGENTS.md escreve override próprio, nunca repete o que está aqui.
 | Correção do projeto | uma linha no `FEEDBACK.md` com o gatilho embutido. Teto 10; virou norma, promove ao doc permanente e apaga |
 | Lição cross-projeto | memória, via `capture-lessons` |
 | O que um projeto **é** mudou: stack, canal, quem mantém, se morreu | atualiza a página dele na base de conhecimento na mesma rodada |
-| Fixar API, assinatura ou versão de lib | context7 antes (`docs/research/context7.md`) |
+| Fixar API, assinatura ou versão de lib | context7 antes (`docs/context7.md`) |
 | Trabalho mecânico | `delegate` |
 | Comentário que só repete o código | `remove-dumb-comments`, que propõe e espera o ok |
 | Pedido visual | `design-workflow`, roteado em papercut ou design |

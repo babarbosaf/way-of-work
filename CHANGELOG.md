@@ -95,6 +95,13 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   máquina. O doc não apodrece em silêncio: `versao_medida` no manifesto e dois asserts
   que remedem o que `docs/rtk.md` afirma (`rtk read` == `cat` em bytes, `rtk git add -n`
   vazio) derrubam a suíte quando o binário muda, e a saída diz o que remedir.
+- **`specs/` e `docs/research/` saem do versionamento.** São trabalho desta máquina, não
+  doutrina transferível: o que decidem já vira instrução em `docs/` e `skills/`, e o resto
+  fica no git local. `docs/research/context7.md` virou `docs/context7.md`, porque o
+  `AGENTS.md` o cita como instrução e ele precisa viajar com o repo. Sai também a linha do
+  `specs/_TEMPLATE-spec/` no README: a doutrina viva põe spec em `docs/specs/<slug>/`, e
+  nenhum script ou skill apontava mais pro template da raiz.
+
 - **O quadrante vazio do roteamento ganhou portão.** `to-spec`, `to-tickets` e
   `execute` excluíam, cada um com essas palavras, a "tarefa que cabe numa sessão e
   vai direto pro código": as skills eram mutuamente excludentes e não coletivamente
