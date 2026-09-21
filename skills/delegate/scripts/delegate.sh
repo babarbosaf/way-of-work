@@ -391,10 +391,14 @@ backend_enabled() {
 # de chamada anterior sem aritmética de data: o nome do arquivo do worker de código
 # vem em hora local e o log em UTC, e reconciliar isso à mão erraria de uma hora.
 transcript_de() { # backend cwd marco → caminho do transcript, ou nada
-    local caminho padrao alvo f
-    caminho=$(jq -r --arg b "$1" '.backends[$b].sessions.path // empty' "$POLICY")
-    padrao=$(jq -r --arg b "$1" '.backends[$b].sessions.grep // empty' "$POLICY")
-    [[ -n "$caminho" && -n "${2:-}" && -f "${3:-}" ]] || return 0
+    local caminho padrao alvo f plano
+    # A guarda barata vem ANTES do jq, e os dois campos saem de uma leitura só:
+    # backend sem `sessions` declarado (o agy é um) pagava dois forks de jq por
+    # degrau pra descobrir que não tinha nada a procurar.
+    [[ -n "${2:-}" && -f "${3:-}" ]] || return 0
+    IFS=$'\t' read -r caminho padrao < <(
+        jq -r --arg b "$1" '[.backends[$b].sessions.path // "", .backends[$b].sessions.grep // ""] | @tsv' "$POLICY")
+    [[ -n "$caminho" ]] || return 0
     caminho="${caminho//\$CLAUDE_CONFIG_DIR/${CLAUDE_CONFIG_DIR:-$HOME/.claude}}"
     caminho="${caminho/#\~/$HOME}"
     # Os dois workers medidos guardam a sessão de formas diferentes, e um `case`
@@ -402,7 +406,12 @@ transcript_de() { # backend cwd marco → caminho do transcript, ou nada
     # policy declara onde procurar, com `{cwd}` e `{cwd_flat}` no caminho, e um
     # `grep` opcional pra quem grava o diretório de trabalho DENTRO do arquivo em
     # vez de no nome dele. Backend novo passa a ser linha de policy, não branch.
-    caminho="${caminho//\{cwd_flat\}/$(printf '%s' "$2" | tr '/.' '--')}"
+    # Achatar sem subshell, e só quando o token existe: `tr` num subshell custava
+    # 2,6ms contra 0,03ms da substituição do próprio shell, medido.
+    if [[ "$caminho" == *'{cwd_flat}'* ]]; then
+        plano="${2//\//-}"; plano="${plano//./-}"
+        caminho="${caminho//\{cwd_flat\}/$plano}"
+    fi
     caminho="${caminho//\{cwd\}/$2}"
     padrao="${padrao//\{cwd\}/$2}"
     local -a achados=()
@@ -634,7 +643,6 @@ run_cascade() {
             invoke_backend "$backend" "$model" "$effort"; rc=$?
         fi
         DUR_S=$(( SECONDS - t0 ))
-        MATERIAL=$(transcript_de "$backend" "${WT_DIR:-$PWD}" "$PROMPT_FILE")
         [[ $rc -eq 0 ]] && { USED="$backend"; USED_POOL=$(pool_key "$backend" "$model"); USED_MODEL="$model"; return 0; }
         # Degrau que não deu certo devolve o balde na hora. Soltar só no fim
         # deixaria um erro prender o balde pelo resto da chamada, e a cascata
@@ -653,6 +661,11 @@ USED="" USED_POOL="" USED_MODEL="" SALDO_NA_ESCOLHA=""
 executar() {
     if run_cascade; then
         echo "worker: $USED" >&2   # linha estável pra consumidores (peer-review) — não reformatar
+        # Uma vez, e depois de saber quem atendeu. Dentro do laço da cascata a
+        # função rodava por degrau e só o último valor virava log, então num
+        # despacho que pula todos os baldes dois terços do trabalho dela era
+        # descartado. Quem não alcançou worker nenhum cai no output capturado.
+        MATERIAL=$(transcript_de "$USED" "${WT_DIR:-$PWD}" "$PROMPT_FILE")
         if [[ -n "$WT_DIR" ]]; then
             ( cd "$WT_DIR" && git add -A && git -c user.name=delegate -c user.email=delegate@local commit -qm "delegate($TASK): output de $USED" ) || true
 
