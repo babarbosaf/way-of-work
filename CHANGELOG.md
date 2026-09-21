@@ -7,6 +7,48 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Duas guardas novas no gate de agnosticismo.** `plano ou preço do dono` barra nome de
+  plano comercial, preço e estado da máquina do dono, porque o repo diz que existe
+  hierarquia de modelos e como ela se declara, nunca de quem é a fatura. `ID de spec ou
+  de ticket` barra `SPEC-NNNN-NNN` e ID de tracker em arquivo versionado: `docs/specs/`
+  saiu do git nesta mesma release, então o ID manda o leitor abrir o que ele não tem. A
+  convenção de caminho fica, porque ensina onde ele põe as dele.
+- **`scripts/bootstrap-common.sh`, a convenção compartilhada dos bootstraps.** Flags,
+  pré-requisito de manifesto e banner de dry-run viviam em cópia nos dois
+  `bootstrap-*.sh`, e o banner aparecia quatro vezes como literal. O dono mandou
+  resolver antes da 3ª repetição, que é a régua do `AGENTS.md`: agora o `-h` de cada
+  script imprime o cabeçalho dele e a linha de uso nomeia quem foi rodado, os dois
+  saindo da pilha do `BASH_SOURCE`, com teste pra cada um desses modos de falhar.
+- **`check-links.py` passou a cobrar caminho de script citado em code span.** O repo
+  mantém dois caminhos válidos pro mesmo arquivo, o canônico dentro da skill e o symlink
+  em `scripts/`, e o modo de falhar é um doc citar o curto onde o symlink não existe. O
+  lint aceita qualquer um dos dois e só reclama quando nenhum resolve. Achou o primeiro
+  caso na hora: `scripts/check-writing.py` era citado e não existia, e ganhou o symlink.
+- **A prateleira de modelos virou dado, e o review passou a espelhar a sessão.** A
+  `model-policy.json` ganhou `review_shelf.models` (lista fechada de quem pode revisar),
+  `suggested_effort` (esforço por modelo, porque cada um roda no sugerido dele e não no
+  máximo que aceita) e `review_pairing`, que reordena a cascata de review pela classe da
+  sessão master: em Fable revisa o par de classe topo, em Opus revisa o par de classe
+  forte. Antes a fila era fixa, e quem trabalhava em Fable recebia review de uma classe
+  abaixo. O `delegate.sh` resolve a classe lendo o `settings.json` do `CLAUDE_CONFIG_DIR`,
+  e `DELEGATE_SESSION_CLASS` sobrepõe, porque `/model` em runtime não reescreve o arquivo.
+- **Backend `claude` como último degrau de toda cascata.** `claude -p` headless na mesma
+  assinatura da sessão, com esforço por flag (`--effort`), então o master deixa de ser o
+  único fallback e passa a ser o fallback real, depois do plano. Ele compra contexto
+  isolado e não resiliência de cota: quando o balde seca, a sessão e o headless falham
+  juntos. Toda invocação de backend roda sob `env -u ANTHROPIC_API_KEY`, e um teste prova
+  que a chave não chega ao worker, porque com ela setada o headless cobraria da API em vez
+  do plano.
+- **`--tier padrao|amplo` no dispatch, e `tier:` no ticket.** Tamanho de ticket deixou de
+  virar task-type novo: o tier troca só o ponto de entrada da mesma fila, resolvido como
+  `.tiers[task][tier] // .tasks[task]`. A classificação é mecânica no `to-tickets`, com
+  padrão até 5 arquivos próprios sem tocar contrato e amplo tocando contrato ou passando
+  de 5. O `check-spec.py --tickets` cobra o campo em todo ticket cujo `delega:` tem tier na
+  policy, e a métrica que recalibra o 5 é retrospectiva: ticket que estourou o timeout ou
+  voltou pro master no meio era amplo.
+- **`dur_s` no `delegate.log`.** O log gravava bytes e nenhum tempo, então todo número em
+  `.timeouts` era cronômetro na mão. Agora cada chamada grava a duração, e os timeouts se
+  recalibram com dado.
 - **`design-workflow` vira roteador, e a stack de design passa a ser externa.**
   A skill deixa de carregar doutrina de craft e nomeia o dono de cada passo: plugin
   `impeccable` (`shape`, `live`, `distill`, `critique`, `audit`, `polish`, `harden`,
@@ -64,8 +106,44 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   diff ganha as perguntas da área alterada: migration puxa perda de dado, auth puxa
   autorização, contrato público puxa compatibilidade, infra puxa ambiente.
 
+### Fixed
+
+- **O `smoke_backends.sh` invocava worker sem remover a `ANTHROPIC_API_KEY`.** A sonda
+  chama todo backend habilitado na policy, e o backend `claude` entrou nesta mesma
+  rodada, então rodar a sonda cobraria três chamadas de `claude -p` da API em vez do
+  plano. A guarda tinha nascido presa ao `delegate.sh`, e não à regra: agora
+  `tests/delegate.test.sh` cobra `env -u ANTHROPIC_API_KEY` em todo invocador de
+  backend, e não num só.
+- **A guarda de agnosticismo varria com dois motores de regex, e escondia regra morta.**
+  `regra` usa `git grep`, que não conhece `\b`, e `plantado` usava `grep`, que conhece:
+  uma regra cega no repo passava verde na violação plantada, que é a única coisa que o
+  `plantado` existe pra provar. Agora os dois usam o mesmo motor, e a troca revelou que
+  `primeira pessoa` nunca varreu nada. O escopo também deixava `LICENSE` e `.gitignore`
+  fora da varredura, e nome de projeto privado chega justamente por `.gitignore`; agora
+  entra todo arquivo versionado, sem lista de extensão.
+- **O `-h` dos dois bootstraps imprimia um `set -uo pipefail` solto no fim.** A faixa
+  do `sed` passava uma linha do fim do cabeçalho, nos dois, desde que existem. Achado
+  pelo teste novo da convenção compartilhada.
+- **O log de uso não dizia qual modelo respondeu.** `USED_MODEL` era atribuída e nunca
+  lida, e o campo `pool` do codex é `codex` pros quatro modelos dele, então `dur_s` não
+  se atribuía a modelo nenhum, que é a pergunta que `dur_s` existe pra responder. O
+  modelo entra no `detail`, string livre como o `TRILHA`, e o schema do JSONL não muda.
+  Medido com worker real: `{"backend":"codex","pool":"codex","detail":"model=gpt-5.6-luna","dur_s":10}`.
+- **Tier que a task não declara era fila padrão calada.** `--tier amplo --task scan`
+  resolvia `.tiers.scan.amplo?`, não achava, e caía no padrão sem dizer nada: pedir
+  amplo e receber padrão é a divergência que o tier existe pra evitar. Agora é erro de
+  uso que nomeia os tiers da policy.
+
 ### Removed
 
+- **`second-opinion`, `claude_api` e o backend `gemini` saíram.** O advisor cobre conselho
+  e o `review` cobre spec e código, então segunda opinião delegada a modelo abaixo da
+  classe do master era rebaixamento, não segunda opinião. O `claude_api` foi com o
+  mecanismo genérico de `env_var`/`env_file`/`API_KEY` que existia só pra ele, porque API
+  não entra em nenhum backend. Com eles saíram `docs/infra-migracao.md`,
+  `docs/autonomy-loops.md` (incorporado em uma linha da `AGENTS.md`) e
+  `docs/runbooks/multi-model-dispatch.md`, cujos três fatos únicos foram absorvidos pela
+  `skills/delegate/SKILL.md`.
 - **`caveman` sai.** Medido: ~1.4k tokens always-on, mais o bloco que o `SessionStart`
   injeta e o rastreador a cada prompt, perto de 2k por sessão. O que ele entrega no nível
   `lite` é o que o output style `Concise` já faz, e a doutrina de brevidade mora na skill
@@ -78,6 +156,61 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   as entradas de escopo project que apontavam pra repositório que não existe mais.
 
 ### Changed
+
+- **`padrao|amplo` deixou de ser literal de script.** O conjunto de tiers válidos era
+  hardcoded em três lugares (a policy, o regex do `delegate.sh` e uma tupla no
+  `check-spec.py`) sem nada obrigando os três a concordar, que é a lista gêmea contra a
+  qual o `$comment` da própria policy avisa. Os dois consumidores agora derivam de
+  `tiers.<task>` mais o `padrao` implícito.
+- **A classe da sessão saiu do `case` e virou chave de policy.** `session_class()`
+  casava `*fable*` e `*opus*` literalmente, um terceiro lugar onde o nome de uma classe
+  morava; agora percorre as chaves de `review_pairing`, e classe nova entra editando só
+  a policy.
+
+- **Skill deixou de carregar histórico de mudança.** Data de decisão e narrativa de "o
+  que morreu quando" saíram da `skills/delegate/SKILL.md`, da matriz de modelos e dos
+  `$comment` da policy: skill é o estado presente do que ela é e de como funciona, e o
+  histórico é o git, o `CHANGELOG.md` e o `FEEDBACK.md`. Data de **medição** ficou, porque
+  é parte do fato e é o que diz quando ele decai.
+- **O ticket ganhou limite negativo.** O `to-tickets` passou a pedir uma frase de "não
+  toca X" dentro do `O que construir:`. O ticket é lido junto com o `AGENTS.md` do repo e
+  o contrato de report do `delegate`, então ele não repete convenção; o que faltava era o
+  limite que impede o worker de melhorar o que ninguém pediu.
+- **D-01 mudou de sentido: plano de tarifa fixa primeiro, na ordem de qualidade.** A regra
+  antiga era "custo marginal zero antes da sessão Claude", o que punha o agy grátis na
+  frente de tudo. Só que a cota do agy é baixa e a do plano já está paga, então o que se
+  gasta no codex e no `claude -p` é janela, não dinheiro. O agy virou válvula de excedente,
+  e não degrau de volume. Em `implement` o codex segue na frente do Claude por ordem
+  provisória: cascata só desce por falha, então Claude primeiro, sem gate de orçamento por
+  bucket, queimaria cota Claude em todo ticket e o codex nunca seria alcançado. A ordem
+  vira no mesmo commit que trouxer o gate.
+- **`scan` e `boilerplate` continuam dois, agora com motivo escrito e teste.** As cascatas
+  são idênticas de propósito, e o que separa os dois é uma guarda de código: em modo bulk o
+  `boilerplate` exige `--reference`, senão o worker gera código sem padrão a seguir. O
+  task-type é o único portador dessa intenção, porque `--paths` mais `--question` não diz
+  se é varredura ou geração. Um teste passou a falhar se as duas cascatas divergirem.
+- **O bypass do RTK sai do wrapper e vira contrato versionado.** O binário subiu de
+  0.40.0 pra 0.49.0, e `scripts/rtk-hook-wrapper.sh` encolheu de 40 linhas para a única
+  coisa que só ele faz: sair limpo quando o `rtk` não está no PATH. O regex que listava
+  `cat`, `head` e `git commit` casava só o começo da linha e deixava passar `FOO=1 cat x`,
+  `uv run pytest` e segmento de pipe; o RTK casa a forma peeled desde a 0.47, então a
+  lista passou a morar em `config/rtk.json` e é aplicada no `config.toml` dele por
+  `scripts/bootstrap-rtk.sh` (dry-run por default, `--update` puxa o upstream). `git add`
+  entrou na lista por medida: `rtk git add -n .` devolvia vazio com cinco arquivos a
+  stagear, um dry-run que mente. Sete asserts novos em `tests/hooks.test.sh`, incluindo o
+  que cobra a igualdade entre manifesto e config ativa, e o que prova que o wrapper sem
+  `rtk` no PATH não deixa o harness com rc=141. `bootstrap-plugins.sh` passa a delegar
+  pro `bootstrap-rtk.sh` com as mesmas flags, então o que vem de fora atualiza num
+  comando só, e a suíte de plugins ganhou mocks de `rtk` e `brew` pra não tocar a
+  máquina. O doc não apodrece em silêncio: `versao_medida` no manifesto e dois asserts
+  que remedem o que `docs/rtk.md` afirma (`rtk read` == `cat` em bytes, `rtk git add -n`
+  vazio) derrubam a suíte quando o binário muda, e a saída diz o que remedir.
+- **`specs/` e `docs/research/` saem do versionamento.** São trabalho desta máquina, não
+  doutrina transferível: o que decidem já vira instrução em `docs/` e `skills/`, e o resto
+  fica no git local. `docs/research/context7.md` virou `docs/context7.md`, porque o
+  `AGENTS.md` o cita como instrução e ele precisa viajar com o repo. Sai também a linha do
+  `specs/_TEMPLATE-spec/` no README: a doutrina viva põe spec em `docs/specs/<slug>/`, e
+  nenhum script ou skill apontava mais pro template da raiz.
 
 - **O quadrante vazio do roteamento ganhou portão.** `to-spec`, `to-tickets` e
   `execute` excluíam, cada um com essas palavras, a "tarefa que cabe numa sessão e
@@ -286,7 +419,7 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   validação em `localhost` entra quando o host cobra por build. Qual dos dois
   vale é decisão de projeto e mora no `CONVENTIONS.md` dele.
 - **codex default vai pra gpt-5.5** (`config/model-policy.json`): em
-  05/set/2026 o gpt-5.4 devolveu 400 nesta conta enquanto 5.5, 5.3, 5.1-codex
+  05/set/2026 o gpt-5.4 devolveu 400 no mesmo ambiente enquanto 5.5, 5.3, 5.1-codex
   e 5-codex respondiam. A matriz de ranking acompanha, e os nomes de Gemini
   Flash nela voltam a existir na policy (3.5 não existe; é 3.8).
 - **Quarto escopo de brevidade** (`skills/writing/SKILL.md`): mensagem pra uma pessoa num

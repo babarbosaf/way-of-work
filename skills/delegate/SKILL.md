@@ -1,8 +1,9 @@
 ---
 name: delegate
 description: >-
-  Despacha tarefas delegáveis para workers externos de custo zero (codex, agy)
-  via ~/.claude/scripts/delegate.sh, guiado por ~/.claude/config/model-policy.json.
+  Despacha tarefas delegáveis para workers de plano e de cota grátis (codex, agy,
+  claude headless) via ~/.claude/scripts/delegate.sh, guiado por
+  ~/.claude/config/model-policy.json.
   Invoque SEMPRE que: for executar task de spec com o campo `delega:` preenchido;
   precisar de varredura de codebase grande, segunda opinião de lógica/arquitetura,
   boilerplate/testes mecânicos ou review extra; quando o `read_size_guard` ou o
@@ -16,12 +17,14 @@ description: >-
 
 # Delegate, orquestração de workers externos
 
-> Custo zero primeiro (D-01 da SPEC-2026-002): agy e codex não custam nada nos
-> planos atuais. Sonnet/Opus de graça via `agy --model` > o mesmo modelo pago
-> pela sessão. Em projetos com scope pago configurado, a cascata ainda tem um degrau pago
-> estratégico antes da sessão: backend `claude_api` (API key dedicada, roteado
-> pela policy, automático, sem ação sua). A sessão assume a tarefa
-> delegável só quando tudo isso esgota (exit 2).
+> **D-01: plano de tarifa fixa primeiro, na ordem de qualidade.** O codex roda em plano de tarifa fixa e o backend `claude` é o mesmo plano
+> da sessão, então os dois custam a mesma mensalidade que já foi paga, e o que se
+> gasta é janela. O agy é grátis mas a cota é baixa, então ele é válvula de
+> excedente, não degrau de volume. Toda cascata termina no plano Claude antes de
+> esgotar, e só então o master assume (exit 2): o master é o fallback real, e não
+> o único. **API nunca entra**, em nenhum backend: `delegate.sh` remove a
+> `ANTHROPIC_API_KEY` de toda invocação, porque com ela setada o `claude -p`
+> cobraria da API em vez do plano.
 
 ## Roteamento
 
@@ -31,11 +34,33 @@ a policy rotear. Task-types:
 
 | task-type | quando usar |
 |---|---|
-| `review` | revisão adversarial de spec/diff (o peer-review já usa) |
-| `second-opinion` | validar raciocínio, decisão técnica, debug travado |
+| `review` | revisão adversarial de spec E de código, e é o único task-type de review. O `peer-review.sh` já dispara ele |
 | `scan` | varredura/leitura de codebase ou arquivos grandes, sumarização |
 | `boilerplate` | testes mecânicos, scaffolding, conversões repetitivas |
-| `implement` | task comum de spec autocontida, código novo (modo worktree) |
+| `implement` | task comum de spec autocontida, código novo (modo worktree). Aceita `--tier` |
+
+Não existe task-type por tamanho. O tamanho entra como `--tier padrao|amplo`, que
+troca o **ponto de entrada** da mesma fila:
+
+```bash
+~/.claude/scripts/delegate.sh --task implement --tier amplo --worktree "$PWD" - < prompt
+```
+
+`PADRÃO` é até 5 arquivos próprios sem tocar contrato, e `AMPLO` toca contrato
+(rota, schema, assinatura pública, migration) ou passa de 5 arquivos próprios.
+
+Quais tiers existem é dado, não literal de script: o `delegate.sh` monta o
+conjunto de `tiers.<task>` da policy mais o `padrao` implícito, e o
+`check-spec.py` lê a mesma fonte. Tier que a task não declara é erro de uso, e
+não fila padrão calada.
+Quem classifica é o `to-tickets`, de forma mecânica, e o ticket carrega o `tier:`.
+Sem `--tier`, resolve a fila padrão.
+
+**Review espelha a classe da sessão**, em vez de ter fila fixa: sessão em Fable
+revisa no par de classe topo, sessão em Opus revisa no par de classe forte. O
+`delegate.sh` lê `.model` do `settings.json` do `CLAUDE_CONFIG_DIR`, e
+`DELEGATE_SESSION_CLASS=fable|opus` sobrepõe, porque `/model` em runtime não
+reescreve o arquivo.
 
 Matriz completa de fallback manual (atividade × ranking de modelos, notas de
 operação): `references/model-ranking-matrix.md`, consultar quando a cascata
@@ -219,7 +244,7 @@ cai pra fallback interno mais barato (nunca opus/fable sem pedido explícito).
   às 19h31, mesma conta e mesmo diretório, com os 7 nomes de modelo do CLI
   acompanhando a janela em bloco. Duas rodadas anteriores escreveram essa mesma
   janela na policy como fato permanente ("esta conta não tem Codex"), e o efeito
-  foi apagar o primeiro degrau de `review`, `second-opinion` e `implement`.
+  foi apagar o primeiro degrau de `review` e de `implement`.
   `enabled: false` é pra **decisão** (custo, segurança, política de conta com
   fonte), nunca pra sondagem. Sondagem mede a hora em que rodou.
 - Worker indisponível/rate-limited entra em cooldown automático (60 min), o
@@ -236,12 +261,19 @@ cai pra fallback interno mais barato (nunca opus/fable sem pedido explícito).
   do repo (`uv sync` grava `~/.cache/uv`, instalar deps, fetch de rede) falha com
   `Operation not permitted (os error 1)`, não erro real da task. Não delegar
   gate/CI que sincroniza (retorna FAIL espúrio); rodar inline. Delegar só
-  leitura/análise sobre conteúdo já no repo (scan, review, second-opinion).
+  leitura e análise sobre conteúdo já no repo, tipo scan e review.
 - Timeout default vem da policy por task-type (`.timeouts`); `--timeout` só
   pra override pontual.
 - Aviso de "policy inválida" no stderr = modo degradado ruidoso; corrigir a
   policy (`jq . model-policy.json`) é prioridade sobre a tarefa em curso.
-- Kill switch: `DELEGATE_DISABLED=1`.
+- Kill switch: `DELEGATE_DISABLED=1` (o `peer-review.sh` cai no fallback
+  adversarial do Claude).
+- **Pré-requisito one-time:** `codex` logado (`~/.codex/auth.json`), `agy`
+  logado, `jq` instalado, e `~/.claude` como repo git.
+- **Timestamp do `delegate.log` é UTC**, três horas à frente de São Paulo.
+- **Sangria de quota se resolve fatiando prompt, não contando despacho.** A cota
+  costuma ser proporcional a tokens, então um scan por subsistema custa menos que
+  um scan do repo inteiro, com o mesmo número de chamadas.
 - Log de uso (metadados): `~/.claude/gate/delegate.log`, com `bytes_in`/`bytes_out`
   por chamada. É com ele que o degrau do `.shunt` se calibra; sem tamanho, o
   threshold é palpite.

@@ -20,13 +20,13 @@ memória durável entre sessões.
 |------|---------|
 | `AGENTS.md` | Instrução viva, agnóstica, lida por Codex, Cursor e qualquer harness que siga o padrão. `CLAUDE.md` só aponta pra ele. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
 | `skills/` | Uma skill por fase do ciclo (taxonomia abaixo). O conteúdo é doutrina em markdown, então serve de leitura pra qualquer agente; o dispatch por `/comando` é do Claude Code. |
-| `docs/` | Doutrina: `skill-authoring.md` (régua de autoria de skill, aplicada por `scripts/check-skill.py`), `evolve-over-create.md`, `autonomy-loops.md`, `adversarial-evaluator.md` (segunda opinião opcional) e runbooks em `docs/runbooks/`. |
+| `docs/` | Doutrina: `skill-authoring.md` (régua de autoria de skill, aplicada por `scripts/check-skill.py`), `doc-standard.md` (régua dos docs de raiz, aplicada por `scripts/check-docs.py`), `evolve-over-create.md` e `adversarial-evaluator.md` (segunda opinião opcional). |
 | `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`. |
-| `tests/` | Dez suítes, 437 asserts, sem rede e sem CLI real: despacho de modelo, review adversarial, os cinco hooks de enforcement, manifesto de plugins, linter de escrita, lint de spec, ticket e da corrente PRD, spec, ticket, lint de doc de estado, do grafo de domínios e do ciclo de vida das decisões, lint de skill, resolvedor de contexto do `/execute`, agnosticismo do repo e link markdown morto. |
-| `specs/_TEMPLATE-spec/` | Formato de spec pra feature grande: contrato, design, slices, gate. |
-| `FEEDBACK.example.md` | Formato do buffer de correção do projeto: uma linha por entrada com o gatilho embutido, teto de 10, regra de promoção. O `FEEDBACK.md` real é gitignored. |
+| `tests/` | Dez suítes, 456 asserts, sem rede e sem CLI real: despacho de modelo, review adversarial, os cinco hooks de enforcement, manifesto de plugins, linter de escrita, lint de spec, ticket e da corrente PRD, spec, ticket, lint de doc de estado, do grafo de domínios e do ciclo de vida das decisões, lint de skill, resolvedor de contexto do `/execute`, agnosticismo do repo e link markdown morto. |
+| `*.example.md` | Molde de todo artefato de raiz que o método usa e o git não versiona: `INBOX.example.md` (degrau 0, captura crua), `TODOS.example.md` (degrau 1, backlog aceito) e `FEEDBACK.example.md` (buffer de correção). Cada um explica o formato, o teto e a regra de promoção, e traz entradas de exemplo. Copie pro projeto sem o `.example`. |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
 | `config/plugins.json` | Manifesto de plugins e de servidores MCP, com o porquê de cada um, aplicado por `scripts/bootstrap-plugins.sh`. Todos opcionais. |
+| `config/rtk.json` | Contrato do `rtk`: versão mínima e o que sai do rewrite, aplicado por `scripts/bootstrap-rtk.sh`. Opcional. |
 | `hooks/` | **Claude Code.** Cinco hooks de enforcement em runtime: grep-first em read grande, no-op bloqueado, lembrete de doc atualizada, append obrigatório no log de memória e guarda de tamanho do `CLAUDE.md`. A mensagem de bloqueio diz o que fazer no lugar, e cada um tem kill switch (ver Pré-requisitos). |
 | `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. |
 
@@ -39,6 +39,7 @@ Convenções estruturais:
   `@AGENTS.md`. O import é explícito, sobrevive a Windows, zip e export, e lê bem
   no diff de PR, coisas que o symlink não garante.
 - **`.gitignore` é allowlist:** ignora tudo (`*`), libera com `!`. O que é pessoal (scope pago, paths, roteamento) vive em `config/*.local.json`, gitignored, deep-merge em runtime.
+- **Artefato gitignored sobe como molde, nunca como conteúdo.** `INBOX.md`, `TODOS.md` e `FEEDBACK.md` são contexto de um projeto só, então o repo versiona o `.example.md` de mesmo nome e o real fica de fora. A regra vale pra tudo que o método usa e o git não guarda: se a doutrina manda escrever num arquivo, o molde desse arquivo está aqui, senão quem clona lê uma instrução que aponta pro nada.
 - **Este repo não tem PRD.** O `PRD.md` é do projeto que o método instancia, não do método: aqui o `README.md` descreve, o `AGENTS.md` manda e `docs/` carrega o detalhe. O `--grafo` do `check-docs.py` roda nos projetos, não na raiz deste.
 - **Memória (`memory/`) não é versionada.** É comportamento do agente, específico da máquina.
 - **Instrução viva, não changelog.** Docs de start-up não guardam histórico (→ `CHANGELOG.md`, ADR, memória).
@@ -111,6 +112,14 @@ scripts/bootstrap-plugins.sh --apply             # instala plugins e MCP
 scripts/bootstrap-plugins.sh --update --apply    # puxa upstream do que já está instalado
 ```
 
+O `bootstrap-plugins.sh` termina delegando pro `bootstrap-rtk.sh` com as mesmas flags:
+tudo que vem de fora atualiza no mesmo comando. Pra mexer só no rtk:
+
+```bash
+scripts/bootstrap-rtk.sh --apply                 # instala o rtk e aplica config/rtk.json
+scripts/bootstrap-rtk.sh --update --apply        # brew upgrade rtk, e reaplica a config
+```
+
 O bloco `mcp` do manifesto declara servidor remoto (`url`) e local (`command`), instalado
 no escopo `user`. `--update` não mexe neles: cada servidor resolve versão sozinho.
 
@@ -138,7 +147,7 @@ sobre a base, mesma convenção do `model-policy`.
 | ferramenta | pra quê | sem ela |
 |---|---|---|
 | `python3` | os cinco hooks de enforcement e o linter de escrita | hook e linter não rodam |
-| `jq` | merge dos overlays `*.local.json` (`model-policy`, `plugins`) | `model-policy-effective.sh` e `bootstrap-plugins.sh` abortam |
+| `jq` | merge dos overlays `*.local.json` (`model-policy`, `plugins`) e leitura de `config/rtk.json` | `model-policy-effective.sh`, `bootstrap-plugins.sh` e `bootstrap-rtk.sh` abortam |
 | context7 MCP | a doutrina manda consultar doc de lib atualizada antes de escolher API | a regra existe e não tem como ser cumprida |
 | `rtk` | comprime a saída dos comandos antes de entrar no transcript | nada: o hook sai limpo e o comando roda normal |
 
@@ -150,8 +159,10 @@ claude mcp add --scope user --header "CONTEXT7_API_KEY: SUA_KEY" \
   --transport http context7 https://mcp.context7.com/mcp
 ```
 
-Detalhes e a alternativa local por `npx` em [`docs/research/context7.md`](docs/research/context7.md).
-O `rtk` é opcional e sai por `brew install rtk` (ver [`docs/rtk.md`](docs/rtk.md)).
+Detalhes e a alternativa local por `npx` em [`docs/context7.md`](docs/context7.md).
+O `rtk` é opcional e entra junto do `bootstrap-plugins.sh --apply`, que delega pro
+`bootstrap-rtk.sh`: instala o binário e aplica `config/rtk.json` no `config.toml` dele
+(ver [`docs/rtk.md`](docs/rtk.md)).
 
 Cada hook tem kill switch por variável de ambiente, pra quando o enforcement estorvar em
 vez de ajudar: `READ_GUARD_DISABLED=1`, `NOOP_GUARD_DISABLED=1`,

@@ -1,0 +1,21 @@
+{
+  "_comentario": "Contrato do RTK nesta máquina. Fonte única de scripts/bootstrap-rtk.sh e de tests/hooks.test.sh. O RTK é opcional: sem o binário no PATH o hook sai limpo e nada quebra (docs/rtk.md).",
+  "versao_minima": "0.49.0",
+  "versao_medida": "0.49.0",
+  "_versao_medida": "Versão em que as afirmações de docs/rtk.md foram medidas. Binário diferente disso derruba tests/hooks.test.sh: o upstream pode ter corrigido o que o doc documenta, e a medição refaz antes do doc voltar a valer.",
+  "hooks": {
+    "exclude_commands": [
+      "cat",
+      "bat",
+      "less",
+      "more",
+      "head",
+      "tail",
+      "git add",
+      "git commit",
+      "git push",
+      "gh pr create"
+    ],
+    "_porque": "Leitura de arquivo (cat/bat/less/more/head/tail) fica com hooks/bash_read_guard.py, que roteia pro worker acima do degrau: `rtk read` devolve os mesmos bytes do cat, medido na 0.49.0. git add entra por medida: `rtk git add -n .` devolveu vazio com 5 arquivos a stagear na 0.49.0, um dry-run que mente. git commit, git push e gh pr create não têm saída compressível e carregam corpo multilinha."
+  }
+}

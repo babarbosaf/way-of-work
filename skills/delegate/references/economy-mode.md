@@ -6,7 +6,7 @@ limite (5h/semanal)". Uma vez ativo, vale até o fim da sessão (ou "desliga o
 modo economia"):
 
 - **Rotear agressivamente** pros workers grátis tudo que couber num task-type
-  (scan, review, second-opinion, boilerplate), inclusive tarefas que fora do
+  (scan, review, boilerplate, implement), inclusive tarefas que fora do
   modo você faria inline por conveniência.
 - **Claude fica só com o core**: decisão, integração de código, síntese final
   e o que depende do contexto vivo da conversa.

@@ -22,7 +22,27 @@ echo "$*" >> "$MOCK_LOG"
 exit "${MOCK_RC:-0}"
 MOCK
 chmod +x "$MOCKBIN/claude"
+
+# `rtk` e `brew` também são mockados: o bootstrap delega o rtk no fim, e nenhum
+# teste pode tocar o binário real nem o config.toml da máquina.
+cat > "$MOCKBIN/rtk" <<'MOCK'
+#!/usr/bin/env bash
+echo "rtk $*" >> "$RTK_LOG"
+case "${1:-}" in
+  --version) echo "rtk 99.0.0" ;;
+  config) echo "Config: $RTK_MOCK_CONFIG" ;;
+esac
+exit 0
+MOCK
+cat > "$MOCKBIN/brew" <<'MOCK'
+#!/usr/bin/env bash
+echo "brew $*" >> "$RTK_LOG"
+exit 0
+MOCK
+chmod +x "$MOCKBIN/rtk" "$MOCKBIN/brew"
 export PATH="$MOCKBIN:$PATH" MOCK_LOG="$TMP/chamadas.log"
+export RTK_MOCK_CONFIG="$TMP/rtk-config.toml" RTK_LOG="$TMP/rtk.log"
+printf '[hooks]\nexclude_commands = []\n' > "$RTK_MOCK_CONFIG"
 
 cat > "$TMP/base.json" <<'JSON'
 {
@@ -157,6 +177,21 @@ else
   fail "manifestos de plugin ausentes: $PLUG"
 fi
 
+echo "== delegação pro bootstrap-rtk =="
+printf '[hooks]\nexclude_commands = []\n' > "$RTK_MOCK_CONFIG"
+: > "$MOCK_LOG"
+out=$(bash "$BOOT" --manifest="$TMP/base.json")
+assert_contains "dry-run anuncia a etapa do rtk" "$out" "== rtk =="
+grep -q "exclude_commands = \[\]" "$RTK_MOCK_CONFIG" && ok "dry-run não escreve no config do rtk" \
+  || fail "dry-run mexeu no config do rtk"
+: > "$MOCK_LOG"
+bash "$BOOT" --manifest="$TMP/base.json" --apply >/dev/null
+assert_contains "--apply aplica o manifesto do rtk" "$(cat "$RTK_MOCK_CONFIG")" "git add"
+: > "$MOCK_LOG"
+: > "$RTK_LOG"
+bash "$BOOT" --manifest="$TMP/base.json" --update --apply >/dev/null
+assert_contains "--update chega no brew" "$(cat "$RTK_LOG")" "brew upgrade rtk"
+
 echo "== manifesto do repo =="
 out=$(bash "$BOOT" 2>&1); rc=$?
 assert_rc "manifesto versionado é válido e sem órfão" "$rc" 0
@@ -165,6 +200,33 @@ if git -C "$ROOT" check-ignore config/plugins.local.json >/dev/null; then
 else
   fail "config/plugins.local.json NÃO é gitignored"
 fi
+
+echo "== convenção compartilhada dos bootstraps =="
+# bootstrap-common.sh é sourced pelos dois, e o modo de falhar é o -h imprimir o
+# cabeçalho DELE em vez do cabeçalho de quem o usuário rodou, ou a linha de uso
+# nomear o arquivo sourced. Os dois saem da mesma pilha do BASH_SOURCE.
+RTKBOOT="$ROOT/scripts/bootstrap-rtk.sh"
+COMUM="$ROOT/scripts/bootstrap-common.sh"
+[[ -f "$COMUM" ]] && ok "bootstrap-common.sh existe" || fail "bootstrap-common.sh ausente"
+for sh in "$BOOT" "$RTKBOOT"; do
+  nome=$(basename "$sh")
+  h=$(bash "$sh" -h 2>&1)
+  assert_contains "$nome -h abre com o cabeçalho dele" "$h" "^# Aplica "
+  grep -q 'Convenção compartilhada' <<<"$h" && fail "$nome -h imprimiu o cabeçalho do arquivo sourced" \
+    || ok "$nome -h não imprime o cabeçalho do bootstrap-common"
+  grep -q 'set -uo pipefail' <<<"$h" && fail "$nome -h passou do fim do cabeçalho (HELP_ATE errado)" \
+    || ok "$nome -h para no fim do cabeçalho"
+  u=$(bash "$sh" --flag-que-nao-existe 2>&1); rc=$?
+  assert_rc "$nome recusa flag desconhecida" "$rc" "1"
+  assert_contains "a linha de uso nomeia $nome, não o arquivo sourced" "$u" "uso: $nome"
+  e=$(MANIFEST=/tmp/nao-existe-$$.json bash "$sh" --manifest=/tmp/nao-existe-$$.json 2>&1); rc=$?
+  assert_rc "$nome recusa manifesto ausente" "$rc" "1"
+  assert_contains "o erro de manifesto abre com o PROG de $nome" "$e" "^${nome%.sh}: manifesto"
+done
+# banner de dry-run é função, e não literal repetido em cada ramo
+literais=$(grep -rn 'dry-run: nada foi executado' "$BOOT" "$RTKBOOT" | wc -l | tr -d ' ')
+[[ "$literais" == "0" ]] && ok "nenhum bootstrap repete o literal do banner de dry-run" \
+  || fail "$literais literal(is) do banner fora do dry_run_banner"
 
 echo
 echo "== $PASS passed, $FAIL failed =="

@@ -22,7 +22,8 @@ em `$CLAUDE_CONFIG_DIR/settings.json` do perfil que o usa, e só roda nesse perf
 
 RTK entra por `scripts/rtk-hook-wrapper.sh`, também em PreToolUse de Bash, **depois** do
 `bash_read_guard` na cadeia. A ordem importa: o guard decide se a leitura entra nesta
-janela antes de o rtk decidir como comprimi-la. Detalhe em [rtk.md](rtk.md).
+janela antes de o rtk decidir como comprimi-la. O que sai do rewrite é `config/rtk.json`,
+aplicado por `scripts/bootstrap-rtk.sh`, não regex no wrapper. Detalhe em [rtk.md](rtk.md).
 
 ### Degraus de leitura
 

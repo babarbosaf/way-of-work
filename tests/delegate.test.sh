@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Suíte do delegate.sh (SPEC-2026-002). Mocks de CLI antepostos ao PATH;
+# Suíte do delegate.sh. Mocks de CLI antepostos ao PATH;
 # nenhum worker real é invocado. Uso: bash tests/delegate.test.sh
 set -u
 
@@ -16,16 +16,23 @@ assert_contains() { grep -q "$3" <<<"$2" && ok "$1" || fail "$1 (não contém '$
 
 # --- mocks ---
 MOCKBIN="$TMP/bin"; mkdir -p "$MOCKBIN"
+# Vários testes sobrescrevem um mock pra exercitar um comportamento e precisam do
+# default de volta depois; a função é a única cópia de cada corpo.
+mock_codex() {
 cat > "$MOCKBIN/codex" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_CODEX:-ok}" in
   ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
   multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
+  notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
   fail) echo "erro interno"; exit 1 ;;
   absent) exit 127 ;;
 esac
 EOF
+chmod +x "$MOCKBIN/codex"
+}
+mock_agy() {
 cat > "$MOCKBIN/agy" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_AGY:-ok}" in
@@ -38,13 +45,25 @@ case "${MOCK_AGY:-ok}" in
   drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
 esac
 EOF
-cat > "$MOCKBIN/claude" <<'EOF2'
+chmod +x "$MOCKBIN/agy"
+}
+mock_codex; mock_agy
+# O degrau claude é o último de toda cascata, e o default aqui é FALHAR: teste que
+# quer exercitá-lo liga com MOCK_CLAUDE=ok. Sem esse default, todo teste de
+# "cascata esgotada" sairia 0 chamando o claude REAL e queimando cota do plano.
+# O `ok` ecoa a ANTHROPIC_API_KEY que chegou ao processo: é assim que se prova que
+# o delegate remove a variável antes de invocar worker (senão o plano vira API).
+cat > "$MOCKBIN/claude" <<'EOF'
 #!/usr/bin/env bash
-cat >/dev/null
-[[ -n "${ANTHROPIC_API_KEY:-}" ]] || { echo "sem api key"; exit 1; }
-echo "claude-api-resposta:key=${ANTHROPIC_API_KEY:0:7}"
-EOF2
-chmod +x "$MOCKBIN"/codex "$MOCKBIN"/agy "$MOCKBIN"/claude
+case "${MOCK_CLAUDE:-fail}" in
+  ok) cat >/dev/null; echo "claude-resposta:$* key=${ANTHROPIC_API_KEY:-unset}"; exit 0 ;;
+  multilinha) cat >/dev/null; printf "claude-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
+  ratelimit) cat >/dev/null; echo "429 too many requests: rate limit"; exit 1 ;;
+  fail) cat >/dev/null; echo "erro interno claude"; exit 1 ;;
+  absent) exit 127 ;;
+esac
+EOF
+chmod +x "$MOCKBIN/claude"
 export PATH="$MOCKBIN:$PATH"
 
 # ambiente isolado: gate dir e policy próprios do teste
@@ -57,7 +76,10 @@ run() { echo "prompt de teste" | bash "$DELEGATE" "$@" 2>"$TMP/err"; }
 
 # A task sai da policy, não do hardcode: a ordem da cascata muda por medição, e
 # um `--task` cravado faria estes testes testarem roteamento em vez do que querem.
-CODEX_FIRST_TASK=$(jq -r '.tasks | to_entries[] | select(.value[0].backend == "codex") | .key' "$DELEGATE_POLICY" | head -1)
+# Precisa de agy na cascata: a review lidera com codex e não tem backend de agy
+# de propósito (review_shelf é fechada), então serviria de vácuo pros testes que
+# exercitam a descida da cascata.
+CODEX_FIRST_TASK=$(jq -r '.tasks | to_entries[] | select((.value | type) == "array" and .value[0].backend == "codex" and ([.value[].backend] | index("agy"))) | .key' "$DELEGATE_POLICY" | head -1)
 [[ -n "$CODEX_FIRST_TASK" ]] && ok "policy tem task que lidera com codex (senão os testes de 1o degrau são vácuo)" \
   || fail "nenhuma task lidera com codex: os testes de 1o degrau não têm como exercitá-lo"
 
@@ -131,34 +153,12 @@ out=$(MOCK_AGY=drainstdin run --task scan -)   # 2 entradas agy (arg mode) antes
 assert_eq "exit 0 (cascata percorreu as 2 entradas agy até chegar no codex)" "$?" "0"
 assert_contains "chegou no codex, não parou na 1a entrada" "$out" "codex-resposta"
 
-echo "T: claude_api — fora da cascata automática; --model explícito mas fora do escopo é pulado"
-# fixtura com scope próprio, desacoplada da policy pública (que é genérica)
-jq '.backends.claude_api.scope_pattern = "scopetest"' "$DELEGATE_POLICY" > "$TMP/p2" && mv "$TMP/p2" "$DELEGATE_POLICY"
-MOCK_CODEX=fail MOCK_AGY=fail run --task "$CODEX_FIRST_TASK" --model claude_api - >/dev/null; rc=$?
-assert_eq "exit 2 fora do escopo" "$rc" "2"
-assert_contains "aviso de escopo" "$(cat "$TMP/err")" "restrito a projetos 'scopetest'"
-
-echo "T: claude_api — --model explícito dentro do escopo, com chave, funciona"
-mkdir -p "$TMP/proj-scopetest-app" && echo 'DELEGATE_ANTHROPIC_API_KEY=FAKE_TEST_KEY_123' > "$TMP/fake.env"
-jq --arg f "$TMP/fake.env" '.backends.claude_api.env_file = $f' "$DELEGATE_POLICY" > "$TMP/p3" && mv "$TMP/p3" "$DELEGATE_POLICY"
-out=$(cd "$TMP/proj-scopetest-app" && echo "prompt" | bash "$DELEGATE" --task second-opinion --model claude_api - 2>"$TMP/err")
-assert_eq "exit 0 via claude_api" "$?" "0"
-assert_contains "worker recebeu a chave" "$out" "claude-api-resposta:key=FAKE_TE"
-assert_contains "linha estável de worker" "$(cat "$TMP/err")" "worker: claude_api"
-
-echo "T: claude_api — --model explícito sem chave no env_file é pulado"
-: > "$TMP/fake.env"
-(cd "$TMP/proj-scopetest-app" && echo "prompt" | bash "$DELEGATE" --task second-opinion --model claude_api - >/dev/null 2>"$TMP/err"); rc=$?
-assert_eq "exit 2 sem chave" "$rc" "2"
-assert_contains "aviso de chave ausente" "$(cat "$TMP/err")" "sem DELEGATE_ANTHROPIC_API_KEY"
-cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
-
-echo "T: claude_api não entra sozinho na cascata automática (second-opinion sem --model)"
+echo "T: cascata esgotada → exit 2 e a sessão assume (não há backend de resgate)"
 MOCK_CODEX=fail MOCK_AGY=fail run --task "$CODEX_FIRST_TASK" - >/dev/null; rc=$?
-assert_eq "exit 2 — cascata grátis esgotada, claude_api não é tentado" "$rc" "2"
+assert_eq "exit 2 — todo backend da policy é de custo marginal zero, e esgotou" "$rc" "2"
 
 echo "T: journey fallback (todos rate-limited → exit 2 + a sessão assume)"
-MOCK_CODEX=ratelimit MOCK_AGY=ratelimit run --task review - >"$TMP/out2"; rc=$?
+MOCK_CODEX=ratelimit MOCK_AGY=ratelimit run --task "$CODEX_FIRST_TASK" - >/dev/null; rc=$?
 assert_eq "exit 2" "$rc" "2"
 assert_contains "mensagem de fallback" "$(cat "$TMP/err")" "A sessão assume"
 [[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] && ok "cooldown codex armado" || fail "cooldown codex armado"
@@ -166,13 +166,13 @@ assert_contains "mensagem de fallback" "$(cat "$TMP/err")" "A sessão assume"
 
 echo "T: cooldown ativo pula backend sem invocar"
 rm -f "$DELEGATE_GATE_DIR/cooldown.agy:gemini"   # só codex fica em cooldown
-out=$(run --task review -)   # codex ainda em cooldown do teste anterior
+out=$(run --task "$CODEX_FIRST_TASK" -)   # codex ainda em cooldown do teste anterior
 assert_contains "usou agy direto" "$out" "agy-resposta"
 
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 
 echo "T: --model força backend específico"
-out=$(run --task review --model agy -)
+out=$(run --task "$CODEX_FIRST_TASK" --model agy -)
 assert_contains "forçou agy" "$out" "agy-resposta"
 
 echo "T: --model forçado fora da cascata → erro claro (não exit 2 mudo)"
@@ -257,20 +257,7 @@ assert_eq "exit 0 com comentário no trunk" "$rc" "0"
 assert_contains "base é o trunk limpo" "$out" "^base: main @"
 rm -rf "$REPO/.claude"; git -C "$REPO" add -u .claude; git -C "$REPO" commit -qm sem-project-yaml
 
-# mock agy volta ao padrão pros testes seguintes
-cat > "$MOCKBIN/agy" <<'EOF'
-#!/usr/bin/env bash
-case "${MOCK_AGY:-ok}" in
-  ok) echo "agy-resposta:$*"; exit 0 ;;
-  ratelimit) echo "quota exceeded"; exit 1 ;;
-  fail) echo "erro interno agy"; exit 1 ;;
-  empty) exit 0 ;;
-  desculpa) echo "warning: run ended with no output and no recorded error"; exit 0 ;;
-  curto) echo "linha unica"; exit 0 ;;
-  drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
-esac
-EOF
-chmod +x "$MOCKBIN/agy"
+mock_agy   # volta ao padrão pros testes seguintes
 
 echo "T: journey peer-review consome delegate (contrato 0/2 preservado)"
 cat > "$MOCKBIN/codex" <<'EOF'
@@ -352,7 +339,7 @@ assert_eq "boilerplate por heredoc continua válido" "$?" "0"
 out=$(run_nostdin --task scan --paths "$A" --question "q")
 assert_eq "scan sem --reference continua válido" "$?" "0"
 
-echo "T: o log grava tamanho, e o threshold para de ser opinião"
+echo "T: o log grava tamanho e duração, e timeout/threshold param de ser opinião"
 : > "$DELEGATE_GATE_DIR/delegate.log"
 run_nostdin --task scan --paths "$A" "$B" --question "quanto pesa" >/dev/null
 last=$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")
@@ -360,6 +347,11 @@ jq -e '.bytes_in | numbers' <<<"$last" >/dev/null && ok "bytes_in é número" ||
 jq -e '.bytes_out | numbers' <<<"$last" >/dev/null && ok "bytes_out é número" || fail "bytes_out é número ($last)"
 [[ $(jq -r '.bytes_in' <<<"$last") -gt 0 ]] && ok "bytes_in maior que zero" || fail "bytes_in maior que zero ($last)"
 [[ $(jq -r '.bytes_out' <<<"$last") -gt 0 ]] && ok "bytes_out maior que zero" || fail "bytes_out maior que zero ($last)"
+jq -e '.dur_s | numbers' <<<"$last" >/dev/null && ok "dur_s é número (sem ele, .timeouts é palpite)" || fail "dur_s é número ($last)"
+# sem o modelo no log, dur_s não se atribui a ninguém: o pool do codex é "codex"
+# pros quatro modelos dele, e recalibrar .timeouts era palpite de novo.
+MOD=$(jq -r '.tasks.scan[0].model' "$DELEGATE_POLICY")
+assert_contains "o log nomeia o modelo que respondeu" "$last" "model=$MOD"
 : > "$DELEGATE_GATE_DIR/delegate.log"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 MOCK_CODEX=fail MOCK_AGY=fail run --task scan - >/dev/null 2>&1
@@ -369,18 +361,7 @@ assert_contains "linha de falha ainda é JSONL válido" "$falha" "unavailable"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 
 echo "T: 404 de provider é janela ruim, não backend morto — cooldown curto"
-cat > "$MOCKBIN/codex" <<'EOF'
-#!/usr/bin/env bash
-case "${MOCK_CODEX:-ok}" in
-  ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
-  multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
-  ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
-  notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
-  fail) echo "erro interno"; exit 1 ;;
-  absent) exit 127 ;;
-esac
-EOF
-chmod +x "$MOCKBIN/codex"
+mock_codex   # o peer-review trocou o mock; volta ao default, que traz o notfound
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 out=$(MOCK_CODEX=notfound run --task "$CODEX_FIRST_TASK" -)
 assert_eq "404 no 1o degrau: cascata desce e a task fecha" "$?" "0"
@@ -403,6 +384,126 @@ rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 # o backend segue habilitado: 404 não é decisão de policy
 [[ "$(jq -r '.backends.codex.enabled' "$DELEGATE_POLICY")" == "true" ]] \
   && ok "404 não desabilita o backend na policy" || fail "backend foi desabilitado"
+
+echo "T: review não rebaixa — cascata de review só tira da review_shelf (prateleira, 20/set/2026)"
+SHELF=$(jq -r '.review_shelf.models[]' "$DELEGATE_POLICY" | sort)
+[[ -n "$SHELF" ]] && ok "policy declara a review_shelf" || fail "review_shelf ausente: 'review não rebaixa' voltou a ser prosa"
+fora=$(jq -r '.tasks.review[].model' "$DELEGATE_POLICY" | while read -r m; do
+  grep -qxF "$m" <<<"$SHELF" || echo "$m"
+done)
+[[ -z "$fora" ]] && ok "review só usa modelo da review_shelf" \
+  || fail "review usa modelo fora da review_shelf: $fora"
+agy=$(jq -r '[.tasks.review[] | select(.backend=="agy")] | length' "$DELEGATE_POLICY")
+[[ "$agy" == "0" ]] && ok "review não tem backend agy (nenhum modelo do agy revisa)" \
+  || fail "review tem $agy entrada(s) de agy: review rebaixaria em cooldown"
+
+echo "T: codex recebe modelo e esforço da entrada da cascata, não do config global do CLI"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+REV_MODEL=$(jq -r '[.tasks.review[] | select(.backend=="codex")][0].model' "$DELEGATE_POLICY")
+REV_EFFORT=$(jq -r '[.tasks.review[] | select(.backend=="codex")][0].effort' "$DELEGATE_POLICY")
+[[ -n "$REV_MODEL" && "$REV_MODEL" != "null" ]] && ok "policy nomeia modelo do codex em review" || fail "policy sem modelo do codex em review"
+for e in $(jq -r '.suggested_effort | to_entries[] | select(.key|startswith("$")|not) | .value' "$DELEGATE_POLICY" | sort -u); do
+  case "$e" in xhigh|max|ultra) fail "suggested_effort traz '$e', e xhigh/max/ultra estão fora por decisão" ;;
+    *) ok "suggested_effort '$e' está dentro do teto" ;; esac
+done
+out=$(DELEGATE_SESSION_CLASS=nenhuma run --task review -)
+assert_eq "exit 0" "$?" "0"
+assert_contains "modelo vai no -m" "$out" "[-]m $REV_MODEL"
+assert_contains "esforço vai no -c model_reasoning_effort" "$out" "model_reasoning_effort=$REV_EFFORT"
+SCAN_EFFORT=$(jq -r '.tasks.scan[] | select(.backend=="codex") | .effort' "$DELEGATE_POLICY")
+assert_eq "scan roda em low" "$SCAN_EFFORT" "low"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: review espelha a classe da sessão master (review_pairing, 21/set/2026)"
+# Fila fixa punia o dono: em sessão Fable o revisor saía de classe abaixo do master.
+for cls in fable opus; do
+  first=$(jq -r --arg c "$cls" '.review_pairing[$c][0]' "$DELEGATE_POLICY")
+  eff=$(jq -r --arg m "$first" '.suggested_effort[$m] // empty' "$DELEGATE_POLICY")
+  out=$(DELEGATE_SESSION_CLASS="$cls" run --task review -)
+  assert_contains "sessão em $cls revisa no par de mesma classe ($first)" "$out" "[-]m $first"
+  assert_contains "e no esforço sugerido dele ($eff)" "$out" "model_reasoning_effort=$eff"
+  rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+done
+# classe nova entra só pela policy: o script não pode ter a lista de classes.
+jq '.review_pairing.sonnet = [.review_shelf.models[0]]' "$DELEGATE_POLICY" > "$TMP/pol-classe.json"
+out=$(DELEGATE_POLICY="$TMP/pol-classe.json" DELEGATE_SESSION_CLASS=claude-sonnet-5 run --task review -)
+assert_contains "classe declarada só na policy já pareia, sem editar o script" "$(cat "$TMP/err")" "classe da sessão (sonnet)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+fora=$(jq -r '[.review_pairing | to_entries[] | select(.key|startswith("$")|not) | .value[]] | unique
+  - [.review_shelf.models[]] | .[]' "$DELEGATE_POLICY")
+[[ -z "$fora" ]] && ok "todo modelo do review_pairing está na review_shelf" \
+  || fail "review_pairing tem modelo fora da prateleira: $fora"
+for cls in fable opus; do
+  cruza=$(jq -r --arg c "$cls" '[.tasks.review[].model] - ([.tasks.review[].model] - .review_pairing[$c]) | length' "$DELEGATE_POLICY")
+  [[ "$cruza" -gt 0 ]] && ok "review_pairing.$cls cruza com tasks.review (senão a cascata ficaria vazia)" \
+    || fail "review_pairing.$cls não cruza com tasks.review"
+done
+
+echo "T: toda cascata termina no plano Claude antes de esgotar (o master é o fallback real, não o único)"
+semclaude=$(jq -r '.tasks | to_entries[] | select((.value|type)=="array") | select(.value[-1].backend != "claude") | .key' "$DELEGATE_POLICY")
+[[ -z "$semclaude" ]] && ok "último degrau de toda task é o backend claude" \
+  || fail "task sem degrau Claude no fim: $semclaude"
+ult=$(jq -r '.tiers | to_entries[] | select(.key|startswith("$")|not) | .value | to_entries[] | select(.value[-1].backend != "claude") | .key' "$DELEGATE_POLICY")
+[[ -z "$ult" ]] && ok "último degrau de todo tier é o backend claude" || fail "tier sem degrau Claude no fim: $ult"
+
+echo 'T: o worker nunca herda ANTHROPIC_API_KEY (senão o claude headless cobra da API em vez do plano)'
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+out=$(ANTHROPIC_API_KEY=segredo-de-teste MOCK_CODEX=fail MOCK_CLAUDE=ok DELEGATE_SESSION_CLASS=nenhuma run --task review -)
+assert_eq "exit 0 (degrau claude assumiu)" "$?" "0"
+assert_contains "chave não chega ao worker" "$out" "key=unset"
+grep -q "segredo-de-teste" <<<"$out" && fail "a chave da API vazou pro processo do worker" || ok "nenhum rastro da chave no worker"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+# A guarda é da regra, não do delegate.sh: quem invoca backend da policy invoca
+# `claude -p`, e o smoke_backends sonda TODO backend habilitado. Uma cópia sem
+# guarda cobra da API calada, então o teste cobra todo invocador, não um.
+for inv in "$HERE/../skills/delegate/scripts/delegate.sh" "$HERE/../skills/delegate/scripts/smoke_backends.sh"; do
+  nome=$(basename "$inv")
+  nuas=$(grep -nE '(^|[^-])\btimeout [0-9$]|\$TIMEOUT_CMD' "$inv" | grep -v 'env -u ANTHROPIC_API_KEY' | grep -vE '^\s*[0-9]+:\s*#|TIMEOUT_CMD=')
+  [[ -z "$nuas" ]] && ok "$nome invoca worker sempre com env -u ANTHROPIC_API_KEY" \
+    || fail "$nome tem invocação sem a guarda da chave: $nuas"
+done
+
+echo "T: --tier troca o ponto de entrada da cascata, e não o task-type (21/set/2026)"
+AMPLO_1=$(jq -r '.tiers.implement.amplo[0].model' "$DELEGATE_POLICY")
+PADRAO_1=$(jq -r '.tasks.implement[0].model' "$DELEGATE_POLICY")
+[[ "$AMPLO_1" != "$PADRAO_1" ]] && ok "tier amplo entra por modelo diferente do padrão" \
+  || fail "amplo e padrão entram pelo mesmo modelo: o tier não muda nada"
+out=$(run --task implement --tier amplo -)
+assert_contains "amplo entra no $AMPLO_1" "$out" "[-]m $AMPLO_1"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+out=$(run --task implement --tier padrao -)
+assert_contains "padrão entra no $PADRAO_1" "$out" "[-]m $PADRAO_1"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+out=$(run --task implement -)
+assert_contains "sem --tier resolve a mesma fila do padrão" "$out" "[-]m $PADRAO_1"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+run_nostdin --task implement --tier gigante --paths "$A" --question "q" >/dev/null 2>&1; rc=$?
+assert_eq "tier inválido é erro de uso (exit 1), não fila silenciosa" "$rc" "1"
+assert_contains "a mensagem lista os tiers que a policy declara, não um literal do script" "$(cat "$TMP/err")" "padrao|amplo"
+run_nostdin --task scan --tier amplo --paths "$A" --question "q" >/dev/null 2>&1; rc=$?
+assert_eq "tier que a task não declara é erro, e não fila padrão calada" "$rc" "1"
+[[ "$(jq -r '.tiers.implement | keys | join(",")' "$DELEGATE_POLICY")" == "amplo" ]] \
+  && ok "só o amplo é declarado em tiers (padrão é tasks.<task>, sem lista gêmea pra divergir)" \
+  || fail "tiers declara mais que amplo: duas listas da mesma fila divergem"
+
+echo "T: scan e boilerplate têm a mesma cascata de propósito, e o teste cobra a não divergência"
+jq -e '.tasks.scan == .tasks.boilerplate' "$DELEGATE_POLICY" >/dev/null \
+  && ok "scan e boilerplate não divergiram" \
+  || fail "scan e boilerplate divergiram: ou unifica, ou o motivo vai escrito no \$comment"
+grep -q 'exige --reference' "$DELEGATE"  \
+  && ok "boilerplate segue portando a guarda de --reference (é o que o separa do scan)" \
+  || fail "a guarda de --reference morreu: aí os dois task-types viram um só"
+
+echo "T: toda entrada de cascata roda no esforço sugerido do modelo dela"
+# Cobre tasks e tiers nos três backends. Modelo fora do suggested_effort (agy, que
+# carrega o esforço no próprio nome) passa: sem sugestão não há divergência.
+diverg=$(jq -r '[(.tasks|to_entries[]|select((.value|type)=="array")|.value[]),
+   (.tiers|to_entries[]|select(.key|startswith("$")|not)|.value|to_entries[]|.value[])]
+  | map(select(.effort != ($suge[.model] // .effort)))
+  | .[] | "\(.backend)/\(.model) usa \(.effort), sugerido \($suge[.model])"' \
+  --argjson suge "$(jq -c '.suggested_effort | with_entries(select(.key|startswith("$")|not))' "$DELEGATE_POLICY")" \
+  "$DELEGATE_POLICY")
+[[ -z "$diverg" ]] && ok "nenhuma entrada diverge do esforço sugerido" || fail "entrada divergindo: $diverg"
 
 echo ""
 echo "== $PASS passed, $FAIL failed =="

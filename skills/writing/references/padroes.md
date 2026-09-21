@@ -134,7 +134,7 @@ linhas e o doc ficou mais completo.
     `, e não tem exceção`, `, e só ele`. Teste: cobre a cauda com o dedo. Se o que sobra
     não é a regra, a frase está montada de trás pra frente.
 37. **Data, código de spec e número de decisão em frase normativa.** `(decisão de
-    04/set/2026, spec 2026-011 D-11)`, `revisto em 04/set`, `DDR-0013` no meio de uma
+    04/set/2026, spec NNNN-NNN D-NN)`, `revisto em 04/set`, `DDR-0013` no meio de uma
     regra. Ou a regra vale agora, e a data não muda nada, ou ela não vale, e a frase não
     deveria estar lá. Rastreabilidade vive no git, na spec e no ADR. A exceção é a seção
     cujo assunto **é** o histórico (decisões registradas, changelog), onde a data é o

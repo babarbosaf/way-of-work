@@ -60,11 +60,11 @@ blocked_by: <#id, pela relação nativa do tracker>
 
 ## Executor + fallback, derivado, não reescrito
 
-O `delega: <task-type>` resolve a cascata do `model-policy.json` (`tasks.<type>`: backend primário → fallback). A issue **renderiza** `executor: X (fallback: Y)` lendo a cascata, pra humano/loop ler quem pega e quem assume se o primário cair. Não hand-authora executor; muda a policy, muda o render.
+O `delega: <task-type>` resolve a cascata do `model-policy.json` (`tasks.<type>`: backend primário → fallback), e o `tier:` escolhe o ponto de entrada dela (`tiers.<type>.amplo`, ou a própria `tasks.<type>` no padrão). A issue **renderiza** `executor: X (fallback: Y)` lendo a cascata já resolvida pelo tier, pra humano/loop ler quem pega e quem assume se o primário cair. Não hand-authora executor; muda a policy, muda o render.
 
 ## Invariante de completude (presença, checada no gate)
 
-Toda slice vira issue com **`{título, aceite, priority, delega-decision, destino/backend, blocked_by}`** preenchidos. Falta qualquer um = gate bloqueia o build. Presença é mecânica aqui; **acerto** da triagem/estimativa é do review adversarial, não deste passo.
+Toda slice vira issue com **`{título, aceite, priority, delega-decision, tier, destino/backend, blocked_by}`** preenchidos. Falta qualquer um = gate bloqueia o build. Presença é mecânica aqui; **acerto** da triagem/estimativa é do review adversarial, não deste passo.
 
 ## Terreno pra loop (preparado, não ativado)
 

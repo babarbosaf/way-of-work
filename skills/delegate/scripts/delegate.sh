@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# delegate.sh — dispatcher multi-modelo (SPEC-2026-002)
+# delegate.sh — dispatcher multi-modelo
 #
-#   delegate.sh --task <review|second-opinion|scan|boilerplate|implement>
+#   delegate.sh --task <review|implement|scan|boilerplate>
+#   delegate.sh --task implement --tier <padrao|amplo>   # tier troca o ponto de entrada
 #               [--model <backend>] [--worktree <repo-dir>] [--continue <slug>]
 #               [--timeout N] [--gc <repo-dir>] -
 #
@@ -39,7 +40,7 @@ set -uo pipefail
 
 GATE_DIR="${DELEGATE_GATE_DIR:-$HOME/.claude/gate}"
 POLICY="${DELEGATE_POLICY:-$HOME/.claude/config/model-policy.json}"
-# Override project-specific (scope_pattern/env_file/finding_routing) vive em
+# Override project-specific (finding_routing) vive em
 # <base>.local.json (gitignored). Merge base * local (deep; arrays do local vencem).
 # Espelho consciente de model-policy-effective.sh — manter em sincronia.
 _LOCAL_POLICY="${POLICY%.json}.local.json"
@@ -57,16 +58,21 @@ mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
 
 die() { echo "delegate: $*" >&2; exit 1; }
 
-log_usage() { # task backend status detail pool [bytes_in] [bytes_out]
+log_usage() { # task backend status detail pool [bytes_in] [bytes_out] [dur_s]
     # bytes_* existem pra calibrar o threshold do shunt (config .shunt) com
     # número em vez de palpite: sem tamanho, "quanto o scan economizou" não tem
-    # resposta. jq escapa os campos (JSONL sempre válido).
-    local bin bout
+    # resposta. dur_s existe pelo mesmo motivo, pra `.timeouts`: sem duração
+    # gravada, "300s em review é suficiente?" só tinha resposta por cronômetro na
+    # mão, e o número da policy envelhecia calado quando o modelo da cascata
+    # mudava. jq escapa os campos (JSONL sempre válido).
+    local bin bout dur
     bin=$(tr -dc '0-9' <<<"${6:-0}"); bout=$(tr -dc '0-9' <<<"${7:-0}")
+    dur=$(tr -dc '0-9' <<<"${8:-0}")
     jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg task "$1" --arg backend "$2" \
         --arg status "$3" --arg detail "${4:-}" --arg pool "${5:-}" \
         --argjson bytes_in "${bin:-0}" --argjson bytes_out "${bout:-0}" \
-        '{ts:$ts,task:$task,backend:$backend,status:$status,detail:$detail,pool:$pool,bytes_in:$bytes_in,bytes_out:$bytes_out}' >> "$LOG"
+        --argjson dur_s "${dur:-0}" \
+        '{ts:$ts,task:$task,backend:$backend,status:$status,detail:$detail,pool:$pool,bytes_in:$bytes_in,bytes_out:$bytes_out,dur_s:$dur_s}' >> "$LOG"
 }
 
 # --- pool: só rótulo pro log de auditoria; prioridade real vem da ordem da cascata na policy ---
@@ -112,11 +118,12 @@ is_sem_resposta() { grep -qiE "(run ended with no output|no recorded error|no ou
 is_transient() { grep -qiE "(does not exist or you do not have access|model .* not (found|supported)|status 404|502 bad gateway|503 service unavailable|504 gateway timeout|overloaded_error|temporarily unavailable)" "$1"; }
 
 # --- args ---
-TASK="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
+TASK="" TIER="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
 QUESTION="" REFERENCE="" PATHS=() EXPECT_LINES="" EXPECT_REGEX=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --task) TASK="$2"; shift 2 ;;
+        --tier) TIER="$2"; shift 2 ;;
         --question) QUESTION="$2"; shift 2 ;;
         --reference) REFERENCE="$2"; shift 2 ;;
         --expect-lines) EXPECT_LINES="$2"; shift 2 ;;
@@ -191,10 +198,50 @@ if ! jq -e . "$POLICY" >/dev/null 2>&1; then
 }
 JSON
 fi
-CASCADE=$(jq -c --arg t "$TASK" '.tasks[$t] // .tasks["_any"] // empty' "$POLICY")
+# Tier troca o PONTO DE ENTRADA da cascata, não o task-type: só o tier amplo é
+# declarado na policy, e padrão (ou tier ausente) resolve a lista de tasks.<task>.
+# Duas listas da mesma fila divergiriam, e foi o que já aconteceu com a matriz.
+CASCADE=$(jq -c --arg t "$TASK" --arg tier "$TIER" '.tiers[$t][$tier]? // .tasks[$t] // .tasks["_any"] // empty' "$POLICY")
 [[ -n "$CASCADE" ]] || die "task-type desconhecido na policy: $TASK"
 
-# --timeout explícito ganha; senão, default por task-type da policy; senão, 120s
+# O conjunto de tiers válidos sai da policy. `padrao` é o implícito e nunca é
+# declarado (é tasks.<task>), então entra aqui e não lá. Tier que a task não
+# declara é erro, e não fila padrão calada: pedir amplo e receber padrão é
+# exatamente a divergência que o tier existe pra evitar.
+if [[ -n "$TIER" ]]; then
+    TIERS_OK=$(jq -r --arg t "$TASK" '["padrao"] + (.tiers[$t] // {} | keys) | join("|")' "$POLICY")
+    [[ "|$TIERS_OK|" == *"|$TIER|"* ]] || die "--tier '$TIER' não existe em '$TASK'; a policy declara: $TIERS_OK"
+fi
+
+# --- review espelha a classe da sessão master ---
+# Fila fixa punia o dono: em sessão Fable o revisor saía de classe abaixo do
+# master. O pairing filtra e ordena tasks.review pela classe em curso. `/model`
+# em runtime não reescreve settings.json, então DELEGATE_SESSION_CLASS é o
+# override manual, e classe desconhecida mantém a ordem declarada na policy.
+session_class() {
+    local m="${DELEGATE_SESSION_CLASS:-}" k
+    [[ -n "$m" ]] || m=$(jq -r '.model // empty' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json" 2>/dev/null)
+    for k in $(jq -r '.review_pairing // {} | keys[] | select(startswith("$") | not)' "$POLICY"); do
+        [[ "$m" == *"$k"* ]] && { echo "$k"; return; }
+    done
+    echo ""
+}
+if [[ "$TASK" == "review" ]]; then
+    SESSION_CLASS=$(session_class)
+    PAIR_ORDER=$(jq -c --arg c "${SESSION_CLASS:-none}" '.review_pairing[$c] // empty' "$POLICY")
+    if [[ -n "$PAIR_ORDER" ]]; then
+        paired=$(jq -c --argjson ord "$PAIR_ORDER" \
+            '[.[] | select(.model as $m | $ord | index($m))] | sort_by(.model as $m | $ord | index($m))' <<<"$CASCADE")
+        # pairing que não cruza com a cascata não vale silêncio nem cascata vazia
+        if [[ -n "$paired" && "$paired" != "[]" ]]; then
+            CASCADE="$paired"
+            echo "▶ review na classe da sessão ($SESSION_CLASS)" >&2
+        else
+            echo "⚠️  review_pairing.$SESSION_CLASS não cruza com tasks.review — usando a ordem declarada" >&2
+        fi
+    fi
+fi
+
 [[ -n "$TIMEOUT" ]] || TIMEOUT=$(jq -r --arg t "$TASK" '.timeouts[$t] // 120' "$POLICY")
 
 # --- timeout wrapper ---
@@ -274,7 +321,7 @@ backend_enabled() {
 }
 
 invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit, 4 ausente, 1 falha)
-    local backend="$1" model="$2" rem cmd model_flag
+    local backend="$1" model="$2" effort="${3:-}" rem cmd model_flag effort_config
     # cooldown por pool (backend:pool), não por backend inteiro — agy tem pools
     # independentes (gemini vs claude_gpt); um pool ruim não deve derrubar o outro.
     local pkey; pkey=$(pool_key "$backend" "$model")
@@ -285,21 +332,6 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     local bin; bin=$(backend_field "$backend" bin)
     command -v "${bin:-$backend}" >/dev/null 2>&1 || return 4
 
-    # escopo por projeto: backend com scope_pattern só roda se o contexto casar
-    local scope; scope=$(backend_field "$backend" scope_pattern)
-    if [[ -n "$scope" ]]; then
-        local ctx="${WORKTREE:-$PWD}"
-        [[ "$ctx" == *"$scope"* ]] || { echo "▶ $backend restrito a projetos '$scope' — pulando" >&2; return 4; }
-    fi
-
-    # chave de API externa (backend pago estratégico): lida do env_file, nunca logada
-    local envfile envvar API_KEY=""
-    envvar=$(backend_field "$backend" env_var)
-    if [[ -n "$envvar" ]]; then
-        envfile=$(backend_field "$backend" env_file)
-        API_KEY=$(grep -m1 "^${envvar}=" "$envfile" 2>/dev/null | cut -d= -f2- | tr -d '"' | tr -d "'")
-        [[ -n "$API_KEY" ]] || { echo "▶ $backend sem $envvar em ${envfile:-<env_file ausente>} — pulando" >&2; return 4; }
-    fi
     if [[ -n "$WORKTREE" ]]; then
         cmd=$(backend_field "$backend" worktree_invoke)
         [[ -n "$cmd" ]] || { echo "▶ $backend sem worktree_invoke (sandbox) — inelegível pra worktree" >&2; return 4; }
@@ -317,19 +349,32 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     local prompt_via; prompt_via=$(backend_field "$backend" prompt_via)
     [[ -n "$prompt_via" ]] || prompt_via=arg
     model_flag=$(backend_field "$backend" model_flag)
+    effort_config=$(backend_field "$backend" effort_config)
+    local effort_flag; effort_flag=$(backend_field "$backend" effort_flag)
+
+    # Modelo e esforço vêm da ENTRADA da cascata (policy `tasks.<task>[]`), não
+    # do config global do CLI: é o que deixa review pedir mais cabeça que scan
+    # sem tocar em ~/.codex/config.toml. Backend sem effort_config ignora effort.
+    local -a extra=()
+    [[ -n "$model" && -n "$model_flag" ]] && extra+=("$model_flag" "$model")
+    [[ -n "$effort" && -n "$effort_config" ]] && extra+=(-c "$effort_config=$effort")
+    # claude pede esforço por flag; codex por -c chave=valor. Backend sem os dois ignora.
+    [[ -n "$effort" && -n "$effort_flag" ]] && extra+=("$effort_flag" "$effort")
 
     local rc
-    # ${API_KEY:+...} injeta a chave só no processo do worker (não vaza pro ambiente)
     if [[ "$prompt_via" == "stdin" ]]; then
-        env ${API_KEY:+ANTHROPIC_API_KEY="$API_KEY"} $TIMEOUT_CMD $cmd < "$PROMPT_FILE" > "$TMP_OUT" 2>&1; rc=$?
+        # o `-` final do invoke é "prompt por stdin"; as flags entram antes dele
+        local head="${cmd% -}" tail=""
+        [[ "$head" != "$cmd" ]] && tail="-"
+        env -u ANTHROPIC_API_KEY $TIMEOUT_CMD $head "${extra[@]}" $tail < "$PROMPT_FILE" > "$TMP_OUT" 2>&1; rc=$?
     else
         # </dev/null explícito: sem stdin próprio (prompt vai por --arg), o worker
         # herdaria o pipe do `while read` de run_cascade e drenaria o file
         # descriptor do loop — cascata parava na 1a entrada mesmo falhando.
         if [[ -n "$model" && -n "$model_flag" ]]; then
-            env ${API_KEY:+ANTHROPIC_API_KEY="$API_KEY"} $TIMEOUT_CMD $cmd "$(cat "$PROMPT_FILE")" "$model_flag" "$model" < /dev/null > "$TMP_OUT" 2>&1; rc=$?
+            env -u ANTHROPIC_API_KEY $TIMEOUT_CMD $cmd "$(cat "$PROMPT_FILE")" "$model_flag" "$model" < /dev/null > "$TMP_OUT" 2>&1; rc=$?
         else
-            env ${API_KEY:+ANTHROPIC_API_KEY="$API_KEY"} $TIMEOUT_CMD $cmd "$(cat "$PROMPT_FILE")" < /dev/null > "$TMP_OUT" 2>&1; rc=$?
+            env -u ANTHROPIC_API_KEY $TIMEOUT_CMD $cmd "$(cat "$PROMPT_FILE")" < /dev/null > "$TMP_OUT" 2>&1; rc=$?
         fi
     fi
 
@@ -433,15 +478,11 @@ if [[ -n "$WT_DIR" ]]; then
     mv "$PROMPT_FILE.wt" "$PROMPT_FILE"
 fi
 
-# --model forçado tem que existir na cascata da task OU ser um backend
-# scope_pattern (ex.: claude_api — de propósito fora de toda cascata, só
-# entra com --model explícito) — senão erro claro, não exit 2 mudo.
+# --model forçado tem que existir na cascata da task, senão erro claro em vez de
+# exit 2 mudo. Todo backend da policy é de custo marginal zero e entra em alguma
+# cascata: não há mais backend fora-de-cascata que só `--model` alcança.
 if [[ -n "$FORCE_MODEL" ]] && ! jq -e --arg b "$FORCE_MODEL" 'any(.[]; .backend == $b)' <<<"$CASCADE" >/dev/null; then
-    if jq -e --arg b "$FORCE_MODEL" '.backends[$b].scope_pattern' "$POLICY" >/dev/null 2>&1; then
-        CASCADE=$(jq -c --arg b "$FORCE_MODEL" '[{backend: $b}]' <<<'null')
-    else
-        die "backend '$FORCE_MODEL' não está na cascata da task '$TASK' (ver $POLICY — backend removido/desabilitado?)"
-    fi
+    die "backend '$FORCE_MODEL' não está na cascata da task '$TASK' (ver $POLICY — backend removido/desabilitado?)"
 fi
 
 # Cascata esgotada dizia só "cascata esgotada": 119 das 302 linhas do log, sem
@@ -451,25 +492,28 @@ TRILHA=""
 trilha_add() { TRILHA="${TRILHA:+$TRILHA }$1=$2"; }
 
 run_cascade() {
-    local entry backend model rc
+    local entry backend model effort rc
     while IFS= read -r entry; do
         backend=$(jq -r '.backend' <<<"$entry")
         model=$(jq -r '.model // empty' <<<"$entry")
+        effort=$(jq -r '.effort // empty' <<<"$entry")
         if [[ -n "$FORCE_MODEL" && "$backend" != "$FORCE_MODEL" ]]; then
             trilha_add "$(pool_key "$backend" "$model")" "outro_modelo"; continue
         fi
+        local t0=$SECONDS
         if [[ -n "$WT_DIR" ]]; then
-            ( cd "$WT_DIR" && invoke_backend "$backend" "$model" ); rc=$?
+            ( cd "$WT_DIR" && invoke_backend "$backend" "$model" "$effort" ); rc=$?
         else
-            invoke_backend "$backend" "$model"; rc=$?
+            invoke_backend "$backend" "$model" "$effort"; rc=$?
         fi
-        [[ $rc -eq 0 ]] && { USED="$backend"; USED_POOL=$(pool_key "$backend" "$model"); return 0; }
+        DUR_S=$(( SECONDS - t0 ))
+        [[ $rc -eq 0 ]] && { USED="$backend"; USED_POOL=$(pool_key "$backend" "$model"); USED_MODEL="$model"; return 0; }
         trilha_add "$(pool_key "$backend" "$model")" "rc$rc"
     done < <(jq -c '.[]' <<<"$CASCADE")
     return 1
 }
 
-USED="" USED_POOL=""
+USED="" USED_POOL="" USED_MODEL=""
 if run_cascade; then
     echo "worker: $USED" >&2   # linha estável pra consumidores (peer-review) — não reformatar
     if [[ -n "$WT_DIR" ]]; then
@@ -479,11 +523,10 @@ if run_cascade; then
         if [[ -z "$(git -C "$WT_DIR" status --porcelain)" ]] && \
            [[ -z "$(git -C "$WORKTREE" diff --name-only "$base_ref...$WT_BRANCH" 2>/dev/null)" ]]; then
             echo "⚠️  worker ($USED) produced no changes (suspected silent failure)" >&2
-            echo "worker: $USED" >&2
             echo "branch: $WT_BRANCH (base=$base_ref @ $WT_BASE_SHA)" >&2
             echo "--- resumo do worker ---" >&2
             cat "$TMP_OUT" >&2
-            log_usage "$TASK" "$USED" "empty_diff" "branch=$WT_BRANCH base=$base_ref" "$USED_POOL"
+            log_usage "$TASK" "$USED" "empty_diff" "${USED_MODEL:+model=$USED_MODEL }branch=$WT_BRANCH base=$base_ref" "$USED_POOL" 0 0 "${DUR_S:-0}"
             exit 5
         fi
 
@@ -499,8 +542,8 @@ if run_cascade; then
     else
         cat "$TMP_OUT"
     fi
-    log_usage "$TASK" "$USED" "ok" "${WT_BRANCH:+branch=$WT_BRANCH}" "$USED_POOL" \
-        "$(wc -c < "$PROMPT_FILE")" "$(wc -c < "$TMP_OUT")"
+    log_usage "$TASK" "$USED" "ok" "${USED_MODEL:+model=$USED_MODEL}${WT_BRANCH:+ branch=$WT_BRANCH}" "$USED_POOL" \
+        "$(wc -c < "$PROMPT_FILE")" "$(wc -c < "$TMP_OUT")" "${DUR_S:-0}"
     exit 0
 fi
 

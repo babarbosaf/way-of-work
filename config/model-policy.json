@@ -1,11 +1,11 @@
 {
-  "$comment": "SPEC-2026-002. Hierarquia tarefa→worker como DADO. delegate.sh lê daqui; nunca hardcode em script. Validação: jq . model-policy.json. Regra D-01: cost=free antes de cost=session; Claude Code (session) nunca aparece como backend — é o fallback implícito quando a cascata esgota (exit 2). Atualização: editar direto; git é o histórico.",
+  "$comment": "Hierarquia tarefa→worker como DADO. delegate.sh lê daqui; nunca hardcode em script. Validação: jq . model-policy.json. Regra D-01: plano de tarifa fixa primeiro, na ordem de qualidade. codex e claude headless rodam em plano de tarifa fixa, onde o que se gasta é janela e não dinheiro; o agy é grátis de cota baixa, então é válvula de excedente e não degrau de volume. Toda cascata termina no backend claude, e a sessão master é o fallback REAL depois dele (exit 2), não o único. API nunca entra em nenhum backend: o delegate.sh remove a ANTHROPIC_API_KEY de toda invocação. EQUIVALÊNCIA E ESFORÇO SUGERIDO (decisão do dono): gpt-6-astra ~ Fable 5.1, os dois em low ou medium e nunca acima, com Fable low como master default. gpt-5.6-sol ~ Opus 5, os dois em high, que é o esforço sugerido do Opus. gpt-5.6-terra ~ Sonnet, em medium. gpt-5.6-luna ~ Haiku, em low. Cada modelo roda no esforço sugerido dele, e não no máximo que aceita. PRATELEIRA: modelo bom implementa, mas implementar bem não qualifica pra revisar. Atualização: editar direto; git é o histórico.",
   "version": 2,
-  "updated": "2026-09-07",
+  "updated": "2026-09-21",
   "backends": {
     "codex": {
       "enabled": true,
-      "cost": "free",
+      "cost": "plan",
       "modes": [
         "oneshot",
         "worktree"
@@ -13,8 +13,10 @@
       "invoke": "codex exec --skip-git-repo-check -",
       "worktree_invoke": "codex exec --approve-for-me -",
       "prompt_via": "stdin",
-      "notes": "modelo configurado em ~/.codex/config.toml; forte em lógica/debug. Este backend OSCILA por janela de tempo, e não por nome de modelo, diretório ou plano: medido em 07/set/2026, o mesmo `codex exec --model gpt-5.5` respondeu às 19h06 e devolveu 404 \"does not exist or you do not have access\" às 19h31, mesma conta e mesmo cwd, com os 7 nomes de modelo do CLI acompanhando a janela em bloco. O dispatcher trata isso como transiente (cooldown curto, ver is_transient no delegate.sh) e o backend segue habilitado. NÃO escreva aqui que o Codex 'não funciona nesta conta' com base em sondagem: a sondagem mede a janela em que ela rodou. `enabled: false` é pra decisão (custo, segurança, política de conta com fonte), nunca pra falha observada. Erro de classe diferente do 404 de janela: em 05/set/2026 o gpt-5.4 devolveu 400 nesta conta enquanto 5.5, 5.3, 5.1-codex e 5-codex respondiam, e por isso o default é gpt-5.5.",
-      "default_model": "gpt-5.5"
+      "notes": "Plano de tarifa fixa: custo marginal zero, e o recurso escasso é a JANELA DE USO, não o dinheiro. Modelo se configura em ~/.codex/config.toml. Equivalência com os modelos Claude e esforço sugerido, decididos pelo dono e checados contra benchmark (Artificial Analysis Intelligence Index, Terminal-Bench, SWE-bench Pro, DeepSWE): gpt-6-astra ~ Fable 5.1, low ou medium e nunca acima (AA Intelligence 61 contra 66 do Fable 5.1 max). gpt-5.6-sol ~ Opus 5, high (Terminal-Bench 2.1 empata, 88,8 contra 89,1, e o Opus 5 abre 79,2 contra 64,6 em SWE-bench Pro, que é review de repositório: a equivalência vale no nível do modelo, e o Opus ganha em multi-arquivo). gpt-5.6-terra ~ Sonnet, medium. gpt-5.6-luna ~ Haiku, low. gpt-5.5 fica fora: legado, e o luna cobre o tier dele por menos. Terra é dominado em Pareto pelo par luna/sol (AA: pra qualquer esforço do terra existe um esforço de luna ou de sol mais inteligente pelo mesmo custo, ou igual por menos), então terra só aparece onde a classe Sonnet é o alvo, nunca como degrau de volume. Este backend OSCILA por janela de tempo, e não por nome de modelo, diretório ou plano: medido em 07/set/2026, o mesmo `codex exec --model gpt-5.5` respondeu às 19h06 e devolveu 404 \"does not exist or you do not have access\" às 19h31, mesmo ambiente e mesmo cwd. O dispatcher trata como transiente (cooldown curto, ver is_transient no delegate.sh) e o backend segue habilitado. NÃO escreva aqui que o Codex 'não funciona neste ambiente' com base em sondagem: a sondagem mede a janela em que ela rodou. `enabled: false` é pra decisão (custo, segurança, política de uso com fonte), nunca pra falha observada.",
+      "default_model": "gpt-5.6-terra",
+      "model_flag": "-m",
+      "effort_config": "model_reasoning_effort"
     },
     "agy": {
       "enabled": true,
@@ -43,7 +45,7 @@
         "Claude Opus 4.6 (Thinking)",
         "GPT-OSS 120B (Medium)"
       ],
-      "notes": "multi-provider; Sonnet/Opus de graça saem daqui, nunca da sessão Claude (D-01). Nomes conferidos com `agy models` em 2026-09-07. O agy NÃO começa no cwd: ele abre na pasta de artefato dele, então o caminho absoluto precisa ir no prompt (o delegate.sh injeta) além do --add-dir. GPT-OSS 120B é o menos confiável nisso: prefira Gemini ou Claude em task que escreve arquivo.",
+      "notes": "multi-provider, cota grátis e baixa, e o único backend com buckets de provider independentes: os modelos Gemini têm tier próprio e os de outros labs têm o seu (ver pools). Sonnet e Opus de graça saem daqui, nunca da sessão Claude (D-01). O esforço vem DENTRO do nome do modelo, não num campo separado: \"(Thinking)\", \"(High)\", \"(Medium)\", \"(Low)\". Nomes conferidos com `agy models` em 2026-09-07. NENHUM modelo daqui revisa: Sonnet 4.6, Opus 4.6 e Gemini 3.1 Pro são implement por decisão do dono, e Flash e GPT-OSS são volume. Claude Opus 4.6 (Thinking) fica fora de toda cascata: medido em 07/set/2026, leva 902s e ainda volta rc=2 em headless, contra 26s do Sonnet 4.6. O agy NÃO começa no cwd: ele abre na pasta de artefato dele, então o caminho absoluto precisa ir no prompt (o delegate.sh injeta) além do --add-dir. GPT-OSS 120B é o menos confiável nisso: prefira Gemini ou Claude em task que escreve arquivo.",
       "pools": {
         "gemini": [
           "Gemini 3.8 Flash (Low)",
@@ -65,48 +67,65 @@
         ]
       }
     },
-    "gemini": {
-      "enabled": false,
-      "cost": "free",
-      "modes": [
-        "oneshot"
-      ],
-      "invoke": "gemini -p",
-      "prompt_via": "arg",
-      "notes": "CLI morto pro free tier individual (IneligibleTierError, 2026-07-05). Remover após 2 ciclos de refresh confirmando."
-    },
-    "claude_api": {
+    "claude": {
       "enabled": true,
-      "cost": "paid",
-      "bin": "claude",
+      "cost": "plan",
+      "modes": [
+        "oneshot",
+        "worktree"
+      ],
+      "invoke": "claude -p",
+      "worktree_invoke": "claude -p --add-dir {worktree} --permission-mode acceptEdits",
       "prompt_via": "stdin",
-      "invoke": "claude -p --model claude-sonnet-5",
-      "scope_pattern": "<your-paid-scope>",
-      "env_file": "$HOME/.config/your-project/.env",
-      "env_var": "DELEGATE_ANTHROPIC_API_KEY"
+      "bin": "claude",
+      "model_flag": "--model",
+      "effort_flag": "--effort",
+      "models": [
+        "claude-fable-5-1",
+        "claude-opus-5",
+        "claude-sonnet-5"
+      ],
+      "notes": "Último degrau antes do master, em TODA cascata: é o mesmo plano da sessão master, e a queda pro master deixa de ser o único fallback. MESMO plano da sessão master, então quando o balde seca os dois falham juntos, e este degrau compra contexto isolado, não resiliência de cota. `env -u ANTHROPIC_API_KEY` não é opcional: a variável pode chegar setada no ambiente, e sem removê-la o `claude -p` cobra da API em vez do plano, o que ressuscita o backend de API que saiu da policy. A guarda é estrutural, aplicada a toda invocação de backend no delegate.sh, e não um detalhe deste bloco. Esforço vai por FLAG (`--effort`), não por `-c chave=valor` como no codex, e é por isso que existe effort_flag. Medido em 21/set/2026: `claude -p --model claude-sonnet-5 --effort low --add-dir <dir> --permission-mode acceptEdits` escreveu arquivo na pasta passada, rc=0, 10s. A alternativa a este backend é o Agent tool (tier session da SKILL.md), que preserva o harness completo mas fica invisível pro delegate.log."
     }
   },
   "tasks": {
+    "$comment": "Cascata por task-type, na ordem de tentativa. TODA cascata termina no backend claude, que é o mesmo plano da sessão master, antes de esgotar: o master é o fallback REAL, não o único. `review` cobre spec E código, e não existe mais `second-opinion`. A ordem de review não é fixa, porque review_pairing reordena pela classe da sessão, e o que está declarado aqui é o fallback pra classe desconhecida. `implement` sem --tier resolve esta lista, que é o tier PADRÃO, e o tier AMPLO vive em tiers.implement.amplo. ORDEM PROVISÓRIA em implement: o dono quer o Claude na frente, mas cascata só desce por FALHA, então Claude primeiro sem gate de orçamento por bucket queimaria a cota Claude em todo ticket e o codex nunca seria alcançado. Decisão do dono: manter o codex na frente agora e virar a ordem no MESMO commit que trouxer o gate de bucket. `scan` e `boilerplate` têm a MESMA cascata de propósito, e não são um task-type só porque o boilerplate carrega uma guarda de código que o scan não pode ter: em modo bulk ele exige --reference (delegate.sh, lição do code-write), e o task-type é o único portador dessa intenção, porque --paths mais --question não diz se é varredura ou geração. O timeout menor do boilerplate segue da mesma diferença, porque geração curta falha rápido e varredura lê arquivo grande. tests/delegate.test.sh cobra que as duas cascatas não divirjam. Em implement o agy entra ANTES do degrau Claude, e não depois: o dono pediu o Gemini 3.1 Pro na fila do ticket padrão e pediu que toda cascata termine no plano Claude, então a válvula de excedente fica no meio e o último degrau antes do master é o Claude. Task de volume começa no agy, que é grátis, e só toca o codex no fim, porque a janela de uso do codex é o recurso escasso.",
     "review": [
       {
-        "backend": "codex"
+        "backend": "codex",
+        "model": "gpt-6-astra",
+        "effort": "low"
       },
       {
-        "backend": "agy",
-        "model": "Gemini 3.1 Pro (High)"
+        "backend": "codex",
+        "model": "gpt-5.6-sol",
+        "effort": "high"
+      },
+      {
+        "backend": "claude",
+        "model": "claude-fable-5-1",
+        "effort": "low"
+      },
+      {
+        "backend": "claude",
+        "model": "claude-opus-5",
+        "effort": "high"
       }
     ],
-    "second-opinion": [
+    "implement": [
       {
-        "backend": "agy",
-        "model": "Claude Sonnet 4.6 (Thinking)"
+        "backend": "codex",
+        "model": "gpt-5.6-terra",
+        "effort": "medium"
       },
       {
         "backend": "agy",
         "model": "Gemini 3.1 Pro (High)"
       },
       {
-        "backend": "codex"
+        "backend": "claude",
+        "model": "claude-sonnet-5",
+        "effort": "medium"
       }
     ],
     "scan": [
@@ -119,7 +138,14 @@
         "model": "GPT-OSS 120B (Medium)"
       },
       {
-        "backend": "codex"
+        "backend": "codex",
+        "model": "gpt-5.6-luna",
+        "effort": "low"
+      },
+      {
+        "backend": "claude",
+        "model": "claude-sonnet-5",
+        "effort": "medium"
       }
     ],
     "boilerplate": [
@@ -132,18 +158,70 @@
         "model": "GPT-OSS 120B (Medium)"
       },
       {
-        "backend": "codex"
-      }
-    ],
-    "implement": [
-      {
-        "backend": "codex"
+        "backend": "codex",
+        "model": "gpt-5.6-luna",
+        "effort": "low"
       },
       {
-        "backend": "agy",
-        "model": "Claude Sonnet 4.6 (Thinking)"
+        "backend": "claude",
+        "model": "claude-sonnet-5",
+        "effort": "medium"
       }
     ]
+  },
+  "tiers": {
+    "$comment": "Ponto de entrada da cascata por TAMANHO do ticket, resolvido como .tiers[task][tier] // .tasks[task]. Só o AMPLO aparece aqui, porque o PADRÃO é a própria lista de tasks.<task>, então não existem duas listas da mesma fila pra divergir. A classificação é mecânica e acontece no to-tickets, não na hora do dispatch: PADRÃO é até 5 arquivos próprios sem tocar contrato, e AMPLO toca contrato (rota, schema, assinatura pública, migration) OU passa de 5 arquivos próprios. \"Toca contrato\" não é critério novo, é o mesmo que a AGENTS.md já usa pra promover trabalho a spec. O 5 é linha de partida declarada, não medição: o único dado que existe é um ticket de 9 arquivos com testes RED, que estourou 600s com a task pela metade em 18/set/2026. Métrica retrospectiva que recalibra o número: ticket que estourou o timeout ou voltou pro master no meio era AMPLO, e o dur_s do log dá isso de graça.",
+    "implement": {
+      "amplo": [
+        {
+          "backend": "codex",
+          "model": "gpt-5.6-sol",
+          "effort": "high"
+        },
+        {
+          "backend": "claude",
+          "model": "claude-opus-5",
+          "effort": "high"
+        },
+        {
+          "backend": "claude",
+          "model": "claude-sonnet-5",
+          "effort": "medium"
+        }
+      ]
+    }
+  },
+  "review_shelf": {
+    "$comment": "Lista FECHADA de modelos que podem revisar, como DADO. tasks.review e review_pairing só tiram daqui, e tests/delegate.test.sh cobra isso, porque sem lista o \"review não rebaixa\" é prosa sem leitor de máquina. Modelo bom implementa, mas implementar bem não qualifica pra revisar, então nenhum modelo do agy entra aqui. Os dois modelos Claude estão aqui como último degrau antes do master, um por classe de sessão: fable pra sessão em Fable, opus pra sessão em Opus, sempre da mesma classe do master e nunca abaixo. Esgotou a lista, exit 2 e o master revisa.",
+    "models": [
+      "gpt-5.6-sol",
+      "gpt-6-astra",
+      "claude-fable-5-1",
+      "claude-opus-5"
+    ]
+  },
+  "review_pairing": {
+    "$comment": "Review espelha a CLASSE da sessão master, em vez de ter fila fixa: sessão em Fable revisa no par de classe topo (astra), e sessão em Opus revisa no par de classe forte (sol). Com fila fixa, o revisor ficava de classe ABAIXO do master quando o dono estava em Fable, e igual por acidente quando estava em Opus. Espelhando, o revisor é sempre segundo par de olhos da mesma classe, que é o que \"review não rebaixa\" quer dizer. Cada lista é a ORDEM COMPLETA de modelos daquela classe, e ela FILTRA tasks.review: modelo fora da lista da classe não roda. A classe se resolve no delegate.sh lendo .model do settings.json do CLAUDE_CONFIG_DIR, com override por DELEGATE_SESSION_CLASS, porque /model em runtime não reescreve o arquivo. Classe desconhecida cai na ordem declarada em tasks.review.",
+    "fable": [
+      "gpt-6-astra",
+      "gpt-5.6-sol",
+      "claude-fable-5-1"
+    ],
+    "opus": [
+      "gpt-5.6-sol",
+      "gpt-6-astra",
+      "claude-opus-5"
+    ]
+  },
+  "suggested_effort": {
+    "$comment": "Esforço sugerido POR MODELO, como DADO, e é o que as cascatas usam: cada modelo roda no esforço sugerido dele e não no máximo que aceita. Decisão do dono, casada com a equivalência Claude: astra ~ Fable 5.1 em low (medium é o teto dos dois, e nunca acima), sol ~ Opus 5 em high, terra ~ Sonnet em medium, luna ~ Haiku em low. xhigh, max e ultra estão fora: Terminal-Bench 2.1 mediu ultra em 91,9 contra 88,8 do sol padrão, e 3 pontos não pagam a janela de 5 horas. tests/delegate.test.sh cobra que nenhuma entrada de cascata divirja daqui.",
+    "gpt-6-astra": "low",
+    "gpt-5.6-sol": "high",
+    "gpt-5.6-terra": "medium",
+    "gpt-5.6-luna": "low",
+    "claude-fable-5-1": "low",
+    "claude-opus-5": "high",
+    "claude-sonnet-5": "medium"
   },
   "shunt": {
     "$comment": "Threshold de leitura como DADO (lido por hooks/shunt_policy.py; nunca hardcode em hook). Dois degraus porque os tiers têm latência diferente: grep local em ms, worker em 10-30s. <=grep_max inline; grep_max..worker_min grep+Read paginado; >worker_min shunt pro worker. Override por env: SHUNT_GREP_MAX, SHUNT_MIN_LINES. Calibrar com bytes_in/bytes_out do delegate.log.",
@@ -170,12 +248,11 @@
     "prompt_max_bytes": 250000
   },
   "timeouts": {
-    "$comment": "Segundos por task-type; --timeout só pra override pontual, e nenhum consumidor crava número próprio. review=300 medido: diff de 1432 linhas no Gemini 3.1 Pro (High) leva 170s, e os 180 anteriores não davam margem.",
+    "$comment": "Segundos por task-type; --timeout só pra override pontual, e nenhum consumidor crava número próprio. review=600 é ESTIMATIVA, não medição: o 300 anterior foi cronometrado à mão no Gemini 3.1 Pro (High), que saiu da cascata de review, e o peer-review.sh manda diff de até 2000 linhas contra as 1432 que levaram 170s naquele modelo. O log agora grava dur_s por chamada, então isso se recalibra com dado depois de ~10 chamadas reais. implement=1800 medido: um ticket de 9 arquivos com testes RED estourou os 600 do Codex com a task pela metade, 18/set/2026.",
     "scan": 600,
-    "implement": 600,
+    "implement": 1800,
     "boilerplate": 300,
-    "review": 300,
-    "second-opinion": 180
+    "review": 600
   },
   "finding_routing": {
     "$comment": "Finding/bug -> destino. Consumido por triage.md. Um finding vira issue no tracker do repo_alvo, com delega derivando executor da cascata tasks.<delega>. severity vem do gate de ship (Critical->P0, Important->P1, Suggestion->P2).",

@@ -51,12 +51,21 @@ closes:     <AC-NN, AC-NN da spec>
 files:      <arquivos que ESTE ticket possui>
 blocked_by: <IDs reais, ou "nenhum">
 delega:     <task-type | não>
+tier:       <padrao | amplo>   # só quando delega é um task-type com tier
 verify:     <comando que prova que fechou>
 
 Aceite:
 - [ ] <critério observável>
 - [ ] <critério observável>
 ```
+
+**O ticket é lido junto com o `AGENTS.md`, não sozinho.** O dispatch monta o
+prompt com o ticket inteiro, as regras do `AGENTS.md` do repo e o contrato de
+report do `delegate`, então o ticket não repete convenção de código: ele carrega
+o que só ele sabe, que é o comportamento, o limite de arquivo e o comando de
+aceite. O que falta com mais frequência é o limite negativo. Uma frase de "não
+toca X" dentro do `O que construir:` custa uma linha e evita o worker melhorar o
+que ninguém pediu, o que é mais barato que descobrir isso revisando o diff.
 
 Cinco campos carregam o peso:
 
@@ -78,6 +87,22 @@ Cinco campos carregam o peso:
 `delega:` é decidido aqui e é **vinculante no build**. Task marcada, o `delegate`
 despacha; sem marcador, roda inline e ninguém reavalia. Degradar é permitido,
 promover não.
+
+`tier:` é o tamanho do ticket, e a classificação é mecânica:
+
+```
+PADRÃO   até 5 arquivos próprios, e não toca contrato
+AMPLO    toca contrato (rota, schema, assinatura pública, migration)
+         OU passa de 5 arquivos próprios
+```
+
+Os `files:` já dão a contagem, e "toca contrato" é o mesmo critério que a
+`AGENTS.md` usa pra promover trabalho a spec, então nenhum eixo novo entra aqui.
+O tier escolhe o **ponto de entrada da fila** no `delegate.sh --tier`, e não um
+task-type paralelo. O 5 é linha de partida declarada, não medição, e recalibra
+com uma métrica retrospectiva: **ticket que estourou o timeout ou voltou pro
+master no meio era amplo.** `check-spec.py --tickets` cobra o campo em todo
+ticket cujo `delega:` tem tier na policy.
 
 ## Fases, e o marcador `[P]`
 
@@ -105,8 +130,8 @@ Regras de fatiamento, expand/contract e o teste do demo: `references/fatiamento.
 - [ ] **2. Separar faz-agora de bloqueado-em-externo** (auth, sign-off, credencial,
       dado que não chegou). Bloqueado leva `bloqueado: <X>` e vai depois.
 - [ ] **3. Escrever cada ticket**, tamanho `XS/S/M`. Nunca `L`, quebrar.
-- [ ] **4. Carimbar `files:`, `[P]` e `delega:`** em todos. Ticket sem os três é
-      planning gap, não decisão implícita.
+- [ ] **4. Carimbar `files:`, `[P]`, `delega:` e `tier:`** em todos. Ticket sem os
+      quatro é planning gap, não decisão implícita.
 - [ ] **5. Rastrear `D-NN` → ticket.** Decisão sem ticket é decisão órfã.
 - [ ] **6. Rodar os dois lints.** Presença dos campos:
       `~/.claude/scripts/check-spec.py --tickets <dir>`. Corrente fechada, com
@@ -132,7 +157,7 @@ que precisa engordar até ficar executável: `references/refine.md`.
 
 ## Verification
 
-- [ ] Todo ticket com `Contexto:`, `spec:`, `closes:`, `files:`, aceite, `blocked_by`, `verify:`, `delega:`
+- [ ] Todo ticket com `Contexto:`, `spec:`, `closes:`, `files:`, aceite, `blocked_by`, `verify:`, `delega:`, `tier:`
 - [ ] Nenhum `files:` se cruza entre tickets `[P]` da mesma fase
 - [ ] Cross-cutting fora da Fase 2
 - [ ] `blocked_by` resolve pra ID que existe

@@ -4,8 +4,8 @@
 (sonnet/opus/haiku/fable), não conhece `delegate.sh`. Se um stage de
 `Workflow.pipeline()`/`Workflow.parallel()` for delegável (task-type já
 mapeado em `~/.claude/config/model-policy.json`), deixar o `Workflow`
-spawnar Claude direto pra esse stage viola D-01 (custo zero primeiro,
-SPEC-2026-002), o stage roda pago quando um worker grátis resolvia.
+spawnar Claude direto pra esse stage viola D-01 (plano de tarifa fixa
+primeiro), e o stage gasta janela de master onde um worker resolvia.
 
 ## Como rodar um stage delegável dentro de Workflow
 
