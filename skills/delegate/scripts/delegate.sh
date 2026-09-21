@@ -77,6 +77,9 @@ mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
 slot_configurar "$GATE_DIR"
 
 die() { echo "delegate: $*" >&2; exit 1; }
+# Guarda de flag que consome valor: sob `set -u`, referenciar "$2" sem ele
+# existir estoura unbound variable antes de qualquer die. $1=flag $2=$# do loop.
+need_arg() { (( $2 >= 2 )) || die "$1: falta valor"; }
 
 log_usage() { # task backend status detail pool [bytes_in] [bytes_out] [dur_s]
     # bytes_* existem pra calibrar o threshold do shunt (config .shunt) com
@@ -130,23 +133,23 @@ ASYNC=0; STATUS_ID=""; TASKS=0
 QUESTION="" REFERENCE="" PATHS=() EXPECT_LINES="" EXPECT_REGEX=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --task) TASK="$2"; shift 2 ;;
-        --tier) TIER="$2"; shift 2 ;;
-        --question) QUESTION="$2"; shift 2 ;;
-        --reference) REFERENCE="$2"; shift 2 ;;
-        --expect-lines) EXPECT_LINES="$2"; shift 2 ;;
-        --expect-regex) EXPECT_REGEX="$2"; shift 2 ;;
+        --task) need_arg --task $#; TASK="$2"; shift 2 ;;
+        --tier) need_arg --tier $#; TIER="$2"; shift 2 ;;
+        --question) need_arg --question $#; QUESTION="$2"; shift 2 ;;
+        --reference) need_arg --reference $#; REFERENCE="$2"; shift 2 ;;
+        --expect-lines) need_arg --expect-lines $#; EXPECT_LINES="$2"; shift 2 ;;
+        --expect-regex) need_arg --expect-regex $#; EXPECT_REGEX="$2"; shift 2 ;;
         # variádico: consome até a próxima flag (ou o '-' do modo heredoc)
         --paths) shift; while [[ $# -gt 0 && "$1" != -* ]]; do PATHS+=("$1"); shift; done ;;
-        --model) FORCE_MODEL="$2"; shift 2 ;;
-        --worktree) WORKTREE="$2"; shift 2 ;;
---async) ASYNC=1; shift ;;
---status) STATUS_ID="$2"; shift 2 ;;
+        --model) need_arg --model $#; FORCE_MODEL="$2"; shift 2 ;;
+        --worktree) need_arg --worktree $#; WORKTREE="$2"; shift 2 ;;
+        --async) ASYNC=1; shift ;;
+        --status) need_arg --status $#; STATUS_ID="$2"; shift 2 ;;
         --tasks) TASKS=1; shift ;;
-        --continue) CONTINUE_SLUG="$2"; shift 2 ;;
-        --timeout) TIMEOUT="$2"; shift 2 ;;
-        --gc) GC="$2"; shift 2 ;;
-        --base) BASE_REF="$2"; shift 2 ;;
+        --continue) need_arg --continue $#; CONTINUE_SLUG="$2"; shift 2 ;;
+        --timeout) need_arg --timeout $#; TIMEOUT="$2"; shift 2 ;;
+        --gc) need_arg --gc $#; GC="$2"; shift 2 ;;
+        --base) need_arg --base $#; BASE_REF="$2"; shift 2 ;;
         -) shift ;;
         *) die "arg desconhecido: $1" ;;
     esac

@@ -1017,6 +1017,19 @@ diverg=$(jq -r '[(.tasks|to_entries[]|select((.value|type)=="array")|.value[]),
   "$DELEGATE_POLICY")
 [[ -z "$diverg" ]] && ok "nenhuma entrada diverge do esforço sugerido" || fail "entrada divergindo: $diverg"
 
+echo "T: flag que consome argumento e não recebe sai com erro de uso, não unbound variable"
+# O script roda com `set -u`, então `"$2"` sem valor estourava antes de qualquer
+# die: `delegate.sh --gc` sozinho era crash, não erro de uso. A guarda é uma só,
+# e este laço é o que impede a próxima flag de nascer sem ela.
+for flag in --task --tier --model --worktree --status --continue --timeout --gc --base --question --reference --expect-lines --expect-regex; do
+  out=$(echo x | bash "$DELEGATE" "$flag" 2>&1); rc=$?
+  assert_eq "$flag sem valor: exit 1" "$rc" "1"
+  # `grep -qF --` porque o padrão começa com dois hífens: sem isso o grep leria
+  # `--task` como opção dele, e o assert passaria verde provando nada.
+  grep -qF -- "$flag" <<<"$out" && ok "$flag sem valor: mensagem nomeia a flag" || fail "$flag sem valor: mensagem nomeia a flag (não contém '$flag')"
+  grep -q "unbound variable" <<<"$out" && fail "$flag sem valor: vazou unbound variable" || ok "$flag sem valor: não crasha"
+done
+
 echo "T: apurador lê histórico sem invocar worker"
 APURADOR="$HERE/../skills/delegate/scripts/apura_log.py"
 APURA_LOG="$TMP/apura.log"
