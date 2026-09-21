@@ -87,6 +87,11 @@ Montagem do prompt do worker, ele não tem o contexto da sessão, então inclua:
 Exit codes: `0` ok (resposta no stdout) · `2` cascata esgotada → **você assume
 a tarefa inline** e segue; nunca re-tente em loop.
 
+`--async` despacha e devolve o identificador na hora, em vez de segurar a sessão
+pelo tempo do worker; `--status <id>` consulta depois, e mostra o estado, o
+código de saída e o caminho do material que o worker produziu. Vale nos dois
+modos, e quem quer ver tudo o que está correndo agora usa `--tasks`.
+
 ## Modo bulk, o script monta o prompt
 
 Pergunta sobre arquivo grande não precisa de heredoc, e não deve precisar: a
