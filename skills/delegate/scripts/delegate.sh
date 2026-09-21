@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# delegate.sh — dispatcher multi-modelo (SPEC-2026-002)
+# delegate.sh — dispatcher multi-modelo
 #
 #   delegate.sh --task <review|implement|scan|boilerplate>
 #   delegate.sh --task implement --tier <padrao|amplo>   # tier troca o ponto de entrada

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """PostToolUse hook: enforces append in memory/log.md for any Write/Edit in memory/*.md.
 
-Spec: SPEC-2026-021 (memory-as-wiki).
 Reads PostToolUse JSON from stdin. Returns exit 0 (allow) or exit 2 (block).
 
 Kill switch: env var MEMORY_HOOK_DISABLED=1 → bypass with log entry in

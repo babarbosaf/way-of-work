@@ -47,7 +47,7 @@ plantado() {
   local nome="$1" regex="$2" linha="$3" excecao="${4:-}"
   printf '%s\n' "$linha" > "$TMP/plantado.md"
   local hits
-  hits=$(grep -inIE "$regex" "$TMP/plantado.md" || true)
+  hits=$( (cd "$TMP" && git grep --no-index -inIE "$regex" -- plantado.md) || true)
   [[ -n "$excecao" ]] && hits=$(grep -vE "$excecao" <<<"$hits" || true)
   if [[ -n "$hits" ]]; then ok "$nome: acusa a violação plantada"
   else fail "$nome: NÃO acusou a violação plantada (regra morta)"; fi
@@ -55,7 +55,7 @@ plantado() {
 
 # --others: arquivo novo ainda não commitado entra na varredura. É onde o
 # vazamento chega, e é antes do commit que o gate precisa acusar.
-FILES=$(git ls-files --cached --others --exclude-standard '*.md' '*.json' '*.sh' '*.py' | tr '\n' ' ')
+FILES=$(git ls-files --cached --others --exclude-standard | tr '\n' ' ')
 
 # O nome do dono é legítimo em dois lugares: a linha de copyright da LICENSE e a
 # URL do próprio repo. Em qualquer outro, é identidade vazando.
@@ -67,8 +67,13 @@ regra    "nome do dono"      "$DONO" "$DONO_OK"  # guard-regex
 plantado "nome do dono"      "$DONO" "Perguntar pro Benedito antes de mergear." "$DONO_OK"  # guard-regex
 regra    "caminho da máquina" '/Users/[a-z]'  # guard-regex
 plantado "caminho da máquina" '/Users/[a-z]' "Roda em /Users/alguem/projeto."  # guard-regex
-regra    "primeira pessoa"   '\b(meu|minha|meus|minhas)\b|não edito'  # guard-regex
-plantado "primeira pessoa"   '\b(meu|minha|meus|minhas)\b|não edito' "Este é o meu fluxo."  # guard-regex
+PRIMEIRA='(^|[^[:alpha:]])(meu|minha|meus|minhas)([^[:alpha:]]|$)|não edito'  # guard-regex
+# Duas exceções por conteúdo: o regex do próprio check-skill.py, que existe pra
+# cobrar isso, e fala de terceiro citada entre aspas numa tabela de anti-padrão,
+# que é o repo mostrando o que alguém diz, não o repo falando.
+PRIMEIRA_OK='re\.compile|\| "'  # guard-regex
+regra    "primeira pessoa"   "$PRIMEIRA" "$PRIMEIRA_OK"  # guard-regex
+plantado "primeira pessoa"   "$PRIMEIRA" "Este é o meu fluxo." "$PRIMEIRA_OK"  # guard-regex
 regra    "organização do dono" 'da casa|na casa|nossa casa'  # guard-regex
 plantado "organização do dono" 'da casa|na casa|nossa casa' "A stack padrão da casa."  # guard-regex
 regra    "máquina ou SO específico" 'meu mac|fora do mac|meu notebook'  # guard-regex
@@ -92,6 +97,25 @@ plantado "ponteiro pra arquivo removido" "$MORTO" "Ver RUNBOOK.md para o passo a
 quebrados=$(python3 "$HERE/check-links.py" || true)
 if [[ -z "$quebrados" ]]; then ok "link markdown relativo: todos resolvem"
 else fail "link markdown relativo quebrado"; sed 's/^/      /' <<<"$quebrados"; fi
+
+echo "== plano e conta do dono =="
+# Qual serviço o dono assina, quanto paga e o que está setado na máquina dele não
+# é doutrina: é a intimidade dele. O repo diz QUE existe hierarquia de modelos e
+# COMO ela se declara, nunca de quem é a fatura. Nome de modelo fica, porque é o
+# dado que a policy roteia; nome de plano comercial e preço, não.
+PLANO='chatgpt|\$[0-9]+ ?/ ?m[êe]s|\$[0-9]+/m|r\$ ?[0-9]|(assinatura|plano|cota) (j[áa] )?pag[oa]|dono (j[áa] )?paga|que o dono paga|nesta conta|setad[ao] neste ambiente|conectado em (jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)'  # guard-regex
+regra    "plano ou preço do dono" "$PLANO"  # guard-regex
+plantado "plano ou preço do dono" "$PLANO" "O codex é ChatGPT Plus (\$20/mês), custo marginal zero."  # guard-regex
+
+echo "== ponteiro pra artefato fora do git =="
+# `docs/specs/` e `docs/research/` são gitignored, e tracker é privado: um ID de
+# spec ou de ticket num arquivo versionado manda o leitor abrir o que ele não tem.
+# A convenção de caminho (`docs/specs/<slug>/spec.md`) fica, porque ensina onde
+# ele põe as dele; o ID concreto, não. Fixture de lint cita ID de propósito.
+FORAGIT='(SPEC|CORE|RTK|PROD|OPS)-[0-9]{3,4}|spec [0-9]{4}-[0-9]{3}'  # guard-regex
+FORAGIT_OK='^skills/to-spec/fixtures/|^tests/fixtures/|# guard-regex'  # guard-regex
+regra    "ID de spec ou de ticket" "$FORAGIT" "$FORAGIT_OK"  # guard-regex
+plantado "ID de spec ou de ticket" "$FORAGIT" "Circuit-breaker vive no delegate.sh (SPEC-2026-002 D-04)." "$FORAGIT_OK"  # guard-regex
 
 echo "== unidade de negócio =="
 NEGOCIO='comercial nontech|exitlag|holding imob|xanim|liberdata'  # guard-regex

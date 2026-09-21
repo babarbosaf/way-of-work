@@ -7,6 +7,12 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Duas guardas novas no gate de agnosticismo.** `plano ou preço do dono` barra nome de
+  plano comercial, preço e estado da máquina do dono, porque o repo diz que existe
+  hierarquia de modelos e como ela se declara, nunca de quem é a fatura. `ID de spec ou
+  de ticket` barra `SPEC-NNNN-NNN` e ID de tracker em arquivo versionado: `docs/specs/`
+  saiu do git nesta mesma release, então o ID manda o leitor abrir o que ele não tem. A
+  convenção de caminho fica, porque ensina onde ele põe as dele.
 - **`scripts/bootstrap-common.sh`, a convenção compartilhada dos bootstraps.** Flags,
   pré-requisito de manifesto e banner de dry-run viviam em cópia nos dois
   `bootstrap-*.sh`, e o banner aparecia quatro vezes como literal. O dono mandou
@@ -108,6 +114,13 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   plano. A guarda tinha nascido presa ao `delegate.sh`, e não à regra: agora
   `tests/delegate.test.sh` cobra `env -u ANTHROPIC_API_KEY` em todo invocador de
   backend, e não num só.
+- **A guarda de agnosticismo varria com dois motores de regex, e escondia regra morta.**
+  `regra` usa `git grep`, que não conhece `\b`, e `plantado` usava `grep`, que conhece:
+  uma regra cega no repo passava verde na violação plantada, que é a única coisa que o
+  `plantado` existe pra provar. Agora os dois usam o mesmo motor, e a troca revelou que
+  `primeira pessoa` nunca varreu nada. O escopo também deixava `LICENSE` e `.gitignore`
+  fora da varredura, e nome de projeto privado chega justamente por `.gitignore`; agora
+  entra todo arquivo versionado, sem lista de extensão.
 - **O `-h` dos dois bootstraps imprimia um `set -uo pipefail` solto no fim.** A faixa
   do `sed` passava uma linha do fim do cabeçalho, nos dois, desde que existem. Achado
   pelo teste novo da convenção compartilhada.
@@ -406,7 +419,7 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   validação em `localhost` entra quando o host cobra por build. Qual dos dois
   vale é decisão de projeto e mora no `CONVENTIONS.md` dele.
 - **codex default vai pra gpt-5.5** (`config/model-policy.json`): em
-  05/set/2026 o gpt-5.4 devolveu 400 nesta conta enquanto 5.5, 5.3, 5.1-codex
+  05/set/2026 o gpt-5.4 devolveu 400 no mesmo ambiente enquanto 5.5, 5.3, 5.1-codex
   e 5-codex respondiam. A matriz de ranking acompanha, e os nomes de Gemini
   Flash nela voltam a existir na policy (3.5 não existe; é 3.8).
 - **Quarto escopo de brevidade** (`skills/writing/SKILL.md`): mensagem pra uma pessoa num

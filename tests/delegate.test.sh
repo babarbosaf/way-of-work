@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Suíte do delegate.sh (SPEC-2026-002). Mocks de CLI antepostos ao PATH;
+# Suíte do delegate.sh. Mocks de CLI antepostos ao PATH;
 # nenhum worker real é invocado. Uso: bash tests/delegate.test.sh
 set -u
 

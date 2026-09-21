@@ -48,7 +48,7 @@ log_usage() {
     echo "$json" >> "$USAGE_LOG"
 }
 
-# Circuit-breaker per-model vive no delegate.sh (SPEC-2026-002 D-04) —
+# Circuit-breaker per-model vive no delegate.sh —
 # a invocação de workers externos é toda dele; aqui fica só gating + prompts.
 
 [[ $# -ge 1 ]] || die "uso: $0 <spec|diff> [alvo] [--findings <path|->] [--spec <path>] [--model auto|codex|gemini]"
@@ -323,7 +323,7 @@ else
     } > "$PROMPT_FILE"
 fi
 
-# Dispatch via delegate.sh (SPEC-2026-002 D-04). Mapeamento de exit codes:
+# Dispatch via delegate.sh. Mapeamento de exit codes:
 # delegate 0 → 0 (findings no stdout); delegate 1/2 (cascata esgotada, erro) → 2
 # (fallback adversarial). Códigos internos da cascata (cooldown, CLI ausente)
 # nunca chegam aqui — o delegate os resolve tentando o próximo backend.

@@ -556,7 +556,7 @@ Só depois de aprovado no showcase o componente entra na tela.
 ### Estrutura de arquivo padrão
 
 ```tsx
-// src/components/app/meu-card.tsx
+// src/components/app/card-exemplo.tsx
 import { ArrowRightIcon } from "@phosphor-icons/react/dist/ssr";
 import Link from "next/link";
 
