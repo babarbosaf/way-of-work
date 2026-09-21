@@ -78,6 +78,8 @@ esperado_pega "verify placeholder"  "placeholder"            --tickets fixtures/
 esperado_pega "pseudo-ID"           "não é ID real"          --tickets fixtures/tickets-ruins
 esperado_pega "delega sim"          "não resolve worker"     --tickets fixtures/tickets-ruins
 esperado_pega "[P] disputa arquivo" "disputa arquivo"        --tickets fixtures/tickets-ruins
+esperado_pega "task com tier sem tier" "exige \`tier:"   --tickets fixtures/tickets-ruins
+esperado_pega "tier em task sem tier" "não declara tier" --tickets fixtures/tickets-ruins
 
 echo "coerência: o exemplo das references passa no próprio lint"
 TMP=$(mktemp -d)

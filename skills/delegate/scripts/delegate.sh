@@ -155,7 +155,6 @@ fi
 
 [[ -n "$TASK" ]] || die "uso: delegate.sh --task <type> [--model B] [--worktree DIR] [--continue SLUG] - < prompt"
 [[ -z "$TIMEOUT" || "$TIMEOUT" =~ ^[0-9]+$ ]] || die "--timeout deve ser inteiro em segundos (recebido: '$TIMEOUT')"
-[[ -z "$TIER" || "$TIER" =~ ^(padrao|amplo)$ ]] || die "--tier aceita padrao ou amplo (recebido: '$TIER')"
 
 # --- modo bulk: o script monta o prompt em vez de cobrar heredoc do chamador ---
 # Existe porque a fricção matava o shunt: no log, 211 chamadas de review (que o
@@ -205,19 +204,27 @@ fi
 CASCADE=$(jq -c --arg t "$TASK" --arg tier "$TIER" '.tiers[$t][$tier]? // .tasks[$t] // .tasks["_any"] // empty' "$POLICY")
 [[ -n "$CASCADE" ]] || die "task-type desconhecido na policy: $TASK"
 
+# O conjunto de tiers válidos sai da policy. `padrao` é o implícito e nunca é
+# declarado (é tasks.<task>), então entra aqui e não lá. Tier que a task não
+# declara é erro, e não fila padrão calada: pedir amplo e receber padrão é
+# exatamente a divergência que o tier existe pra evitar.
+if [[ -n "$TIER" ]]; then
+    TIERS_OK=$(jq -r --arg t "$TASK" '["padrao"] + (.tiers[$t] // {} | keys) | join("|")' "$POLICY")
+    [[ "|$TIERS_OK|" == *"|$TIER|"* ]] || die "--tier '$TIER' não existe em '$TASK'; a policy declara: $TIERS_OK"
+fi
+
 # --- review espelha a classe da sessão master ---
 # Fila fixa punia o dono: em sessão Fable o revisor saía de classe abaixo do
 # master. O pairing filtra e ordena tasks.review pela classe em curso. `/model`
 # em runtime não reescreve settings.json, então DELEGATE_SESSION_CLASS é o
 # override manual, e classe desconhecida mantém a ordem declarada na policy.
 session_class() {
-    local m="${DELEGATE_SESSION_CLASS:-}"
+    local m="${DELEGATE_SESSION_CLASS:-}" k
     [[ -n "$m" ]] || m=$(jq -r '.model // empty' "${CLAUDE_CONFIG_DIR:-$HOME/.claude}/settings.json" 2>/dev/null)
-    case "$m" in
-        *fable*) echo fable ;;
-        *opus*)  echo opus ;;
-        *)       echo "" ;;
-    esac
+    for k in $(jq -r '.review_pairing // {} | keys[] | select(startswith("$") | not)' "$POLICY"); do
+        [[ "$m" == *"$k"* ]] && { echo "$k"; return; }
+    done
+    echo ""
 }
 if [[ "$TASK" == "review" ]]; then
     SESSION_CLASS=$(session_class)

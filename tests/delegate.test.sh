@@ -420,6 +420,11 @@ for cls in fable opus; do
   assert_contains "e no esforço sugerido dele ($eff)" "$out" "model_reasoning_effort=$eff"
   rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 done
+# classe nova entra só pela policy: o script não pode ter a lista de classes.
+jq '.review_pairing.sonnet = [.review_shelf.models[0]]' "$DELEGATE_POLICY" > "$TMP/pol-classe.json"
+out=$(DELEGATE_POLICY="$TMP/pol-classe.json" DELEGATE_SESSION_CLASS=claude-sonnet-5 run --task review -)
+assert_contains "classe declarada só na policy já pareia, sem editar o script" "$(cat "$TMP/err")" "classe da sessão (sonnet)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 fora=$(jq -r '[.review_pairing | to_entries[] | select(.key|startswith("$")|not) | .value[]] | unique
   - [.review_shelf.models[]] | .[]' "$DELEGATE_POLICY")
 [[ -z "$fora" ]] && ok "todo modelo do review_pairing está na review_shelf" \
@@ -444,6 +449,15 @@ assert_eq "exit 0 (degrau claude assumiu)" "$?" "0"
 assert_contains "chave não chega ao worker" "$out" "key=unset"
 grep -q "segredo-de-teste" <<<"$out" && fail "a chave da API vazou pro processo do worker" || ok "nenhum rastro da chave no worker"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+# A guarda é da regra, não do delegate.sh: quem invoca backend da policy invoca
+# `claude -p`, e o smoke_backends sonda TODO backend habilitado. Uma cópia sem
+# guarda cobra da API calada, então o teste cobra todo invocador, não um.
+for inv in "$HERE/../skills/delegate/scripts/delegate.sh" "$HERE/../skills/delegate/scripts/smoke_backends.sh"; do
+  nome=$(basename "$inv")
+  nuas=$(grep -nE '(^|[^-])\btimeout [0-9$]|\$TIMEOUT_CMD' "$inv" | grep -v 'env -u ANTHROPIC_API_KEY' | grep -vE '^\s*[0-9]+:\s*#|TIMEOUT_CMD=')
+  [[ -z "$nuas" ]] && ok "$nome invoca worker sempre com env -u ANTHROPIC_API_KEY" \
+    || fail "$nome tem invocação sem a guarda da chave: $nuas"
+done
 
 echo "T: --tier troca o ponto de entrada da cascata, e não o task-type (21/set/2026)"
 AMPLO_1=$(jq -r '.tiers.implement.amplo[0].model' "$DELEGATE_POLICY")
@@ -461,6 +475,9 @@ assert_contains "sem --tier resolve a mesma fila do padrão" "$out" "[-]m $PADRA
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 run_nostdin --task implement --tier gigante --paths "$A" --question "q" >/dev/null 2>&1; rc=$?
 assert_eq "tier inválido é erro de uso (exit 1), não fila silenciosa" "$rc" "1"
+assert_contains "a mensagem lista os tiers que a policy declara, não um literal do script" "$(cat "$TMP/err")" "padrao|amplo"
+run_nostdin --task scan --tier amplo --paths "$A" --question "q" >/dev/null 2>&1; rc=$?
+assert_eq "tier que a task não declara é erro, e não fila padrão calada" "$rc" "1"
 [[ "$(jq -r '.tiers.implement | keys | join(",")' "$DELEGATE_POLICY")" == "amplo" ]] \
   && ok "só o amplo é declarado em tiers (padrão é tasks.<task>, sem lista gêmea pra divergir)" \
   || fail "tiers declara mais que amplo: duas listas da mesma fila divergem"

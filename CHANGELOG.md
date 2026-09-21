@@ -94,6 +94,19 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   diff ganha as perguntas da área alterada: migration puxa perda de dado, auth puxa
   autorização, contrato público puxa compatibilidade, infra puxa ambiente.
 
+### Fixed
+
+- **O `smoke_backends.sh` invocava worker sem remover a `ANTHROPIC_API_KEY`.** A sonda
+  chama todo backend habilitado na policy, e o backend `claude` entrou nesta mesma
+  rodada, então rodar a sonda cobraria três chamadas de `claude -p` da API em vez do
+  plano. A guarda tinha nascido presa ao `delegate.sh`, e não à regra: agora
+  `tests/delegate.test.sh` cobra `env -u ANTHROPIC_API_KEY` em todo invocador de
+  backend, e não num só.
+- **Tier que a task não declara era fila padrão calada.** `--tier amplo --task scan`
+  resolvia `.tiers.scan.amplo?`, não achava, e caía no padrão sem dizer nada: pedir
+  amplo e receber padrão é a divergência que o tier existe pra evitar. Agora é erro de
+  uso que nomeia os tiers da policy.
+
 ### Removed
 
 - **`second-opinion`, `claude_api` e o backend `gemini` saíram.** O advisor cobre conselho
@@ -116,6 +129,16 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   as entradas de escopo project que apontavam pra repositório que não existe mais.
 
 ### Changed
+
+- **`padrao|amplo` deixou de ser literal de script.** O conjunto de tiers válidos era
+  hardcoded em três lugares (a policy, o regex do `delegate.sh` e uma tupla no
+  `check-spec.py`) sem nada obrigando os três a concordar, que é a lista gêmea contra a
+  qual o `$comment` da própria policy avisa. Os dois consumidores agora derivam de
+  `tiers.<task>` mais o `padrao` implícito.
+- **A classe da sessão saiu do `case` e virou chave de policy.** `session_class()`
+  casava `*fable*` e `*opus*` literalmente, um terceiro lugar onde o nome de uma classe
+  morava; agora percorre as chaves de `review_pairing`, e classe nova entra editando só
+  a policy.
 
 - **Skill deixou de carregar histórico de mudança.** Data de decisão e narrativa de "o
   que morreu quando" saíram da `skills/delegate/SKILL.md`, da matriz de modelos e dos

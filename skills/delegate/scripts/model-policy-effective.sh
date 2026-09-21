@@ -5,8 +5,8 @@
 #
 # Fonte única do merge pra TODO consumidor da policy (delegate.sh inlina a mesma
 # lógica no hot-path; triage/skills leem via este script). Override project-specific
-# (scope_pattern, env_file, finding_routing) vive só em model-policy.local.json
-# (gitignored) — a base pública fica genérica.
+# (finding_routing) vive só em model-policy.local.json (gitignored) — a base
+# pública fica genérica.
 set -euo pipefail
 BASE="${1:-$HOME/.claude/config/model-policy.json}"
 LOCAL="${BASE%.json}.local.json"

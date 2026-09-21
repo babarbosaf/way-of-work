@@ -161,20 +161,25 @@ CAMPOS = ["spec", "closes", "files", "blocked_by", "delega", "verify"]
 # `tier:` só é obrigatório onde o task-type do `delega:` declara tier na policy:
 # parseado sempre, cobrado condicionalmente.
 CAMPOS_LIDOS = CAMPOS + ["tier"]
-TIERS_VALIDOS = ("padrao", "padrão", "amplo")
 HEADER = re.compile(r"^\s*(\d+)\s*\[(XS|S|M|L|XL)\]\s*(\[P\])?\s*(.+)$", re.I)
 TODO = re.compile(r"<\s*TODO|<\.\.\.>|TBD", re.I)
 ID_OK = re.compile(r"^(?:nenhum|none|-)$|^#\d+$")
 
 
-def tasks_com_tier() -> set[str]:
-    """Task-types que a policy declara com tier. Policy ilegível não bloqueia ticket."""
+def tiers_por_task() -> dict[str, set[str]]:
+    """Tier que cada task-type aceita, lido da policy: ela é a fonte, e não uma
+    tupla aqui. `padrao` é o implícito, que a policy nunca declara porque é o
+    próprio `tasks.<task>`. Policy ilegível não bloqueia ticket."""
     pol = Path.home() / ".claude" / "config" / "model-policy.json"
     try:
         tiers = json.loads(pol.read_text(encoding="utf-8")).get("tiers", {})
     except (OSError, ValueError):
-        return set()
-    return {k for k, v in tiers.items() if not k.startswith("$") and isinstance(v, dict)}
+        return {}
+    return {
+        k: {"padrao"} | set(v)
+        for k, v in tiers.items()
+        if not k.startswith("$") and isinstance(v, dict)
+    }
 
 
 def parse_ticket(path: Path) -> dict:
@@ -211,7 +216,7 @@ def check_tickets(alvo: Path, ach: Achados) -> None:
         return
 
     paralelos: list[tuple[str, set[str], Path]] = []
-    com_tier = tasks_com_tier()
+    tiers_ok = tiers_por_task()
 
     for f in arquivos:
         nome = str(f)
@@ -251,13 +256,16 @@ def check_tickets(alvo: Path, ach: Achados) -> None:
         if delega in ("sim", "yes", "true"):
             ach.add(nome, t["linha_campo"]["delega"], "`delega: sim` não resolve worker; usar task-type ou `não`")
 
-        tier = " ".join(t["campos"].get("tier", [])).strip().lower()
-        if delega in com_tier and tier not in TIERS_VALIDOS:
+        tier = " ".join(t["campos"].get("tier", [])).strip().lower().replace("padrão", "padrao")
+        validos = tiers_ok.get(delega)
+        if validos and tier not in validos:
             ach.add(nome, t["linha_campo"]["delega"],
-                    f"`delega: {delega}` exige `tier: padrao|amplo`; sem tier o dispatch entra na fila no escuro "
-                    "(PADRÃO até 5 arquivos próprios sem tocar contrato, AMPLO toca contrato ou passa de 5)")
-        elif tier and tier not in TIERS_VALIDOS:
-            ach.add(nome, t["linha_campo"]["tier"], f"`tier: {tier}` não existe; usar padrao ou amplo")
+                    f"`delega: {delega}` exige `tier: {'|'.join(sorted(validos))}`; sem tier o dispatch entra "
+                    "na fila no escuro (PADRÃO até 5 arquivos próprios sem tocar contrato, AMPLO toca "
+                    "contrato ou passa de 5)")
+        elif tier and not validos:
+            ach.add(nome, t["linha_campo"]["tier"],
+                    f"`tier: {tier}` não vale em `delega: {delega}`: a policy não declara tier pra esse task-type")
 
         files = {x.strip().rstrip(",") for x in t["campos"].get("files", []) if x.strip()}
         if t["header"] and t["header"]["par"] and files:

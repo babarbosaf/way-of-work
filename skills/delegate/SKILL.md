@@ -48,6 +48,11 @@ troca o **ponto de entrada** da mesma fila:
 
 `PADRÃO` é até 5 arquivos próprios sem tocar contrato, e `AMPLO` toca contrato
 (rota, schema, assinatura pública, migration) ou passa de 5 arquivos próprios.
+
+Quais tiers existem é dado, não literal de script: o `delegate.sh` monta o
+conjunto de `tiers.<task>` da policy mais o `padrao` implícito, e o
+`check-spec.py` lê a mesma fonte. Tier que a task não declara é erro de uso, e
+não fila padrão calada.
 Quem classifica é o `to-tickets`, de forma mecânica, e o ticket carrega o `tier:`.
 Sem `--tier`, resolve a fila padrão.
 

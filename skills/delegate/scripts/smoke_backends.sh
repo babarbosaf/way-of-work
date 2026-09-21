@@ -60,17 +60,6 @@ while IFS= read -r entry; do
     [[ "$model" == "null" ]] && model=""
     pkey=$(pool_key "$backend" "$model")
 
-    scope=$(jq -r --arg b "$backend" '.backends[$b].scope_pattern // empty' "$POLICY")
-    if [[ -n "$scope" && "$PWD" != *"$scope"* ]]; then
-        echo "○ SKIP  $pkey${model:+ [$model]} — scope_pattern '$scope' não casa com cwd"
-        SKIP=$((SKIP+1)); continue
-    fi
-    envvar=$(jq -r --arg b "$backend" '.backends[$b].env_var // empty' "$POLICY")
-    if [[ -n "$envvar" ]]; then
-        envfile=$(jq -r --arg b "$backend" '.backends[$b].env_file // empty' "$POLICY")
-        grep -qm1 "^${envvar}=." "$envfile" 2>/dev/null || { echo "○ SKIP  $pkey — sem $envvar em $envfile"; SKIP=$((SKIP+1)); continue; }
-    fi
-
     bin=$(jq -r --arg b "$backend" '.backends[$b].bin // $b' "$POLICY")
     command -v "$bin" >/dev/null 2>&1 || { echo "○ SKIP  $pkey — CLI '$bin' ausente"; SKIP=$((SKIP+1)); continue; }
 
@@ -80,11 +69,11 @@ while IFS= read -r entry; do
 
     out=$(mktemp)
     if [[ "$prompt_via" == "stdin" ]]; then
-        echo "$PROMPT" | timeout 60 $cmd > "$out" 2>&1
+        echo "$PROMPT" | env -u ANTHROPIC_API_KEY timeout 60 $cmd > "$out" 2>&1
     elif [[ -n "$model" && -n "$model_flag" ]]; then
-        timeout 60 $cmd "$PROMPT" "$model_flag" "$model" < /dev/null > "$out" 2>&1
+        env -u ANTHROPIC_API_KEY timeout 60 $cmd "$PROMPT" "$model_flag" "$model" < /dev/null > "$out" 2>&1
     else
-        timeout 60 $cmd "$PROMPT" < /dev/null > "$out" 2>&1
+        env -u ANTHROPIC_API_KEY timeout 60 $cmd "$PROMPT" < /dev/null > "$out" 2>&1
     fi
     rc=$?
 
