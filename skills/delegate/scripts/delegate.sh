@@ -513,7 +513,7 @@ run_cascade() {
     return 1
 }
 
-USED="" USED_POOL=""
+USED="" USED_POOL="" USED_MODEL=""
 if run_cascade; then
     echo "worker: $USED" >&2   # linha estável pra consumidores (peer-review) — não reformatar
     if [[ -n "$WT_DIR" ]]; then
@@ -526,7 +526,7 @@ if run_cascade; then
             echo "branch: $WT_BRANCH (base=$base_ref @ $WT_BASE_SHA)" >&2
             echo "--- resumo do worker ---" >&2
             cat "$TMP_OUT" >&2
-            log_usage "$TASK" "$USED" "empty_diff" "branch=$WT_BRANCH base=$base_ref" "$USED_POOL" 0 0 "${DUR_S:-0}"
+            log_usage "$TASK" "$USED" "empty_diff" "${USED_MODEL:+model=$USED_MODEL }branch=$WT_BRANCH base=$base_ref" "$USED_POOL" 0 0 "${DUR_S:-0}"
             exit 5
         fi
 
@@ -542,7 +542,7 @@ if run_cascade; then
     else
         cat "$TMP_OUT"
     fi
-    log_usage "$TASK" "$USED" "ok" "${WT_BRANCH:+branch=$WT_BRANCH}" "$USED_POOL" \
+    log_usage "$TASK" "$USED" "ok" "${USED_MODEL:+model=$USED_MODEL}${WT_BRANCH:+ branch=$WT_BRANCH}" "$USED_POOL" \
         "$(wc -c < "$PROMPT_FILE")" "$(wc -c < "$TMP_OUT")" "${DUR_S:-0}"
     exit 0
 fi

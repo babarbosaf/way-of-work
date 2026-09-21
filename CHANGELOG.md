@@ -102,6 +102,11 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
   plano. A guarda tinha nascido presa ao `delegate.sh`, e não à regra: agora
   `tests/delegate.test.sh` cobra `env -u ANTHROPIC_API_KEY` em todo invocador de
   backend, e não num só.
+- **O log de uso não dizia qual modelo respondeu.** `USED_MODEL` era atribuída e nunca
+  lida, e o campo `pool` do codex é `codex` pros quatro modelos dele, então `dur_s` não
+  se atribuía a modelo nenhum, que é a pergunta que `dur_s` existe pra responder. O
+  modelo entra no `detail`, string livre como o `TRILHA`, e o schema do JSONL não muda.
+  Medido com worker real: `{"backend":"codex","pool":"codex","detail":"model=gpt-5.6-luna","dur_s":10}`.
 - **Tier que a task não declara era fila padrão calada.** `--tier amplo --task scan`
   resolvia `.tiers.scan.amplo?`, não achava, e caía no padrão sem dizer nada: pedir
   amplo e receber padrão é a divergência que o tier existe pra evitar. Agora é erro de

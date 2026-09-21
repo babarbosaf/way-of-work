@@ -348,6 +348,10 @@ jq -e '.bytes_out | numbers' <<<"$last" >/dev/null && ok "bytes_out é número" 
 [[ $(jq -r '.bytes_in' <<<"$last") -gt 0 ]] && ok "bytes_in maior que zero" || fail "bytes_in maior que zero ($last)"
 [[ $(jq -r '.bytes_out' <<<"$last") -gt 0 ]] && ok "bytes_out maior que zero" || fail "bytes_out maior que zero ($last)"
 jq -e '.dur_s | numbers' <<<"$last" >/dev/null && ok "dur_s é número (sem ele, .timeouts é palpite)" || fail "dur_s é número ($last)"
+# sem o modelo no log, dur_s não se atribui a ninguém: o pool do codex é "codex"
+# pros quatro modelos dele, e recalibrar .timeouts era palpite de novo.
+MOD=$(jq -r '.tasks.scan[0].model' "$DELEGATE_POLICY")
+assert_contains "o log nomeia o modelo que respondeu" "$last" "model=$MOD"
 : > "$DELEGATE_GATE_DIR/delegate.log"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 MOCK_CODEX=fail MOCK_AGY=fail run --task scan - >/dev/null 2>&1
