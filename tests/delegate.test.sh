@@ -942,6 +942,8 @@ cat > "$APURA_LOG" <<'EOF'
 {"ts":"2026-09-19T04:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
 {"ts":"2026-09-19T05:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
 {"ts":"2026-09-20T02:10:00Z","task":"scan","backend":"agy","status":"unavailable","detail":"model=fantasma","pool":"agy:gemini","bytes_in":1,"bytes_out":0,"dur_s":1}
+{"ts":"2026-09-20T04:00:00Z","task":"implement","backend":"claude","status":"ok","detail":"model=cl","pool":"claude","bytes_in":1,"bytes_out":1,"dur_s":15}
+{"ts":"2026-09-20T04:30:00Z","task":"implement","backend":"claude","status":"ok","detail":"model=cl","pool":"claude","bytes_in":1,"bytes_out":1,"dur_s":15}
 EOF
 cat > "$APURA_POLICY" <<'EOF'
 {"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":11},"agy:gemini":{"max_calls":1},"agy:claude_gpt":{"status":"sem_amostra"},"claude":{"status":"sem_amostra"}}},"timeouts":{"scan":24,"review":600},"tasks":{"scan":[{"backend":"codex","model":"m1"},{"backend":"agy","model":"fantasma"}],"review":[{"backend":"codex","model":"m1"}]},"tiers":{"implement":{"amplo":[{"backend":"claude","model":"ausente"}]}}}
@@ -954,6 +956,14 @@ assert_contains "lista modelo nunca invocado" "$apurado" "fantasma"
 assert_contains "lista degrau de tier nunca invocado" "$apurado" "ausente"
 python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$APURA_POLICY" >/dev/null
 assert_eq "--check aceita policy apurada" "$?" "0"
+# Pico medido é piso de uso, não teto de cota: duas chamadas num balde não são
+# régua, e cobrar esse número estrangularia o balde que ninguém gastou ainda. A
+# policy recusa a régua de propósito, e o apurador respeita sem perder o dado.
+jq -e '.budgets.pools.claude.observado == 2' <<<"$apurado" >/dev/null \
+  && ok "o pico observado do balde sem régua fica no relatório" \
+  || fail "o pico observado do balde sem régua se perdeu: $(jq -c .budgets.pools.claude <<<"$apurado")"
+jq -e '.budgets.pools.codex.max_calls == 11' <<<"$apurado" >/dev/null \
+  && ok "balde com régua declarada continua sendo apurado" || fail "a régua declarada deixou de ser apurada"
 
 # O detail de verdade não é só "model=X": em modo worktree ele carrega branch, e
 # desde o gate de saldo carrega saldo também. Fixture com a forma curta deixa o

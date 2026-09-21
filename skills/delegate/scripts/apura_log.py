@@ -91,8 +91,17 @@ def apurar(linhas, policy):
     janela_mins = policy["budgets"]["window_mins"]
     picos = pico_por_janela(recentes, timedelta(minutes=janela_mins))
     pools = {}
-    for pool in policy["budgets"]["pools"]:
-        if pool in picos:
+    for pool, declarado in policy["budgets"]["pools"].items():
+        # Régua recusada de propósito não é régua ausente. O pico medido é piso de
+        # uso, não teto do provider, e um balde que ninguém gastou ainda viraria
+        # régua de duas ou três chamadas, estrangulando justamente quem lidera a
+        # fila. Aqui fica o que a policy declara, com o pico observado ao lado pra
+        # a decisão futura ter o dado na mão.
+        if isinstance(declarado, dict) and "max_calls" not in declarado:
+            pools[pool] = dict(declarado)
+            if pool in picos:
+                pools[pool]["observado"] = picos[pool]
+        elif pool in picos:
             pools[pool] = {"max_calls": picos[pool]}
         else:
             pools[pool] = {"status": "sem_amostra"}
@@ -131,6 +140,8 @@ def divergencias(apurado, policy):
     erros = []
     for pool, valor in apurado["budgets"]["pools"].items():
         declarado = policy["budgets"]["pools"].get(pool)
+        if isinstance(declarado, dict) and "max_calls" not in declarado:
+            continue
         if declarado != valor:
             erros.append(f"budgets.pools.{pool}: declarado {declarado}, apurado {valor}")
     for task, valor in apurado["timeouts"].items():

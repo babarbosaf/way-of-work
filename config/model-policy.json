@@ -256,7 +256,7 @@
     "prompt_max_bytes": 250000
   },
   "budgets": {
-    "$comment": "Régua por balde: pico de chamadas que chegaram a worker em janela móvel de 300 minutos, apurado do gate/delegate.log em 21/set/2026. `unavailable` não conta, porque a cascata esgotou antes de alcançar worker. window_mins é escolha declarada, a forma da janela dos planos, e não medição. O balde claude não tem uma única linha gravada em sete meses: ele fica sem régua e vale como livre, igual a log ilegível, porque régua zero por falta de amostra bloquearia o plano principal justamente na fila que ele vai liderar. Quem recalcula isto é o apura_log.py, e o --check dele falha na divergência.",
+    "$comment": "Régua por balde: pico de chamadas que chegaram a worker em janela móvel de 300 minutos, apurado do gate/delegate.log em 21/set/2026. `unavailable` não conta, porque a cascata esgotou antes de alcançar worker. window_mins é escolha declarada, a forma da janela dos planos, e não medição. Balde sem régua vale como livre, igual a log ilegível. Quem recalcula isto é o apura_log.py, e o --check dele falha na divergência, menos onde a régua foi recusada de propósito.",
     "window_mins": 300,
     "pools": {
       "codex": {
@@ -269,7 +269,8 @@
         "max_calls": 2
       },
       "claude": {
-        "status": "sem_amostra"
+        "status": "sem_regua",
+        "porque": "o pico medido aqui é piso de uso, não teto de cota, e este balde lidera a fila de implementação: régua de três chamadas o estrangularia. Sem régua vale como livre, pelo D-02."
       }
     }
   },
