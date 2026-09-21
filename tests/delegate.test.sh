@@ -545,6 +545,41 @@ assert_contains "o modo serial ainda devolve identificador" "$out" "^task: "
 mock_codex; mock_agy
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
 
+echo "T: o resultado da task se consulta pelo identificador do despacho"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+mock_codex
+id_ok=$(run --task _probe --model codex --async - | sed -n 's/^task: //p')
+espera_estado() { local i; for i in $(seq 1 20); do
+    grep -q '^estado=em curso' "$DELEGATE_GATE_DIR/tasks/$1/meta" 2>/dev/null || return 0; sleep 0.3; done; return 1; }
+espera_estado "$id_ok"
+consulta=$(bash "$DELEGATE" --status "$id_ok" 2>&1); rc=$?
+assert_eq "consulta sai 0" "$rc" "0"
+assert_contains "a consulta nomeia o estado" "$consulta" "^estado: pronta"
+assert_contains "a consulta aponta pro material" "$consulta" "out.txt"
+[[ -s "$(sed -n 's/^material: //p' <<<"$consulta")" ]] \
+  && ok "o material apontado existe e tem conteúdo" || fail "o material apontado não existe"
+
+echo "T: os quatro estados terminais, e nenhum inventado"
+for e in "em curso" pronta falhou "estourou o prazo"; do
+  grep -q "$e" "$DELEGATE"  && ok "o despachante conhece o estado '$e'" \
+    || fail "o estado '$e' não existe no despachante"
+done
+grep -q 'cancelada' "$DELEGATE" && fail "estado cancelada apareceu, e matar worker está fora desta entrega" \
+  || ok "cancelada não existe, como a spec declara"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+MOCK_CODEX=fail run --task _probe --model codex - >/dev/null 2>&1
+id_falho=$(ls -t "$DELEGATE_GATE_DIR/tasks" | head -1)
+assert_contains "task que não fechou nomeia falha" "$(bash "$DELEGATE" --status "$id_falho" 2>&1)" "^estado: falhou"
+
+echo "T: identificador que não existe responde sem estourar"
+saida=$(bash "$DELEGATE" --status nao-existe-mesmo 2>&1); rc=$?
+assert_eq "exit 1, erro de uso e não crash" "$rc" "1"
+assert_contains "diz que não conhece o identificador" "$saida" "não existe"
+saida=$(bash "$DELEGATE" --status "../../etc/passwd" 2>&1); rc=$?
+[[ "$rc" != 0 ]] && ok "identificador com travessia de caminho é recusado" \
+  || fail "identificador com ../ foi aceito"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
 echo "T: a fila de implementação lidera pelo plano principal, e só ela mudou"
 # A ordem só pôde virar depois de o caminho do plano principal rodar pelo próprio
 # despachante em árvore isolada, medido em 21/set/2026: status ok, pool claude,

@@ -4,7 +4,8 @@
 #   delegate.sh --task <review|implement|scan|boilerplate>
 #   delegate.sh --task implement --tier <padrao|amplo>   # tier troca o ponto de entrada
 #               [--model <backend>] [--worktree <repo-dir>] [--continue <slug>]
-#               [--timeout N] [--gc <repo-dir>] -
+#               [--timeout N] [--gc <repo-dir>] [--async] -
+#   delegate.sh --status <id>     # estado e material de um despacho assíncrono
 #
 #   Modo bulk (o script monta o prompt, sem heredoc):
 #   delegate.sh --task scan --paths <f1> <f2>... --question "<pergunta>"
@@ -113,7 +114,7 @@ is_sem_resposta() { grep -qiE "(run ended with no output|no recorded error|no ou
 
 # --- args ---
 TASK="" TIER="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
-ASYNC=0
+ASYNC=0; STATUS_ID=""
 QUESTION="" REFERENCE="" PATHS=() EXPECT_LINES="" EXPECT_REGEX=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -128,6 +129,7 @@ while [[ $# -gt 0 ]]; do
         --model) FORCE_MODEL="$2"; shift 2 ;;
         --worktree) WORKTREE="$2"; shift 2 ;;
 --async) ASYNC=1; shift ;;
+--status) STATUS_ID="$2"; shift 2 ;;
         --continue) CONTINUE_SLUG="$2"; shift 2 ;;
         --timeout) TIMEOUT="$2"; shift 2 ;;
         --gc) GC="$2"; shift 2 ;;
@@ -137,6 +139,26 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+if [[ -n "$STATUS_ID" ]]; then
+    # Identificador é nome de diretório, então travessia de caminho é recusada
+    # antes de qualquer leitura: consulta é a porta mais fácil de empurrar.
+    case "$STATUS_ID" in
+        */*|..*|"") die "--status: identificador inválido: $STATUS_ID" ;;
+    esac
+    _meta="$GATE_DIR/tasks/$STATUS_ID/meta"
+    [[ -f "$_meta" ]] || die "--status: identificador não existe: $STATUS_ID"
+    echo "id: $STATUS_ID"
+    echo "estado: $(sed -n 's/^estado=//p' "$_meta")"
+    for _c in balde rc comecou terminou; do
+        _v=$(sed -n "s/^$_c=//p" "$_meta")
+        [[ -n "$_v" ]] && echo "$_c: $_v"
+    done
+    # Caminho, nunca conteúdo: o material pode carregar o repo inteiro, e despejar
+    # isso no terminal é vazamento, não diagnóstico.
+    [[ -f "$GATE_DIR/tasks/$STATUS_ID/out.txt" ]] && echo "material: $GATE_DIR/tasks/$STATUS_ID/out.txt"
+    [[ -f "$GATE_DIR/tasks/$STATUS_ID/report.txt" ]] && echo "report: $GATE_DIR/tasks/$STATUS_ID/report.txt"
+    exit 0
+fi
 if [[ -n "$GC" ]]; then
     find "$GATE_DIR/tasks" -mindepth 1 -maxdepth 1 -type d -mtime +7 -exec rm -rf {} + 2>/dev/null
     for _s in "$GATE_DIR"/slot.*; do
