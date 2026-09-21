@@ -7,6 +7,7 @@
 #               [--timeout N] [--gc <repo-dir>] [--async] -
 #   delegate.sh --status <id>     # estado e material de um despacho assíncrono
 #   delegate.sh --tasks           # as tasks em curso, uma por linha (só leitura)
+#   delegate.sh --tasks --oneline # os baldes em curso numa linha, nada se ocioso
 #
 #   Modo bulk (o script monta o prompt, sem heredoc):
 #   delegate.sh --task scan --paths <f1> <f2>... --question "<pergunta>"
@@ -136,7 +137,7 @@ is_sem_resposta() { grep -qiE "(run ended with no output|no recorded error|no ou
 
 # --- args ---
 TASK="" TIER="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
-ASYNC=0; STATUS_ID=""; TASKS=0
+ASYNC=0; STATUS_ID=""; TASKS=0; ONELINE=0
 QUESTION="" REFERENCE="" PATHS=() EXPECT_LINES="" EXPECT_REGEX=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -153,6 +154,7 @@ while [[ $# -gt 0 ]]; do
         --async) ASYNC=1; shift ;;
         --status) need_arg --status $#; STATUS_ID="$2"; shift 2 ;;
         --tasks) TASKS=1; shift ;;
+        --oneline) ONELINE=1; shift ;;
         --continue) need_arg --continue $#; CONTINUE_SLUG="$2"; shift 2 ;;
         --timeout) need_arg --timeout $#; TIMEOUT="$2"; shift 2 ;;
         --gc) need_arg --gc $#; GC="$2"; shift 2 ;;
@@ -161,6 +163,10 @@ while [[ $# -gt 0 ]]; do
         *) die "arg desconhecido: $1" ;;
     esac
 done
+
+# Modificador de leitura pedido sem a leitura despacharia calado, e quem pediu
+# formato de barra ficaria olhando uma barra vazia achando que não há task.
+[[ "$ONELINE" == 1 && "$TASKS" != 1 ]] && die "--oneline: só vale junto com --tasks"
 
 if [[ "$TASKS" == 1 ]]; then
     # A camada de terminal (ADR-0001) roda isto em laço num pane: o gate é a fonte,
@@ -172,6 +178,19 @@ if [[ "$TASKS" == 1 ]]; then
     # Uma abertura por task: dois `sed` no mesmo arquivo podiam cair em lados
     # diferentes de uma reescrita e imprimir tipo de uma versão com branch de
     # outra.
+    if [[ "$ONELINE" == 1 ]]; then
+        # A barra de status limpa a entrada quando o output vem vazio, então
+        # ocioso aqui é silêncio, e não frase: "nenhuma task em curso" deixaria a
+        # entrada acesa sem informação nenhuma. A ordem sai do glob de slot, que
+        # é estável, e por isso a linha não embaralha entre duas leituras iguais.
+        _baldes=""
+        while read -r _pool _id; do
+            [[ -n "$_id" && -f "$GATE_DIR/tasks/$_id/meta" ]] || continue
+            _baldes="${_baldes:+$_baldes }$_pool"
+        done < <(slot_em_curso)
+        if [[ -n "$_baldes" ]]; then echo "dlg: $_baldes"; fi
+        exit 0
+    fi
     _n=0
     while read -r _pool _id; do
         [[ -n "$_id" && -f "$GATE_DIR/tasks/$_id/meta" ]] || continue

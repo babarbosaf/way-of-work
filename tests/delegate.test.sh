@@ -748,6 +748,71 @@ wait "$_leitor"
 assert_eq "com a camada lendo em laço, o roteamento é idêntico" "$com_camada" "$sem_camada"
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
 
+echo "T: o leitor de uma linha cabe na barra de status, e cala quando não há nada"
+# AC-27. A barra de status usa a última linha do output e limpa a entrada quando
+# ele vem vazio, então o contrato tem duas metades que só valem juntas: uma linha
+# exata com worker vivo, e zero byte sem nenhum. Imprimir "nenhuma task em curso"
+# aqui deixaria a entrada acesa sem informação, que é o defeito que este modo
+# existe pra consertar.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+rm -rf "$DELEGATE_GATE_DIR/tasks"
+
+quieto=$(bash "$DELEGATE" --tasks --oneline 2>&1); rc=$?
+assert_eq "sem worker vivo o leitor de uma linha sai 0" "$rc" "0"
+assert_eq "e não devolve byte nenhum" "$quieto" ""
+
+TID1="implement-umalinha"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TID1"
+cat > "$DELEGATE_GATE_DIR/tasks/$TID1/meta" <<EOF
+estado=em curso
+task=implement
+balde=codex
+branch=delegate/$TID1
+comecou=2026-09-21T12:00:00Z
+EOF
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=%s\n' "$$" "$TID1" "$(( $(date +%s) + 300 ))" "codex" \
+  > "$DELEGATE_GATE_DIR/slot.codex"
+uma=$(bash "$DELEGATE" --tasks --oneline 2>&1)
+assert_eq "com um worker vivo devolve uma linha só" "$(wc -l <<<"$uma" | tr -d ' ')" "1"
+assert_contains "e a linha nomeia o balde" "$uma" "codex"
+
+# Dois baldes ocupados continuam numa linha. A barra corta o que não cabe na
+# largura, então quebrar linha aqui perde a segunda task em vez de mostrar ela.
+TID2="review-umalinha"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TID2"
+cat > "$DELEGATE_GATE_DIR/tasks/$TID2/meta" <<EOF
+estado=em curso
+task=review
+balde=agy:gemini
+branch=
+comecou=2026-09-21T12:00:00Z
+EOF
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=%s\n' "$$" "$TID2" "$(( $(date +%s) + 300 ))" "agy:gemini" \
+  > "$DELEGATE_GATE_DIR/slot.agy:gemini"
+duas=$(bash "$DELEGATE" --tasks --oneline 2>&1)
+assert_eq "dois workers vivos continuam numa linha" "$(wc -l <<<"$duas" | tr -d ' ')" "1"
+assert_contains "e a linha nomeia os dois baldes" "$duas" "codex"
+assert_contains "o segundo balde também aparece" "$duas" "agy:gemini"
+
+# O modo de várias linhas é o que o pane roda, e ele não pode ter mudado de forma
+# por causa deste ticket: uma linha por task, como o ticket 08 entregou.
+multi=$(bash "$DELEGATE" --tasks 2>&1)
+assert_eq "o modo de várias linhas dá uma linha por task" "$(wc -l <<<"$multi" | tr -d ' ')" "2"
+
+# Só de leitura também neste modo, pela mesma fronteira do ADR-0001.
+antes=$(estado_gate); bash "$DELEGATE" --tasks --oneline >/dev/null 2>&1; depois=$(estado_gate)
+assert_eq "o leitor de uma linha não escreve nada no gate" "$depois" "$antes"
+
+# Flag que não faz nada é a classe de falha silenciosa que esta spec persegue, e
+# num modificador de leitura ela é pior: o despacho acontece e ninguém vê aviso.
+mock_codex
+solto=$(echo x | bash "$DELEGATE" --oneline --task _probe - 2>&1); rc=$?
+assert_eq "o modo de uma linha sem a leitura falha" "$rc" "1"
+assert_contains "e diz qual flag falta" "$solto" "--tasks"
+
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+rm -rf "$DELEGATE_GATE_DIR/tasks"
+
 echo "T: a fila de implementação lidera pelo plano principal, e só ela mudou"
 # A ordem só pôde virar depois de o caminho do plano principal rodar pelo próprio
 # despachante em árvore isolada, medido em 21/set/2026: status ok, pool claude,

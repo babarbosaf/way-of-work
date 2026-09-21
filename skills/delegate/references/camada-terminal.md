@@ -23,19 +23,58 @@ caminho do material que o worker produziu, `delegate.sh --status <id>`.
 Branch vazia é despacho sem árvore de trabalho, e não erro de leitura: quem roda
 sem `--worktree` escreve na árvore da sessão e não tem branch própria.
 
-## A tela
-
-Dentro de uma sessão do herdr, um pane com o leitor em laço:
+Para caber numa barra de status existe o modo de uma linha:
 
 ```bash
-herdr pane split w1:p1 --direction down --ratio 0.3
-herdr pane rename w1:p2 "delegate: tasks em curso"
-herdr pane run w1:p2 'while :; do clear; date +%H:%M:%S; delegate.sh --tasks; sleep 2; done'
+delegate.sh --tasks --oneline
 ```
 
-Os IDs de pane saem de `herdr pane list`. O `pane run` digita o comando no shell
-do pane, então o laço vai como **um argumento entre aspas simples**: solto, o zsh
-do pane quebra no `do` antes de rodar qualquer coisa.
+Ele devolve `dlg: <balde> <balde>` com os baldes que têm worker vivo, e **não
+devolve nada** quando não há nenhum. O silêncio é o contrato, não economia de
+texto: a barra do herdr limpa a entrada quando o output vem vazio, então ocioso
+custa zero. Pedir `--oneline` sem `--tasks` é erro de uso e sai 1, porque
+modificador de leitura aceito num despacho despacharia calado.
+
+## A tela
+
+Duas superfícies, e a escolha é de quem olha.
+
+### Barra de status, o default
+
+No `~/.config/herdr/config.toml`, que é config do cliente e mora fora deste repo:
+
+```toml
+[ui]
+tab_bar_right = [
+  { type = "command", command = "~/.claude/scripts/delegate.sh --tasks --oneline", interval_seconds = 5, timeout_seconds = 2 },
+]
+tab_bar_right_separator = " · "
+```
+
+O herdr roda o comando no servidor, sem bloquear render e sem sobrepor uma
+execução na anterior, aproveita a **última linha** do output e apaga a entrada
+quando ele falha, estoura o timeout ou vem vazio. Ocioso então não ocupa nada, e
+é por isso que o leitor cala em vez de dizer "nenhuma". Em barra estreita o
+status cede espaço pras abas, o que é o comportamento que se quer: a aba importa
+mais que o balde.
+
+### Pane em laço, pra acompanhar despacho simultâneo
+
+```bash
+herdr pane split w1:p1 --direction down --ratio 0.85
+herdr pane rename w1:p2 "delegate: tasks em curso"
+herdr pane run w1:p2 'while :; do clear; delegate.sh --tasks; sleep 2; done'
+```
+
+Os IDs de pane saem de `herdr pane list`. Dois detalhes medidos custaram tela
+antes de entrarem aqui. O `--ratio` é a fatia do **primeiro** pane, não do novo,
+então `0.3` dá 69% ao leitor; e o `pane run` digita o comando no shell do pane,
+então o laço vai como **um argumento entre aspas simples**, porque solto o zsh do
+pane quebra no `do` antes de rodar qualquer coisa.
+
+Num pane vale o modo de várias linhas, que mostra identificador e branch. O
+`date` que já apareceu neste laço era heartbeat de quem estava testando, e num
+pane ocioso ele vira um relógio ocupando a tela: fora.
 
 ## O que a camada não faz
 
