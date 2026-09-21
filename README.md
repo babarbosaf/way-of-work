@@ -23,7 +23,7 @@ memória durável entre sessões.
 | `docs/` | Doutrina: `skill-authoring.md` (régua de autoria de skill, aplicada por `scripts/check-skill.py`), `evolve-over-create.md`, `autonomy-loops.md`, `adversarial-evaluator.md` (segunda opinião opcional) e runbooks em `docs/runbooks/`. |
 | `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`. |
 | `tests/` | Dez suítes, 456 asserts, sem rede e sem CLI real: despacho de modelo, review adversarial, os cinco hooks de enforcement, manifesto de plugins, linter de escrita, lint de spec, ticket e da corrente PRD, spec, ticket, lint de doc de estado, do grafo de domínios e do ciclo de vida das decisões, lint de skill, resolvedor de contexto do `/execute`, agnosticismo do repo e link markdown morto. |
-| `FEEDBACK.example.md` | Formato do buffer de correção do projeto: uma linha por entrada com o gatilho embutido, teto de 10, regra de promoção. O `FEEDBACK.md` real é gitignored. |
+| `*.example.md` | Molde de todo artefato de raiz que o método usa e o git não versiona: `INBOX.example.md` (degrau 0, captura crua), `TODOS.example.md` (degrau 1, backlog aceito) e `FEEDBACK.example.md` (buffer de correção). Cada um explica o formato, o teto e a regra de promoção, e traz entradas de exemplo. Copie pro projeto sem o `.example`. |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
 | `config/plugins.json` | Manifesto de plugins e de servidores MCP, com o porquê de cada um, aplicado por `scripts/bootstrap-plugins.sh`. Todos opcionais. |
 | `config/rtk.json` | Contrato do `rtk`: versão mínima e o que sai do rewrite, aplicado por `scripts/bootstrap-rtk.sh`. Opcional. |
@@ -39,6 +39,7 @@ Convenções estruturais:
   `@AGENTS.md`. O import é explícito, sobrevive a Windows, zip e export, e lê bem
   no diff de PR, coisas que o symlink não garante.
 - **`.gitignore` é allowlist:** ignora tudo (`*`), libera com `!`. O que é pessoal (scope pago, paths, roteamento) vive em `config/*.local.json`, gitignored, deep-merge em runtime.
+- **Artefato gitignored sobe como molde, nunca como conteúdo.** `INBOX.md`, `TODOS.md` e `FEEDBACK.md` são contexto de um projeto só, então o repo versiona o `.example.md` de mesmo nome e o real fica de fora. A regra vale pra tudo que o método usa e o git não guarda: se a doutrina manda escrever num arquivo, o molde desse arquivo está aqui, senão quem clona lê uma instrução que aponta pro nada.
 - **Este repo não tem PRD.** O `PRD.md` é do projeto que o método instancia, não do método: aqui o `README.md` descreve, o `AGENTS.md` manda e `docs/` carrega o detalhe. O `--grafo` do `check-docs.py` roda nos projetos, não na raiz deste.
 - **Memória (`memory/`) não é versionada.** É comportamento do agente, específico da máquina.
 - **Instrução viva, não changelog.** Docs de start-up não guardam histórico (→ `CHANGELOG.md`, ADR, memória).

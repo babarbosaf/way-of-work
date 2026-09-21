@@ -75,7 +75,7 @@ problema antes de classificar. Se não der pra traduzir, pergunto.
 
 - Formato: `[papercut] <o que incomoda> (<tela/componente>)`, uma linha, com contexto
   suficiente pra ser entendida meses depois.
-- Bloco agrupado no fim do arquivo, fora do P1/P2/P3.
+- Entra no `## Pool` do `TODOS.md`, com data ISO, como qualquer item que decai.
 - **Linha `[papercut]` não é executável individualmente.** Não entra em sprint, não vira
   task solta. É entrada de constraint.
 - Abrir o trilho design **zera o bloco** daquele escopo: cada linha vira constraint no
