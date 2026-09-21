@@ -35,6 +35,7 @@
 #
 # Kill switch: DELEGATE_DISABLED=1 → exit 2 (a sessão assume tudo).
 # Overrides p/ teste: DELEGATE_POLICY, DELEGATE_GATE_DIR, DELEGATE_INBOX.
+# Onde a worktree nasce: DELEGATE_WT_ROOT (default ~/.delegate-wt, FORA do repo).
 
 set -uo pipefail
 
@@ -53,6 +54,18 @@ if [[ -f "$_LOCAL_POLICY" ]] && jq -e . "$POLICY" >/dev/null 2>&1 && jq -e . "$_
     _EFF=$(mktemp); jq -s '.[0] * .[1]' "$POLICY" "$_LOCAL_POLICY" > "$_EFF" && POLICY="$_EFF"
 fi
 INBOX="${DELEGATE_INBOX:-$HOME/.claude/INBOX.md}"
+# A árvore de trabalho nasce FORA do repositório. Medido em 21/set/2026: o
+# worker do plano principal recusa escrita dentro do diretório de configuração
+# dele, e quando o repositório clonado É esse diretório, árvore interna deixa
+# aquele degrau sem como rodar. A recusa nem pede confirmação, porque a sessão
+# do worker não tem terminal. Contraprova no mesmo par de chamadas: o mesmo
+# modelo escreveu sem reclamar em diretório fora do repo.
+WT_ROOT="${DELEGATE_WT_ROOT:-$HOME/.delegate-wt}"
+# Nome do repo dentro da raiz, sem o ponto inicial: repositório oculto viraria
+# subdiretório oculto, e caminho que ainda contém o nome do diretório de
+# configuração do worker é exatamente o que dispara a recusa que esta mudança
+# existe pra evitar.
+wt_nome_repo() { local n; n=$(basename "$(cd "$1" && pwd)"); echo "${n#.}"; }
 LOG="$GATE_DIR/delegate.log"
 mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
 
@@ -437,8 +450,13 @@ if [[ -n "$WORKTREE" ]]; then
         # reusa worktree/branch existente — não recria, não remonta prompt do zero
         WT_FRESH=0
         WT_BRANCH="delegate/$CONTINUE_SLUG"
-        WT_DIR="$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)/../.delegate-wt/$CONTINUE_SLUG"
-        git -C "$WT_DIR" rev-parse --git-dir >/dev/null 2>&1 || die "--continue: worktree do slug '$CONTINUE_SLUG' não existe em $WT_DIR — rode sem --continue pra criar uma nova"
+        # Lugar novo primeiro, lugar antigo depois: árvore criada antes desta mudança
+        # continua reaproveitável, e --continue nunca apaga trabalho.
+        WT_DIR="$WT_ROOT/$(wt_nome_repo "$WORKTREE")/$CONTINUE_SLUG"
+        if ! git -C "$WT_DIR" rev-parse --git-dir >/dev/null 2>&1; then
+            WT_DIR="$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)/../.delegate-wt/$CONTINUE_SLUG"
+        fi
+        git -C "$WT_DIR" rev-parse --git-dir >/dev/null 2>&1 || die "--continue: worktree do slug '$CONTINUE_SLUG' não existe nem em $WT_ROOT nem no lugar antigo dentro do repo — rode sem --continue pra criar uma nova"
         base_ref="${BASE_REF:-$(git -C "$WORKTREE" merge-base HEAD "$WT_BRANCH" 2>/dev/null)}"
         [[ -n "$base_ref" ]] || base_ref="$WT_BRANCH^"
         WT_BASE_SHA=$(git -C "$WORKTREE" rev-parse --short "$base_ref" 2>/dev/null || echo "?")
@@ -454,7 +472,8 @@ if [[ -n "$WORKTREE" ]]; then
 
         slug="$TASK-$(date +%s | tail -c 6)$RANDOM"
         WT_BRANCH="delegate/$slug"
-        WT_DIR="$(git -C "$WORKTREE" rev-parse --path-format=absolute --git-common-dir)/../.delegate-wt/$slug"
+        WT_DIR="$WT_ROOT/$(wt_nome_repo "$WORKTREE")/$slug"
+        mkdir -p "$(dirname "$WT_DIR")" || die "não consegui criar a raiz das árvores em $WT_ROOT"
         git -C "$WORKTREE" worktree add -q -b "$WT_BRANCH" "$WT_DIR" "$base_ref" || die "falha ao criar worktree (base=$base_ref)"
         WT_FRESH=1
     fi

@@ -257,6 +257,27 @@ assert_contains "prompt abre com o diretório de trabalho" "$argv" "^Diretório 
 grep -q 'Diretório de trabalho: .*/\.\./' <<<"$argv" && fail "caminho do prompt normalizado (sem /../)" || ok "caminho do prompt normalizado (sem /../)"
 [[ ! -f "$REPO/worker-agy.txt" ]] && ok "árvore principal intocada" || fail "árvore principal intocada"
 
+echo "T: a árvore de trabalho nasce fora do repositório, e o lugar é dado"
+# Medido em 21/set/2026: o worker do plano principal recusa escrita dentro deste
+# repo, porque o repo é o diretório de configuração dele e ele trata isso como
+# caminho sensível, sem pedir confirmação. Árvore dentro do repo deixa aquele
+# degrau sem como rodar, e é ele que vai liderar a fila de implementação.
+export DELEGATE_WT_ROOT="$TMP/arvores"
+out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO" - 2>"$TMP/err"); rc=$?
+assert_eq "exit 0 com árvore fora do repo" "$rc" "0"
+wt_path=$(sed -n 's/^worktree: //p' <<<"$out" | head -1)
+[[ -n "$wt_path" ]] && ok "o report nomeia o caminho da árvore" || fail "o report não nomeia o caminho da árvore"
+[[ "$wt_path" == "$TMP/arvores"/* ]] && ok "a árvore nasceu no lugar declarado" \
+  || fail "a árvore ignorou o lugar declarado (nasceu em $wt_path)"
+REPO_REAL=$(cd "$REPO" && pwd)
+case "$wt_path" in "$REPO_REAL"/*) fail "a árvore nasceu dentro do repositório" ;; *) ok "nenhuma árvore dentro do repositório" ;; esac
+[[ ! -d "$REPO/.delegate-wt" ]] && ok "o repo não ganhou diretório de árvore" || fail "o repo ganhou .delegate-wt"
+
+echo "T: a limpeza acha árvore no lugar novo e no antigo"
+gc_out=$(bash "$DELEGATE" --gc "$REPO" 2>&1)
+assert_contains "a limpeza lista a branch de delegação" "$gc_out" "delegate/"
+unset DELEGATE_WT_ROOT
+
 echo "T: one-shot não recebe o preâmbulo de worktree"
 : > "$AGY_ARGV_DUMP"
 run --task boilerplate - >/dev/null
