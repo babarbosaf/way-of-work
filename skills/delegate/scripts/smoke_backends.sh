@@ -25,6 +25,8 @@ set -uo pipefail
 GATE_DIR="${DELEGATE_GATE_DIR:-$HOME/.claude/gate}"
 POLICY="${DELEGATE_POLICY:-$HOME/.claude/config/model-policy.json}"
 mkdir -p "$GATE_DIR"
+source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/lib-limites.sh"
+limites_configurar "$POLICY" "$GATE_DIR" || { echo "smoke: policy sem cooldowns válidos" >&2; exit 1; }
 
 PROMPT="responda apenas a palavra: ok"
 TASK_FILTER=""
@@ -36,8 +38,6 @@ pool_key() {
         '.backends[$b].pools // {} | to_entries[] | select(.value | index($m)) | .key' "$POLICY" 2>/dev/null | head -1)
     echo "$1${p:+:$p}"
 }
-arm_cooldown()   { date +%s > "$GATE_DIR/cooldown.$1"; }
-clear_cooldown() { rm -f "$GATE_DIR/cooldown.$1"; }
 
 # --- monta a lista de (backend, model) a sondar ---
 if [[ -n "$TASK_FILTER" ]]; then
@@ -83,11 +83,11 @@ while IFS= read -r entry; do
         PASS=$((PASS+1))
     elif [[ $rc -eq 0 ]]; then
         echo "✗ VAZIO $pkey${model:+ [$model]} — rc=0 mas stdout vazio (falha silenciosa do provider)"
-        arm_cooldown "$pkey"
+        armar_limite "$pkey" "$out" "$rc" >/dev/null
         FAIL=$((FAIL+1))
     else
         echo "✗ FALHA $pkey${model:+ [$model]} — rc=$rc: $(head -c 120 "$out" | tr '\n' ' ')"
-        arm_cooldown "$pkey"
+        armar_limite "$pkey" "$out" "$rc" >/dev/null
         FAIL=$((FAIL+1))
     fi
     rm -f "$out"

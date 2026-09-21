@@ -5,6 +5,8 @@ set -u
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DELEGATE="$HERE/../scripts/delegate.sh"
+SMOKE="$HERE/../skills/delegate/scripts/smoke_backends.sh"
+LIMITES="$HERE/../skills/delegate/scripts/lib-limites.sh"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -25,6 +27,9 @@ case "${MOCK_CODEX:-ok}" in
   ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
   multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
+  tierreset) echo "quota exceeded; reset at 2100-01-01T00:00:00Z"; exit 1 ;;
+  tierunreadable) echo "quota exceeded; reset em breve"; exit 1 ;;
+  timeout) exit 124 ;;
   notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
   fail) echo "erro interno"; exit 1 ;;
   absent) exit 127 ;;
@@ -38,6 +43,7 @@ cat > "$MOCKBIN/agy" <<'EOF'
 case "${MOCK_AGY:-ok}" in
   ok) echo "agy-resposta:$*"; exit 0 ;;
   ratelimit) echo "quota exceeded"; exit 1 ;;
+  timeout) exit 124 ;;
   fail) echo "erro interno agy"; exit 1 ;;
   empty) exit 0 ;;
   desculpa) echo "warning: run ended with no output and no recorded error"; exit 0 ;;
@@ -369,21 +375,94 @@ assert_contains "caiu pro agy" "$out" "agy-resposta"
 [[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] && ok "404 arma cooldown (janela ruim não se paga a cada chamada)" \
   || fail "404 não armou cooldown"
 assert_contains "stderr nomeia a janela, não o backend morto" "$(cat "$TMP/err")" "transiente"
-# cooldown de transiente é CURTO: janela ruim de provider passa sozinha
-# expira pela mesma conta que o cooldown_remaining faz (COOLDOWN_MINS=60)
+# Cooldown transiente expira em minutos, conforme a policy.
 armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex")
-rem=$(( armed + 60*60 - $(date +%s) ))
-[[ $rem -gt 0 && $rem -le 600 ]] && ok "cooldown de transiente expira em <=10min, não nos 60 do rate limit" \
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+transient_secs=$(( $(jq -r '.cooldowns.transient_mins' "$DELEGATE_POLICY") * 60 ))
+[[ $rem -gt 0 && $rem -le $transient_secs ]] && ok "cooldown de transiente expira no prazo da policy" \
   || fail "cooldown de transiente não é curto (rem=${rem}s)"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 MOCK_CODEX=ratelimit run --task "$CODEX_FIRST_TASK" - >/dev/null
 armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex" 2>/dev/null || echo 0)
-rem=$(( armed + 60*60 - $(date +%s) ))
-[[ $rem -gt 600 ]] && ok "rate limit real mantém o cooldown longo" || fail "rate limit perdeu o cooldown longo (rem=${rem}s)"
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+rate_secs=$(( $(jq -r '.cooldowns.rate_limit_mins' "$DELEGATE_POLICY") * 60 ))
+[[ $rem -gt 0 && $rem -le $rate_secs ]] && ok "rate limit por minuto usa o prazo da policy" || fail "rate limit não usa o prazo da policy (rem=${rem}s)"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 # o backend segue habilitado: 404 não é decisão de policy
 [[ "$(jq -r '.backends.codex.enabled' "$DELEGATE_POLICY")" == "true" ]] \
   && ok "404 não desabilita o backend na policy" || fail "backend foi desabilitado"
+
+echo "T: limite de tier respeita o reset declarado; reset ilegível cai no prazo longo"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=tierreset run --task "$CODEX_FIRST_TASK" - >/dev/null
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex")
+[[ "$armed" == "expiry:4102444800" ]] && ok "reset declarado arma até a hora informada" \
+  || fail "reset declarado não virou a expiração informada ($armed)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=tierunreadable run --task "$CODEX_FIRST_TASK" - >/dev/null
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex")
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+fallback_secs=$(( $(jq -r '.cooldowns.tier_fallback_mins' "$DELEGATE_POLICY") * 60 ))
+[[ $rem -gt 0 && $rem -le $fallback_secs ]] && ok "reset ilegível cai no prazo longo da policy" \
+  || fail "reset ilegível não caiu no prazo longo da policy (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: timeout da sonda é tropeço de provider e usa o prazo transiente"
+MOCK_AGY=timeout bash "$SMOKE" --task scan >/dev/null 2>&1 || true
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.agy:gemini")
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+[[ $rem -gt 0 && $rem -le $transient_secs ]] && ok "sonda classifica rc=124 como transiente" \
+  || fail "sonda não aplicou prazo transiente ao rc=124 (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: o classificador ancora no vocabulário de limite, e não em palavra solta"
+# Worker que falha imprimindo comando de git levava 60min de castigo num balde
+# são: o regex de cota casava a palavra "reset" em qualquer contexto. Achado na
+# integração do ticket 01, 21/set/2026.
+source "$LIMITES"; limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
+classe_de() { local f="$TMP/classe.txt"; printf '%s\n' "$1" > "$f"; classificar_limite "$f"; }
+[[ "$(classe_de 'resolve com: git reset --hard origin/main')" == desconhecido ]] \
+  && ok "output que só menciona reset não é cota de tier" \
+  || fail "palavra reset solta virou $(classe_de 'resolve com: git reset --hard origin/main')"
+[[ "$(classe_de 'usage limit reached, request timed out')" == tier_quota ]] \
+  && ok "cota esgotada continua cota mesmo dizendo timeout" \
+  || fail "cota com timeout na mensagem virou $(classe_de 'usage limit reached, request timed out')"
+[[ "$(classe_de '429 too many requests: rate limit')" == rate_limit ]] \
+  && ok "rate limit por minuto segue rate limit" || fail "rate limit foi reclassificado"
+[[ "$(classe_de 'status 404: model does not exist or you do not have access')" == transiente ]] \
+  && ok "404 de janela ruim segue transiente" || fail "404 foi reclassificado"
+[[ "$(classe_de '5-hour limit reached; resets at 2026-09-21T23:00:00Z')" == tier_quota ]] \
+  && ok "limite com hora de reset é cota de tier" || fail "limite com reset não é cota"
+
+echo "T: policy sem cooldowns falha alto, nunca cai calada em outra policy"
+# Rede de segurança que lê OUTRO arquivo faz todo teste com policy própria medir
+# o número do repo sem avisar: o assert fica verde provando nada.
+echo '{"tasks":{}}' > "$TMP/pol-sem-cooldown.json"
+( LIMITES_DEFAULT_POLICY="$HERE/../config/model-policy.json" \
+  limites_configurar "$TMP/pol-sem-cooldown.json" "$DELEGATE_GATE_DIR" ) \
+  && fail "policy sem cooldowns passou, e o prazo veio de outro arquivo" \
+  || ok "policy sem cooldowns não passa"
+limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
+
+echo "T: rc=124 é tropeço de provider nos DOIS invocadores, não só na sonda"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=timeout run --task "$CODEX_FIRST_TASK" - >/dev/null 2>&1
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex" 2>/dev/null || echo "expiry:0")
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+[[ $rem -gt 0 && $rem -le $transient_secs ]] \
+  && ok "despachante classifica rc=124 como transiente, igual à sonda" \
+  || fail "despachante não armou prazo transiente no rc=124 (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: os dois invocadores usam o mesmo classificador de limites"
+for invoker in "$DELEGATE" "$SMOKE"; do
+  grep -q 'lib-limites.sh' "$invoker" && ok "$(basename "$invoker") sourceia a biblioteca" \
+    || fail "$(basename "$invoker") não sourceia a biblioteca"
+  grep -Eq '^(is_ratelimit|is_transient|classificar_limite)\(\)' "$invoker" \
+    && fail "$(basename "$invoker") ainda classifica limite sozinho" \
+    || ok "$(basename "$invoker") não classifica limite sozinho"
+done
+[[ -f "$LIMITES" ]] && ok "biblioteca de limites existe" || fail "biblioteca de limites ausente"
 
 echo "T: review não rebaixa — cascata de review só tira da review_shelf (prateleira, 20/set/2026)"
 SHELF=$(jq -r '.review_shelf.models[]' "$DELEGATE_POLICY" | sort)

@@ -40,6 +40,10 @@ set -uo pipefail
 
 GATE_DIR="${DELEGATE_GATE_DIR:-$HOME/.claude/gate}"
 POLICY="${DELEGATE_POLICY:-$HOME/.claude/config/model-policy.json}"
+LIMITES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# O repositório expõe delegate.sh também por um link em scripts/.
+[[ -f "$LIMITES_DIR/lib-limites.sh" ]] || LIMITES_DIR="$LIMITES_DIR/../skills/delegate/scripts"
+source "$LIMITES_DIR/lib-limites.sh"
 # Override project-specific (finding_routing) vive em
 # <base>.local.json (gitignored). Merge base * local (deep; arrays do local vencem).
 # Espelho consciente de model-policy-effective.sh — manter em sincronia.
@@ -49,11 +53,6 @@ if [[ -f "$_LOCAL_POLICY" ]] && jq -e . "$POLICY" >/dev/null 2>&1 && jq -e . "$_
 fi
 INBOX="${DELEGATE_INBOX:-$HOME/.claude/INBOX.md}"
 LOG="$GATE_DIR/delegate.log"
-COOLDOWN_MINS="${PEER_COOLDOWN_MINS:-60}"
-# Falha transiente de provider (modelo 404, sem acesso) não é o mesmo bicho que
-# rate limit: passa em minutos, não em uma hora. Cooldown curto tira o custo de
-# ficar batendo numa janela ruim sem esconder o backend quando ela passa.
-TRANSIENT_COOLDOWN_MINS="${DELEGATE_TRANSIENT_COOLDOWN_MINS:-10}"
 mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
 
 die() { echo "delegate: $*" >&2; exit 1; }
@@ -83,25 +82,6 @@ pool_key() { # backend model → chave de bolsão ("backend" ou "backend:pool")
     echo "$1${p:+:$p}"
 }
 
-# --- cooldown per-backend (mesmo mecanismo do peer-review) ---
-cooldown_remaining() { # backend → 0 + segundos restantes se ativo; 1 se livre
-    local f="$GATE_DIR/cooldown.$1"
-    [[ -f "$f" ]] || return 1
-    local armed now rem
-    armed=$(cat "$f" 2>/dev/null) || return 1
-    now=$(date +%s)
-    rem=$(( armed + COOLDOWN_MINS*60 - now ))
-    if (( rem > 0 )); then echo "$rem"; return 0; fi
-    rm -f "$f"; return 1
-}
-arm_cooldown()   { date +%s > "$GATE_DIR/cooldown.$1"; }
-# Transiente arma com o relógio adiantado, pra expirar em TRANSIENT_COOLDOWN_MINS
-# usando o mesmo cooldown_remaining de sempre (um mecanismo, não dois).
-arm_transient_cooldown() { echo $(( $(date +%s) - (COOLDOWN_MINS - TRANSIENT_COOLDOWN_MINS)*60 )) > "$GATE_DIR/cooldown.$1"; }
-clear_cooldown() { rm -f "$GATE_DIR/cooldown.$1"; }
-
-is_ratelimit() { grep -qiE "(rate.?limit|too many requests|status.*429|quota.*(exceeded|reached)|usage limit|limit reached|out of (credits|tokens)|insufficient_quota|RESOURCE_EXHAUSTED)" "$1"; }
-
 # Janela ruim de provider, e não backend morto. Medido em 07/set/2026: o mesmo
 # `codex exec --model gpt-5.5` respondeu às 19h06 e devolveu 404 "does not exist
 # or you do not have access" às 19h31, no mesmo diretório e na mesma conta; os 7
@@ -114,8 +94,6 @@ is_ratelimit() { grep -qiE "(rate.?limit|too many requests|status.*429|quota.*(e
 # recorded error"), e a chamada foi gravada como ok. Desculpa é falha do pool,
 # tratada como o vazio: cooldown e cascata desce.
 is_sem_resposta() { grep -qiE "(run ended with no output|no recorded error|no output (was )?(produced|generated)|i (was |am )?(unable|not able) to (process|complete|read)|context (length|window) exceeded|prompt is too long|input too large)" "$1"; }
-
-is_transient() { grep -qiE "(does not exist or you do not have access|model .* not (found|supported)|status 404|502 bad gateway|503 service unavailable|504 gateway timeout|overloaded_error|temporarily unavailable)" "$1"; }
 
 # --- args ---
 TASK="" TIER="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
@@ -194,10 +172,12 @@ if ! jq -e . "$POLICY" >/dev/null 2>&1; then
               "invoke": "agy --sandbox --dangerously-skip-permissions --mode plan --print-timeout 15m -p",
               "worktree_invoke": "agy --dangerously-skip-permissions --add-dir {worktree} --print-timeout 30m -p"}
   },
-  "tasks": {"_any": [{"backend": "codex"}, {"backend": "agy"}]}
+  "tasks": {"_any": [{"backend": "codex"}, {"backend": "agy"}]},
+  "cooldowns": {"rate_limit_mins": 1, "tier_fallback_mins": 60, "transient_mins": 10}
 }
 JSON
 fi
+limites_configurar "$POLICY" "$GATE_DIR" || die "policy sem cooldowns válidos"
 # Tier troca o PONTO DE ENTRADA da cascata, não o task-type: só o tier amplo é
 # declarado na policy, e padrão (ou tier ausente) resolve a lista de tasks.<task>.
 # Duas listas da mesma fila divergiriam, e foi o que já aconteceu com a matriz.
@@ -378,16 +358,19 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
         fi
     fi
 
-    if [[ $rc -eq 124 ]]; then echo "⚠️  $backend timeout (${TIMEOUT}s)" >&2; return 1; fi
+    # Prazo estourado é tropeço de provider, e a sonda já tratava assim. Enquanto
+    # o despachante não armava nada aqui, o mesmo rc=124 castigava num invocador
+    # e passava batido no outro: dois comportamentos pro mesmo sinal.
+    if [[ $rc -eq 124 ]]; then
+        armar_limite "$pkey" "$TMP_OUT" "$rc" >/dev/null
+        echo "⚠️  $backend timeout (${TIMEOUT}s), cooldown de tropeço armado pela policy" >&2
+        return 3
+    fi
     if [[ $rc -ne 0 ]]; then
-        if is_ratelimit "$TMP_OUT"; then
-            arm_cooldown "$pkey"
-            echo "⚠️  $pkey rate-limited — cooldown armado (${COOLDOWN_MINS}min)" >&2
-            return 3
-        fi
-        if is_transient "$TMP_OUT"; then
-            arm_transient_cooldown "$pkey"
-            echo "⚠️  $pkey em falha transiente de provider — cooldown curto armado (${TRANSIENT_COOLDOWN_MINS}min). O backend segue habilitado: janela ruim passa sozinha, e nunca vira enabled:false na policy." >&2
+        local limite; limite=$(classificar_limite "$TMP_OUT")
+        if [[ "$limite" != desconhecido ]]; then
+            armar_limite "$pkey" "$TMP_OUT" >/dev/null
+            echo "⚠️  $pkey em limite $limite, cooldown armado pela policy" >&2
             return 3
         fi
         echo "⚠️  $backend falhou (rc=$rc):" >&2; cat "$TMP_OUT" >&2
@@ -402,14 +385,14 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     # semanal), cooldown reativo já revalida sozinho na próxima chamada após
     # expirar, sem precisar de intervenção manual.
     if [[ -z "$WORKTREE" ]] && ! grep -qE '[^[:space:]]' "$TMP_OUT"; then
-        arm_cooldown "$pkey"
-        echo "⚠️  $pkey devolveu vazio (rc=0, falha silenciosa) — cooldown armado (${COOLDOWN_MINS}min)" >&2
+        arm_cooldown_longo "$pkey"
+        echo "⚠️  $pkey devolveu vazio (rc=0, falha silenciosa), cooldown armado pela policy" >&2
         return 3
     fi
 
     if [[ -z "$WORKTREE" ]] && is_sem_resposta "$TMP_OUT"; then
-        arm_cooldown "$pkey"
-        echo "⚠️  $pkey devolveu desculpa em vez de resposta (rc=0) — cooldown armado (${COOLDOWN_MINS}min)" >&2
+        arm_cooldown_longo "$pkey"
+        echo "⚠️  $pkey devolveu desculpa em vez de resposta (rc=0), cooldown armado pela policy" >&2
         return 3
     fi
 
