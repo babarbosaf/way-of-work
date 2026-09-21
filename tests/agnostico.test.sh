@@ -103,7 +103,7 @@ echo "== plano e conta do dono =="
 # é doutrina: é a intimidade dele. O repo diz QUE existe hierarquia de modelos e
 # COMO ela se declara, nunca de quem é a fatura. Nome de modelo fica, porque é o
 # dado que a policy roteia; nome de plano comercial e preço, não.
-PLANO='chatgpt|\$[0-9]+ ?/ ?m[êe]s|\$[0-9]+/m|r\$ ?[0-9]|(assinatura|plano|cota) (j[áa] )?pag[oa]|dono (j[áa] )?paga|que o dono paga|nesta conta|setad[ao] neste ambiente|conectado em (jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)'  # guard-regex
+PLANO='chatgpt|\$[0-9]+ ?/ ?m[êe]s|\$[0-9]+ ?/ ?m\b|r\$ ?[0-9]|(assinatura|plano|cota) (j[áa] )?pag[oa]|dono (j[áa] )?paga|que o dono paga|nesta conta|setad[ao] neste ambiente|conectado em (jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)'  # guard-regex
 regra    "plano ou preço do dono" "$PLANO"  # guard-regex
 plantado "plano ou preço do dono" "$PLANO" "O codex é ChatGPT Plus (\$20/mês), custo marginal zero."  # guard-regex
 
