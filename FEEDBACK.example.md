@@ -21,6 +21,10 @@ impressão de que a lição está guardada.
 **Lição que vale pra qualquer projeto não é daqui.** Vai pra memória do agente. A skill
 `capture-lessons` roteia entre os dois destinos.
 
+
+As entradas abaixo são de um projeto fictício, e existem só pra mostrar o formato.
+Correção de verdade vai no `FEEDBACK.md` da raiz, que é gitignored, nunca aqui.
+
 ---
 
 ## Entradas

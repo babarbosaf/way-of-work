@@ -24,8 +24,11 @@ ponteiro. O mesmo texto nos dois degraus o `--estagio` acusa.
 Quando o inbox é compartilhado ajuda marcar tamanho, com `[S]`, `[M]` ou `[L]`, e
 dono entre parênteses no fim da linha. Nenhum dos dois é cobrado pelo lint.
 
+As capturas abaixo são de um projeto fictício, e existem só pra mostrar o formato.
+Captura de verdade vai no `INBOX.md` da raiz, que é gitignored, nunca aqui.
+
 ---
 
-- [ ] **[M]** 2026-09-18 Publicar o scaffold de projeto novo como template instanciável em um comando. Dep: sanitizar o settings do template pro público (owner: você)
+- [ ] **[M]** 2026-09-18 Avaliar tela de conciliação manual pro time de suporte: hoje eles pedem ajuste de pedido por chat e alguém roda SQL na mão (owner: você)
 - [ ] **[S]** 2026-09-16 O relatório de fechamento arredonda antes de somar, e o total fecha com 2 centavos de diferença
 - [ ] **[L]** 2026-09-11 Avaliar trocar o worker de fila por job agendado: a fila hoje tem 3 mensagens por dia e custa um serviço inteiro

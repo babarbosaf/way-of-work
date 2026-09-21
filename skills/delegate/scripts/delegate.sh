@@ -47,7 +47,7 @@ _LOCAL_POLICY="${POLICY%.json}.local.json"
 if [[ -f "$_LOCAL_POLICY" ]] && jq -e . "$POLICY" >/dev/null 2>&1 && jq -e . "$_LOCAL_POLICY" >/dev/null 2>&1; then
     _EFF=$(mktemp); jq -s '.[0] * .[1]' "$POLICY" "$_LOCAL_POLICY" > "$_EFF" && POLICY="$_EFF"
 fi
-INBOX="${DELEGATE_INBOX:-$HOME/.claude/inbox.md}"
+INBOX="${DELEGATE_INBOX:-$HOME/.claude/INBOX.md}"
 LOG="$GATE_DIR/delegate.log"
 COOLDOWN_MINS="${PEER_COOLDOWN_MINS:-60}"
 # Falha transiente de provider (modelo 404, sem acesso) não é o mesmo bicho que

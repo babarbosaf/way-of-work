@@ -32,6 +32,10 @@ constraint, não task.** Não entra em sprint e não vira task solta. A skill
 `design-workflow` lê essas linhas na próxima passada de design, e cada uma vira
 constraint ou morre ali.
 
+
+Os itens abaixo são de um projeto fictício, e existem só pra mostrar o formato.
+Item de verdade vai no `TODOS.md` da raiz, que é gitignored, nunca aqui.
+
 ---
 
 ## Próximos
