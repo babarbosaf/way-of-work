@@ -16,16 +16,23 @@ assert_contains() { grep -q "$3" <<<"$2" && ok "$1" || fail "$1 (não contém '$
 
 # --- mocks ---
 MOCKBIN="$TMP/bin"; mkdir -p "$MOCKBIN"
+# Vários testes sobrescrevem um mock pra exercitar um comportamento e precisam do
+# default de volta depois; a função é a única cópia de cada corpo.
+mock_codex() {
 cat > "$MOCKBIN/codex" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_CODEX:-ok}" in
   ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
   multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
+  notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
   fail) echo "erro interno"; exit 1 ;;
   absent) exit 127 ;;
 esac
 EOF
+chmod +x "$MOCKBIN/codex"
+}
+mock_agy() {
 cat > "$MOCKBIN/agy" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_AGY:-ok}" in
@@ -38,6 +45,9 @@ case "${MOCK_AGY:-ok}" in
   drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
 esac
 EOF
+chmod +x "$MOCKBIN/agy"
+}
+mock_codex; mock_agy
 # O degrau claude é o último de toda cascata, e o default aqui é FALHAR: teste que
 # quer exercitá-lo liga com MOCK_CLAUDE=ok. Sem esse default, todo teste de
 # "cascata esgotada" sairia 0 chamando o claude REAL e queimando cota do plano.
@@ -53,7 +63,7 @@ case "${MOCK_CLAUDE:-fail}" in
   absent) exit 127 ;;
 esac
 EOF
-chmod +x "$MOCKBIN"/codex "$MOCKBIN"/agy "$MOCKBIN"/claude
+chmod +x "$MOCKBIN/claude"
 export PATH="$MOCKBIN:$PATH"
 
 # ambiente isolado: gate dir e policy próprios do teste
@@ -148,7 +158,7 @@ MOCK_CODEX=fail MOCK_AGY=fail run --task "$CODEX_FIRST_TASK" - >/dev/null; rc=$?
 assert_eq "exit 2 — todo backend da policy é de custo marginal zero, e esgotou" "$rc" "2"
 
 echo "T: journey fallback (todos rate-limited → exit 2 + a sessão assume)"
-MOCK_CODEX=ratelimit MOCK_AGY=ratelimit run --task "$CODEX_FIRST_TASK" - >"$TMP/out2"; rc=$?
+MOCK_CODEX=ratelimit MOCK_AGY=ratelimit run --task "$CODEX_FIRST_TASK" - >/dev/null; rc=$?
 assert_eq "exit 2" "$rc" "2"
 assert_contains "mensagem de fallback" "$(cat "$TMP/err")" "A sessão assume"
 [[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] && ok "cooldown codex armado" || fail "cooldown codex armado"
@@ -247,20 +257,7 @@ assert_eq "exit 0 com comentário no trunk" "$rc" "0"
 assert_contains "base é o trunk limpo" "$out" "^base: main @"
 rm -rf "$REPO/.claude"; git -C "$REPO" add -u .claude; git -C "$REPO" commit -qm sem-project-yaml
 
-# mock agy volta ao padrão pros testes seguintes
-cat > "$MOCKBIN/agy" <<'EOF'
-#!/usr/bin/env bash
-case "${MOCK_AGY:-ok}" in
-  ok) echo "agy-resposta:$*"; exit 0 ;;
-  ratelimit) echo "quota exceeded"; exit 1 ;;
-  fail) echo "erro interno agy"; exit 1 ;;
-  empty) exit 0 ;;
-  desculpa) echo "warning: run ended with no output and no recorded error"; exit 0 ;;
-  curto) echo "linha unica"; exit 0 ;;
-  drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
-esac
-EOF
-chmod +x "$MOCKBIN/agy"
+mock_agy   # volta ao padrão pros testes seguintes
 
 echo "T: journey peer-review consome delegate (contrato 0/2 preservado)"
 cat > "$MOCKBIN/codex" <<'EOF'
@@ -360,18 +357,7 @@ assert_contains "linha de falha ainda é JSONL válido" "$falha" "unavailable"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 
 echo "T: 404 de provider é janela ruim, não backend morto — cooldown curto"
-cat > "$MOCKBIN/codex" <<'EOF'
-#!/usr/bin/env bash
-case "${MOCK_CODEX:-ok}" in
-  ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
-  multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
-  ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
-  notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
-  fail) echo "erro interno"; exit 1 ;;
-  absent) exit 127 ;;
-esac
-EOF
-chmod +x "$MOCKBIN/codex"
+mock_codex   # o peer-review trocou o mock; volta ao default, que traz o notfound
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 out=$(MOCK_CODEX=notfound run --task "$CODEX_FIRST_TASK" -)
 assert_eq "404 no 1o degrau: cascata desce e a task fecha" "$?" "0"
@@ -398,18 +384,16 @@ rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 echo "T: review não rebaixa — cascata de review só tira da review_shelf (prateleira, 20/set/2026)"
 SHELF=$(jq -r '.review_shelf.models[]' "$DELEGATE_POLICY" | sort)
 [[ -n "$SHELF" ]] && ok "policy declara a review_shelf" || fail "review_shelf ausente: 'review não rebaixa' voltou a ser prosa"
-for t in review; do
-  fora=$(jq -r --arg t "$t" '.tasks[$t][].model' "$DELEGATE_POLICY" | while read -r m; do
-    grep -qxF "$m" <<<"$SHELF" || echo "$m"
-  done)
-  [[ -z "$fora" ]] && ok "$t só usa modelo da review_shelf" \
-    || fail "$t usa modelo fora da review_shelf: $fora"
-  agy=$(jq -r --arg t "$t" '[.tasks[$t][] | select(.backend=="agy")] | length' "$DELEGATE_POLICY")
-  [[ "$agy" == "0" ]] && ok "$t não tem backend agy (nenhum modelo do agy revisa)" \
-    || fail "$t tem $agy entrada(s) de agy: review rebaixaria em cooldown"
-done
+fora=$(jq -r '.tasks.review[].model' "$DELEGATE_POLICY" | while read -r m; do
+  grep -qxF "$m" <<<"$SHELF" || echo "$m"
+done)
+[[ -z "$fora" ]] && ok "review só usa modelo da review_shelf" \
+  || fail "review usa modelo fora da review_shelf: $fora"
+agy=$(jq -r '[.tasks.review[] | select(.backend=="agy")] | length' "$DELEGATE_POLICY")
+[[ "$agy" == "0" ]] && ok "review não tem backend agy (nenhum modelo do agy revisa)" \
+  || fail "review tem $agy entrada(s) de agy: review rebaixaria em cooldown"
 
-echo "T: codex recebe modelo e esforço da cascata, e o esforço é o sugerido do modelo (20/set/2026)"
+echo "T: codex recebe modelo e esforço da entrada da cascata, não do config global do CLI"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 REV_MODEL=$(jq -r '[.tasks.review[] | select(.backend=="codex")][0].model' "$DELEGATE_POLICY")
 REV_EFFORT=$(jq -r '[.tasks.review[] | select(.backend=="codex")][0].effort' "$DELEGATE_POLICY")
@@ -418,12 +402,6 @@ for e in $(jq -r '.suggested_effort | to_entries[] | select(.key|startswith("$")
   case "$e" in xhigh|max|ultra) fail "suggested_effort traz '$e', e xhigh/max/ultra estão fora por decisão" ;;
     *) ok "suggested_effort '$e' está dentro do teto" ;; esac
 done
-diverg=$(jq -r '[.tasks | to_entries[] | select((.value|type)=="array") | .value[] | select(.backend=="codex")]
-  | map(select(.effort != ($suge[.model] // .effort))) | .[] | "\(.model) usa \(.effort), sugerido \($suge[.model])"' \
-  --argjson suge "$(jq -c '.suggested_effort | with_entries(select(.key|startswith("$")|not))' "$DELEGATE_POLICY")" \
-  "$DELEGATE_POLICY")
-[[ -z "$diverg" ]] && ok "toda entrada de codex roda no esforço sugerido do modelo" \
-  || fail "entrada divergindo do esforço sugerido: $diverg"
 out=$(DELEGATE_SESSION_CLASS=nenhuma run --task review -)
 assert_eq "exit 0" "$?" "0"
 assert_contains "modelo vai no -m" "$out" "[-]m $REV_MODEL"
@@ -495,14 +473,16 @@ grep -q 'exige --reference' "$DELEGATE"  \
   && ok "boilerplate segue portando a guarda de --reference (é o que o separa do scan)" \
   || fail "a guarda de --reference morreu: aí os dois task-types viram um só"
 
-echo "T: entrada de claude na cascata roda no esforço sugerido do modelo"
-diverg_cl=$(jq -r '[(.tasks|to_entries[]|select((.value|type)=="array")|.value[]),
+echo "T: toda entrada de cascata roda no esforço sugerido do modelo dela"
+# Cobre tasks e tiers nos três backends. Modelo fora do suggested_effort (agy, que
+# carrega o esforço no próprio nome) passa: sem sugestão não há divergência.
+diverg=$(jq -r '[(.tasks|to_entries[]|select((.value|type)=="array")|.value[]),
    (.tiers|to_entries[]|select(.key|startswith("$")|not)|.value|to_entries[]|.value[])]
-  | map(select(.backend=="claude")) | map(select(.effort != ($suge[.model] // .effort)))
-  | .[] | "\(.model) usa \(.effort), sugerido \($suge[.model])"' \
+  | map(select(.effort != ($suge[.model] // .effort)))
+  | .[] | "\(.backend)/\(.model) usa \(.effort), sugerido \($suge[.model])"' \
   --argjson suge "$(jq -c '.suggested_effort | with_entries(select(.key|startswith("$")|not))' "$DELEGATE_POLICY")" \
   "$DELEGATE_POLICY")
-[[ -z "$diverg_cl" ]] && ok "toda entrada de claude roda no esforço sugerido" || fail "entrada de claude divergindo: $diverg_cl"
+[[ -z "$diverg" ]] && ok "nenhuma entrada diverge do esforço sugerido" || fail "entrada divergindo: $diverg"
 
 echo ""
 echo "== $PASS passed, $FAIL failed =="

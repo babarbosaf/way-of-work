@@ -97,7 +97,6 @@ def check_spec(path: Path, ach: Achados) -> None:
     linhas = corpo.splitlines()
     cercado = fenced_ranges(linhas)
 
-    # frontmatter: status de processo e coautoria
     for i, ln in enumerate(linhas_fm, start=1):
         if STATUS_PROCESSO.search(ln):
             ach.add(nome, i, "status de processo no frontmatter; a spec fala do problema, não da rodada")
@@ -141,7 +140,6 @@ def check_spec(path: Path, ach: Achados) -> None:
         if VAGO.search(ln):
             ach.add(nome, n, "critério vago; reescrever em SIM/NÃO observável")
 
-    # seções obrigatórias
     faltando = [s for s in SECOES_SPEC if not re.search(rf"^#{{1,4}}\s+.*{s}", corpo, re.I | re.M)]
     if faltando:
         ach.add(nome, 0, f"seção obrigatória ausente: {', '.join(faltando)}")
@@ -160,11 +158,13 @@ def check_spec(path: Path, ach: Achados) -> None:
 
 AC = re.compile(r"\bAC-(\d{2})\b")
 CAMPOS = ["spec", "closes", "files", "blocked_by", "delega", "verify"]
-# `tier:` não é obrigatório em todo ticket: só onde o task-type do `delega:`
-# declara tier na policy. Parseado sempre, cobrado condicionalmente.
-CAMPOS_OPCIONAIS = ["tier"]
-CAMPOS_LIDOS = CAMPOS + CAMPOS_OPCIONAIS
+# `tier:` só é obrigatório onde o task-type do `delega:` declara tier na policy:
+# parseado sempre, cobrado condicionalmente.
+CAMPOS_LIDOS = CAMPOS + ["tier"]
 TIERS_VALIDOS = ("padrao", "padrão", "amplo")
+HEADER = re.compile(r"^\s*(\d+)\s*\[(XS|S|M|L|XL)\]\s*(\[P\])?\s*(.+)$", re.I)
+TODO = re.compile(r"<\s*TODO|<\.\.\.>|TBD", re.I)
+ID_OK = re.compile(r"^(?:nenhum|none|-)$|^#\d+$")
 
 
 def tasks_com_tier() -> set[str]:
@@ -175,9 +175,6 @@ def tasks_com_tier() -> set[str]:
     except (OSError, ValueError):
         return set()
     return {k for k, v in tiers.items() if not k.startswith("$") and isinstance(v, dict)}
-HEADER = re.compile(r"^\s*(\d+)\s*\[(XS|S|M|L|XL)\]\s*(\[P\])?\s*(.+)$", re.I)
-TODO = re.compile(r"<\s*TODO|<\.\.\.>|TBD", re.I)
-ID_OK = re.compile(r"^(?:nenhum|none|-)$|^#\d+$")
 
 
 def parse_ticket(path: Path) -> dict:

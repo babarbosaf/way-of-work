@@ -3,7 +3,7 @@ name: remove-dumb-comments
 description: |
   Sinaliza comentários que só repetem o que o código já diz, e remove apenas os que o usuário aprovar. Usa `git blame` pra idade e uma tabela com veredito Remover/Manter.
   Invoque quando o usuário pedir pra remover comentários óbvios/redundantes, limpar comentários, ou digitar `/remove-dumb-comments` com um número ou `all`.
-  Não invoque para: comentário que carrega o porquê (decisão, workaround, referência), remoção de código morto sem relação com comentário, ou revisão geral de qualidade (isso é `code-review`/`simplify`).
+  Não invoque para: comentário que carrega o porquê (decisão, workaround, referência), remoção de código morto sem relação com comentário, ou revisão geral de qualidade (isso é o `/simplify` e o `/code-review`, built-ins do Claude Code).
 ---
 
 # remove-dumb-comments

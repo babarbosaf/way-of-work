@@ -235,7 +235,6 @@ if [[ "$TASK" == "review" ]]; then
     fi
 fi
 
-# --timeout explícito ganha; senão, default por task-type da policy; senão, 120s
 [[ -n "$TIMEOUT" ]] || TIMEOUT=$(jq -r --arg t "$TASK" '.timeouts[$t] // 120' "$POLICY")
 
 # --- timeout wrapper ---
@@ -358,8 +357,8 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     local rc
     if [[ "$prompt_via" == "stdin" ]]; then
         # o `-` final do invoke é "prompt por stdin"; as flags entram antes dele
-        local head="${cmd% -}"; [[ "$head" == "$cmd" ]] && head="$cmd"
-        local tail=""; [[ "$head" != "$cmd" ]] && tail="-"
+        local head="${cmd% -}" tail=""
+        [[ "$head" != "$cmd" ]] && tail="-"
         env -u ANTHROPIC_API_KEY $TIMEOUT_CMD $head "${extra[@]}" $tail < "$PROMPT_FILE" > "$TMP_OUT" 2>&1; rc=$?
     else
         # </dev/null explícito: sem stdin próprio (prompt vai por --arg), o worker
@@ -517,7 +516,6 @@ if run_cascade; then
         if [[ -z "$(git -C "$WT_DIR" status --porcelain)" ]] && \
            [[ -z "$(git -C "$WORKTREE" diff --name-only "$base_ref...$WT_BRANCH" 2>/dev/null)" ]]; then
             echo "⚠️  worker ($USED) produced no changes (suspected silent failure)" >&2
-            echo "worker: $USED" >&2
             echo "branch: $WT_BRANCH (base=$base_ref @ $WT_BASE_SHA)" >&2
             echo "--- resumo do worker ---" >&2
             cat "$TMP_OUT" >&2
