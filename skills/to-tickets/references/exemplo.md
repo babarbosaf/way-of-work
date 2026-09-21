@@ -36,6 +36,7 @@ files:      src/ingest/dtr.py
             tests/ingest/test_dtr_category.py
 blocked_by: nenhum
 delega:     implement
+tier:       amplo
 verify:     uv run pytest tests/ingest/test_dtr_category.py
 
 Aceite:
@@ -62,6 +63,7 @@ files:      src/ingest/pdv.py
             tests/ingest/test_pdv_category.py
 blocked_by: nenhum
 delega:     implement
+tier:       padrao
 verify:     uv run pytest tests/ingest/test_pdv_category.py
 
 Aceite:
@@ -112,6 +114,7 @@ closes:     AC-04
 files:      tests/scenarios/revenue_reconcilia.py
 blocked_by: #03
 delega:     implement
+tier:       padrao
 verify:     uv run pytest tests/scenarios/revenue_reconcilia.py
 
 Aceite:

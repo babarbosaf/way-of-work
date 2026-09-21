@@ -41,7 +41,8 @@ livre. Tudo vira brief antes de virar código.
 - [ ] Ordenar tickets: `blocked_by` primeiro, `[P]` da mesma fase em leva (teto 3
       a 5). Ticket fora do brief não entra.
 - [ ] Executor por ticket: `delega: <type>` vai pro worker; `delega: não` roda
-      inline. Degradar é permitido, promover não.
+      inline. Degradar é permitido, promover não. O `tier:` do ticket vai junto no
+      dispatch e escolhe o ponto de entrada da fila.
 - [ ] **Decisão aberta vira `AskUserQuestion`**, com a recomendação como primeira
       opção. Nada implementa antes da resposta. Decisão respondida entra no brief
       e, se muda desenho, vira `D-NN` na spec.
@@ -52,8 +53,9 @@ livre. Tudo vira brief antes de virar código.
 Loop, um ticket ou uma leva `[P]` por vez:
 
 1. **Abrir.** Comentar "iniciado" no ticket (`references/ticket-updates.md`).
-2. **Executar.** Worker: `delegate.sh --task <type> --worktree <repo> -` com o
-   ticket inteiro no prompt, mais regras do `AGENTS.md` e `files:` como limite.
+2. **Executar.** Worker: `delegate.sh --task <type> --tier <tier> --worktree <repo> -`
+   com o ticket inteiro no prompt, mais regras do `AGENTS.md` e `files:` como
+   limite. O `--tier` repassa o campo do ticket, sem reclassificar na hora.
    Inline: TDD nos `files:` do ticket, na branch de integração.
 3. **Integrar.** Protocolo do `delegate` (status da árvore principal, diff no
    escopo, `verify` verde), depois merge serial na branch de integração e

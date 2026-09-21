@@ -11,6 +11,7 @@ files:      src/ingest/pdv.py
             tests/ingest/test_pdv_category.py
 blocked_by: nenhum
 delega:     implement
+tier:       padrao
 verify:     uv run pytest tests/ingest/test_pdv_category.py
 
 Aceite:

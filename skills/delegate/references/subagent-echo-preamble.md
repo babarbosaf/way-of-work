@@ -23,7 +23,7 @@ contexto + eco de validação, em vez de assumir herança.
 
    ```bash
    ~/.claude/skills/delegate/scripts/echo_preamble.sh build \
-     "task-types disponíveis: review, second-opinion, scan, boilerplate, implement" \
+     "task-types disponíveis: review, implement, scan, boilerplate" \
      "exit 2 = cascata esgotada — você assume a tarefa inline, nunca re-tenta em loop" \
      "protocolo de integração pós-worktree: revisar diff completo, rodar verify, integrar manualmente, nunca merge automático"
    ```

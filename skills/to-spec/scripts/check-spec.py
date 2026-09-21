@@ -24,6 +24,7 @@ Exit 0 limpo, 1 com achado, 2 erro de uso.
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import sys
 from pathlib import Path
@@ -159,6 +160,21 @@ def check_spec(path: Path, ach: Achados) -> None:
 
 AC = re.compile(r"\bAC-(\d{2})\b")
 CAMPOS = ["spec", "closes", "files", "blocked_by", "delega", "verify"]
+# `tier:` não é obrigatório em todo ticket: só onde o task-type do `delega:`
+# declara tier na policy. Parseado sempre, cobrado condicionalmente.
+CAMPOS_OPCIONAIS = ["tier"]
+CAMPOS_LIDOS = CAMPOS + CAMPOS_OPCIONAIS
+TIERS_VALIDOS = ("padrao", "padrão", "amplo")
+
+
+def tasks_com_tier() -> set[str]:
+    """Task-types que a policy declara com tier. Policy ilegível não bloqueia ticket."""
+    pol = Path.home() / ".claude" / "config" / "model-policy.json"
+    try:
+        tiers = json.loads(pol.read_text(encoding="utf-8")).get("tiers", {})
+    except (OSError, ValueError):
+        return set()
+    return {k for k, v in tiers.items() if not k.startswith("$") and isinstance(v, dict)}
 HEADER = re.compile(r"^\s*(\d+)\s*\[(XS|S|M|L|XL)\]\s*(\[P\])?\s*(.+)$", re.I)
 TODO = re.compile(r"<\s*TODO|<\.\.\.>|TBD", re.I)
 ID_OK = re.compile(r"^(?:nenhum|none|-)$|^#\d+$")
@@ -174,13 +190,13 @@ def parse_ticket(path: Path) -> dict:
             m = HEADER.match(re.sub(r"^#+\s*", "", ln).strip())
             if m:
                 dados["header"] = {"nn": m.group(1), "tam": m.group(2).upper(), "par": bool(m.group(3)), "linha": i}
-        m = re.match(rf"^\s*({'|'.join(CAMPOS)})\s*:\s*(.*)$", ln, re.I)
+        m = re.match(rf"^\s*({'|'.join(CAMPOS_LIDOS)})\s*:\s*(.*)$", ln, re.I)
         if m:
             campo = m.group(1).lower()
             valor = [m.group(2).strip()] if m.group(2).strip() else []
             # continuação indentada (lista de files em várias linhas)
             for cont in linhas[i:]:
-                if re.match(r"^\s{4,}\S", cont) and not re.match(rf"^\s*({'|'.join(CAMPOS)})\s*:", cont, re.I):
+                if re.match(r"^\s{4,}\S", cont) and not re.match(rf"^\s*({'|'.join(CAMPOS_LIDOS)})\s*:", cont, re.I):
                     valor.append(cont.strip())
                 else:
                     break
@@ -198,6 +214,7 @@ def check_tickets(alvo: Path, ach: Achados) -> None:
         return
 
     paralelos: list[tuple[str, set[str], Path]] = []
+    com_tier = tasks_com_tier()
 
     for f in arquivos:
         nome = str(f)
@@ -236,6 +253,14 @@ def check_tickets(alvo: Path, ach: Achados) -> None:
         delega = " ".join(t["campos"].get("delega", [])).strip().lower()
         if delega in ("sim", "yes", "true"):
             ach.add(nome, t["linha_campo"]["delega"], "`delega: sim` não resolve worker; usar task-type ou `não`")
+
+        tier = " ".join(t["campos"].get("tier", [])).strip().lower()
+        if delega in com_tier and tier not in TIERS_VALIDOS:
+            ach.add(nome, t["linha_campo"]["delega"],
+                    f"`delega: {delega}` exige `tier: padrao|amplo`; sem tier o dispatch entra na fila no escuro "
+                    "(PADRÃO até 5 arquivos próprios sem tocar contrato, AMPLO toca contrato ou passa de 5)")
+        elif tier and tier not in TIERS_VALIDOS:
+            ach.add(nome, t["linha_campo"]["tier"], f"`tier: {tier}` não existe; usar padrao ou amplo")
 
         files = {x.strip().rstrip(",") for x in t["campos"].get("files", []) if x.strip()}
         if t["header"] and t["header"]["par"] and files:

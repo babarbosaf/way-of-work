@@ -1,34 +1,35 @@
 # TODOS.md, template
 
-Copie pra raiz do projeto como `TODOS.md`. O arquivo real fica gitignored, porque
-backlog é contexto local: o que sobe é o formato. Cobra: `scripts/check-docs.py
---estagio --decay <raiz>`.
+Copie pra raiz do projeto como `TODOS.md`. O arquivo real fica gitignored, e o
+motivo é simples: backlog é contexto de um projeto só, então o que sobe pro git é
+o formato. Quem cobra o formato é `scripts/check-docs.py --estagio --decay`.
 
-**Pra que serve.** Degrau 1 da escada de backlog, o **aceito**: alguém já decidiu
-que o item importa, e ainda não existe contrato. Uma linha por item, com o que é.
-A escada inteira está em [`docs/doc-standard.md`](docs/doc-standard.md).
+Este é o degrau 1 da escada de backlog, o **aceito**. Alguém já decidiu que o
+item importa e ainda não existe contrato nenhum sobre ele, então basta uma linha
+dizendo o que é. A escada inteira está em
+[`docs/doc-standard.md`](docs/doc-standard.md).
 
-**Dois blocos, e nada mais.** `## Próximos`, ordenado, onde a posição é a
-prioridade, teto de 20. `## Pool`, não ordenado, que decai por data. Sem onda, sem
-tema, sem campo de prioridade: cada eixo a mais de classificação é mais paralisia
-na hora de escolher. Seção fora desses dois nomes é achado do lint.
+**Dois blocos, e nada mais.** `## Próximos` é ordenado, a posição é a prioridade,
+teto de 20 itens. `## Pool` não tem ordem e decai por data. Sem onda, sem tema e
+sem campo de prioridade, porque cada eixo a mais de classificação é mais
+paralisia na hora de escolher. Seção fora desses dois nomes o lint acusa.
 
-**Item do Pool carrega data ISO.** Sem data não decai, e o que não decai vira
-depósito. Parado tempo demais, promove ou apaga.
+Todo item do Pool carrega data em ISO. Sem data ele não decai, e o que não decai
+vira depósito. Parado tempo demais, você promove ou apaga.
 
-**Não é depósito de achado colateral.** Achado que tem a ver com o trabalho em
-curso se resolve na sessão; achado que não tem a ver mas bloqueia também. Só o
-que não tem a ver e não bloqueia desce pra cá. Se este arquivo cresce a cada
-sessão de implementação, a regra está sendo furada.
+**Isto não é depósito de achado colateral.** Achado que tem a ver com o trabalho
+em curso se resolve na sessão, e achado que não tem a ver mas bloqueia também.
+Desce pra cá só o que não tem a ver e não bloqueia. Se o arquivo cresce a cada
+sessão de implementação, alguém está furando a regra.
 
-**Item promovido sai daqui.** Virou spec ou ticket, a linha é apagada, sem
-ponteiro e sem linha riscada: promover é mover, nunca copiar. Item vivendo em dois
-degraus é achado do `--estagio`.
+**Item promovido sai daqui.** Virou spec ou ticket, apaga a linha, sem ponteiro e
+sem linha riscada, porque promover é mover e nunca copiar. Item vivendo em dois
+degraus o `--estagio` acusa.
 
-**Linha `[papercut]` é entrada de constraint, não task.** Incômodo visual
-observado e não corrigido entra no Pool como `[papercut] <o que incomoda>
-(<tela/componente>)`, com data. Não entra em sprint e não vira task solta: a skill
-`design-workflow` lê o bloco na próxima passada de design, e cada linha vira
+Incômodo visual observado e não corrigido entra no Pool como linha
+`[papercut] <o que incomoda> (<tela/componente>)`, com data, e **é entrada de
+constraint, não task.** Não entra em sprint e não vira task solta. A skill
+`design-workflow` lê essas linhas na próxima passada de design, e cada uma vira
 constraint ou morre ali.
 
 ---

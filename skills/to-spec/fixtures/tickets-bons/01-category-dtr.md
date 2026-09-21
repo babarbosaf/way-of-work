@@ -13,6 +13,7 @@ files:      src/ingest/dtr.py
             tests/ingest/test_dtr_category.py
 blocked_by: nenhum
 delega:     implement
+tier:       padrao
 verify:     uv run pytest tests/ingest/test_dtr_category.py
 
 Aceite:

@@ -7,6 +7,31 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **A prateleira de modelos virou dado, e o review passou a espelhar a sessão.** A
+  `model-policy.json` ganhou `review_shelf.models` (lista fechada de quem pode revisar),
+  `suggested_effort` (esforço por modelo, porque cada um roda no sugerido dele e não no
+  máximo que aceita) e `review_pairing`, que reordena a cascata de review pela classe da
+  sessão master: em Fable revisa o par de classe topo, em Opus revisa o par de classe
+  forte. Antes a fila era fixa, e quem trabalhava em Fable recebia review de uma classe
+  abaixo. O `delegate.sh` resolve a classe lendo o `settings.json` do `CLAUDE_CONFIG_DIR`,
+  e `DELEGATE_SESSION_CLASS` sobrepõe, porque `/model` em runtime não reescreve o arquivo.
+- **Backend `claude` como último degrau de toda cascata.** `claude -p` headless na mesma
+  assinatura da sessão, com esforço por flag (`--effort`), então o master deixa de ser o
+  único fallback e passa a ser o fallback real, depois do plano. Ele compra contexto
+  isolado e não resiliência de cota: quando o balde seca, a sessão e o headless falham
+  juntos. Toda invocação de backend roda sob `env -u ANTHROPIC_API_KEY`, e um teste prova
+  que a chave não chega ao worker, porque com ela setada o headless cobraria da API em vez
+  do plano.
+- **`--tier padrao|amplo` no dispatch, e `tier:` no ticket.** Tamanho de ticket deixou de
+  virar task-type novo: o tier troca só o ponto de entrada da mesma fila, resolvido como
+  `.tiers[task][tier] // .tasks[task]`. A classificação é mecânica no `to-tickets`, com
+  padrão até 5 arquivos próprios sem tocar contrato e amplo tocando contrato ou passando
+  de 5. O `check-spec.py --tickets` cobra o campo em todo ticket cujo `delega:` tem tier na
+  policy, e a métrica que recalibra o 5 é retrospectiva: ticket que estourou o timeout ou
+  voltou pro master no meio era amplo.
+- **`dur_s` no `delegate.log`.** O log gravava bytes e nenhum tempo, então todo número em
+  `.timeouts` era cronômetro na mão. Agora cada chamada grava a duração, e os timeouts se
+  recalibram com dado.
 - **`design-workflow` vira roteador, e a stack de design passa a ser externa.**
   A skill deixa de carregar doutrina de craft e nomeia o dono de cada passo: plugin
   `impeccable` (`shape`, `live`, `distill`, `critique`, `audit`, `polish`, `harden`,
@@ -66,6 +91,14 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Removed
 
+- **`second-opinion`, `claude_api` e o backend `gemini` saíram.** O advisor cobre conselho
+  e o `review` cobre spec e código, então segunda opinião delegada a modelo abaixo da
+  classe do master era rebaixamento, não segunda opinião. O `claude_api` foi com o
+  mecanismo genérico de `env_var`/`env_file`/`API_KEY` que existia só pra ele, porque API
+  não entra em nenhum backend. Com eles saíram `docs/infra-migracao.md`,
+  `docs/autonomy-loops.md` (incorporado em uma linha da `AGENTS.md`) e
+  `docs/runbooks/multi-model-dispatch.md`, cujos três fatos únicos foram absorvidos pela
+  `skills/delegate/SKILL.md`.
 - **`caveman` sai.** Medido: ~1.4k tokens always-on, mais o bloco que o `SessionStart`
   injeta e o rastreador a cada prompt, perto de 2k por sessão. O que ele entrega no nível
   `lite` é o que o output style `Concise` já faz, e a doutrina de brevidade mora na skill
@@ -79,6 +112,19 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **D-01 mudou de sentido: plano de tarifa fixa primeiro, na ordem de qualidade.** A regra
+  antiga era "custo marginal zero antes da sessão Claude", o que punha o agy grátis na
+  frente de tudo. Só que a cota do agy é baixa e a do plano já está paga, então o que se
+  gasta no codex e no `claude -p` é janela, não dinheiro. O agy virou válvula de excedente,
+  e não degrau de volume. Em `implement` o codex segue na frente do Claude por ordem
+  provisória: cascata só desce por falha, então Claude primeiro, sem gate de orçamento por
+  bucket, queimaria cota Claude em todo ticket e o codex nunca seria alcançado. A ordem
+  vira no mesmo commit que trouxer o gate.
+- **`scan` e `boilerplate` continuam dois, agora com motivo escrito e teste.** As cascatas
+  são idênticas de propósito, e o que separa os dois é uma guarda de código: em modo bulk o
+  `boilerplate` exige `--reference`, senão o worker gera código sem padrão a seguir. O
+  task-type é o único portador dessa intenção, porque `--paths` mais `--question` não diz
+  se é varredura ou geração. Um teste passou a falhar se as duas cascatas divergirem.
 - **O bypass do RTK sai do wrapper e vira contrato versionado.** O binário subiu de
   0.40.0 pra 0.49.0, e `scripts/rtk-hook-wrapper.sh` encolheu de 40 linhas para a única
   coisa que só ele faz: sair limpo quando o `rtk` não está no PATH. O regex que listava

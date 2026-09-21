@@ -1,58 +1,84 @@
-# Matriz atividade × ranking de modelos
+# Prateleira de modelos e escolha manual
 
-Referência quando a cascata automática não decide sozinha (fallback pós-exit-2,
-subagente interno, override pedido pelo usuário). Cada linha é uma atividade;
-a ordem na célula é o ranking daquela atividade (1º = tenta primeiro). Regra:
-**descer na cascata da atividade, nunca pular pra "modelo melhor" de outra
-linha**, capacidade sobrando é desperdício de quota.
+Complemento do `config/model-policy.json`, não cópia dele. A cascata por
+task-type (`review`, `implement`, `scan`, `boilerplate`) mora
+**só** na policy, porque duas listas da mesma cascata divergem: esta página já
+apontou pra `gpt-5.5` meses depois de o default virar outro. Aqui fica o que a
+policy não carrega: a prateleira, a escolha manual e o fallback de sessão.
 
-| atividade | 1º | 2º | 3º | 4º | fallback sessão |
-|---|---|---|---|---|---|
-| `implement` (código autocontido) | codex gpt-5.5 | agy Claude Sonnet 4.6 (Thinking) | agy Gemini 3.1 Pro (High) |. | Sonnet medium |
-| `review` (spec/diff adversarial) | codex gpt-5.5 | agy Gemini 3.1 Pro (High) | agy Claude Sonnet 4.6 (Thinking) |. | Sonnet medium |
-| `second-opinion` (arquitetura, debug travado) | agy Claude Sonnet 4.6 (Thinking) | agy Gemini 3.1 Pro (High) | codex gpt-5.5 |. | Opus high (pedido explícito) |
-| `scan` (varredura, sumarização) | agy Gemini 3.8 Flash (High) | agy GPT-OSS 120B (Medium) | agy Gemini 3.1 Pro (Low) | codex gpt-5.3 | Haiku low |
-| `boilerplate` (testes mecânicos, scaffolding, conversão) | agy GPT-OSS 120B (Medium) | agy Gemini 3.8 Flash (Medium) | codex gpt-5.3 | codex gpt-5.5 | Haiku low |
-| docs/redação técnica | agy Gemini 3.8 Flash (High) | agy Claude Sonnet 4.6 (Thinking) | agy Gemini 3.1 Pro (High) |. | Sonnet medium |
-| infra mecânica (plist, shell simples, config) | agy Gemini 3.8 Flash (Medium) | codex gpt-5.3 | agy GPT-OSS 120B (Medium) |. | Haiku low |
+## A prateleira (2026-09-20)
 
-Notas de operação:
-- **`claude_api` (`DELEGATE_ANTHROPIC_API_KEY`) está FORA do ranking**: pago
-  dedicado, só entra quando o usuário declarar explicitamente na conversa
-  ("usa a key", "pode usar claude_api"). Nunca como fallback automático.
-- **Fallback sessão** (subagente Claude do plano) só quando a task exige o
-  harness Claude (tools/MCP/skills) ou a cascata externa esgotou, nunca como
-  primeira opção pra task que worker grátis resolve.
-- Quota dos bolsões agy: `claude_gpt` (Opus/Sonnet/GPT-OSS) enche rápido;
-  `gemini` costuma ter folga, em empate de capacidade, preferir a coluna
-  Gemini.
-- codex default é gpt-5.5 (`~/.codex/config.toml`); 5.3 é override pontual de
-  config. **gpt-5.4 está fora**: em 05/set/2026 esta conta devolveu 400 nele
-  enquanto os outros respondiam, e a cascata caía em silêncio. É sondagem, então
-  vale pra data: o modelo se prova com `codex exec --model <m> "diga ok"` antes
-  de voltar pra linha.
-- **`second-opinion` não lidera com o mesmo backend de `review`**, senão a segunda
-  opinião sai do modelo que já opinou. E Claude Opus 4.6 (Thinking) saiu da linha:
-  medido em 07/set/2026, ele leva 902s e ainda volta rc=2 em headless, enquanto
-  Sonnet 4.6 (Thinking) fecha a mesma pergunta em 26s e Gemini 3.1 Pro (High) em 30s.
-  Opus continua no fallback de sessão, sob pedido explícito, e pelo mesmo motivo
-  sai também do 3º de `review`.
-- A cascata automática por task-type continua em `model-policy.json`; esta
-  matriz não a substitui, alimenta escolhas manuais. Promover mudança daqui
-  pra policy = editar `model-policy.json` direto (git é o histórico).
-  Atividades sem task-type na policy (docs, infra mecânica) roteiam por esta
-  matriz diretamente.
+Modelo bom implementa, mas **implementar bem não qualifica pra revisar**.
 
-## Codex: modelo e esforço por task (17/set/2026)
-
-A entrada da cascata em `model-policy.json` carrega `model` e `effort`, e o
-`delegate.sh` repassa como `-m <model> -c model_reasoning_effort=<effort>`.
-Equivalência decidida pelo dono: Opus ↔ `gpt-6-astra`, Sonnet ↔ `gpt-5.6-sol`;
-esforço só `low` ou `medium`. Onde Fable e Haiku caem, e o que `terra` e `luna`
-são, fica aberto até benchmark. Estudo: `bip/docs/research/codex-como-executor-2026-09.md`.
-
-| task | modelo | effort |
+| prateleira | modelos | pode revisar |
 |---|---|---|
-| review, second-opinion | gpt-6-astra | medium |
-| implement | gpt-5.6-sol | medium |
-| scan, boilerplate | gpt-5.6-sol | low |
+| review e orquestração | `gpt-5.6-sol` high, `gpt-6-astra` low, Fable 5.1 low, Opus 5 high | sim |
+| implement | `gpt-5.6-terra`, Sonnet 5, Claude Sonnet 4.6, Opus 4.6, Gemini 3.1 Pro | **nunca** |
+| volume | Gemini Flash, GPT-OSS 120B, `gpt-5.6-luna` | **nunca** |
+
+A lista de review é fechada e vive em `review_shelf.models` na policy, cobrada
+por `tests/delegate.test.sh`. **Review não rebaixa:** esgotou a prateleira, a
+cascata sai em exit 2 e o master revisa, nunca cai pro pool de implement.
+
+Os modelos Claude entram na prateleira pelo backend `claude`, que é o `claude -p`
+headless rodando na mesma assinatura da sessão. Ele é o último degrau de toda
+cascata, e quem escolhe qual deles é o `review_pairing`: sessão em Fable revisa
+com Fable, sessão em Opus revisa com Opus, sempre na classe do master. Esse
+degrau compra contexto isolado, não resiliência de cota, porque quando o balde
+seca a sessão e o headless falham juntos.
+
+### Equivalência e esforço sugerido
+
+Cada modelo roda no esforço sugerido dele, não no máximo que aceita.
+
+| classe | Claude | codex | esforço |
+|---|---|---|---|
+| topo | Fable 5.1 | `gpt-6-astra` | low, e medium no teto |
+| forte | Opus 5 | `gpt-5.6-sol` | high |
+| média | Sonnet 5, Sonnet 4.6 | `gpt-5.6-terra` | medium |
+| volume | Haiku | `gpt-5.6-luna` | low |
+
+O benchmark de set/2026 sustenta o par sol e Opus 5 com uma ressalva que vale
+guardar: eles empatam em Terminal-Bench 2.1, 88,8 contra 89,1, e o Opus 5 abre
+79,2 contra 64,6 em SWE-bench Pro. Como SWE-bench Pro é justamente coisa de
+repositório e vários arquivos, a equivalência vale no nível do modelo, e em
+review multi-arquivo o Opus ainda leva.
+
+Dois modelos ficam de fora da fila. O `gpt-5.5` é legado e o luna cobre o tier
+dele por menos. O terra é dominado em Pareto pelo par luna e sol, porque pra
+qualquer esforço do terra existe um esforço de luna ou de sol mais inteligente
+pelo mesmo custo, ou igual por menos, então ele só aparece onde a classe Sonnet é
+o alvo e nunca como degrau de volume.
+
+## Atividade sem task-type na policy
+
+Roteia direto por aqui. Regra: descer na linha da atividade, nunca pular pro
+modelo melhor de outra linha, porque capacidade sobrando é quota desperdiçada.
+
+| atividade | 1º | 2º | 3º |
+|---|---|---|---|
+| docs e redação técnica | agy Gemini 3.8 Flash (High) | agy Claude Sonnet 4.6 (Thinking) | agy Gemini 3.1 Pro (High) |
+| infra mecânica (plist, shell simples, config) | agy Gemini 3.8 Flash (Medium) | agy GPT-OSS 120B (Medium) | codex `gpt-5.6-terra` (low) |
+
+## Notas de operação
+
+- **Bolsões do agy têm cota independente:** `gemini` (modelos da própria Google)
+  e `claude_gpt` (Opus, Sonnet, GPT-OSS). O `claude_gpt` enche rápido e o
+  `gemini` costuma ter folga, então em empate de capacidade prefira Gemini.
+- **A janela do codex é de 5 horas**, e é ela que estoura, não o teto semanal.
+  Custo marginal em dinheiro é zero no plano; o que se economiza é janela.
+- **Fallback de sessão** só quando a task exige o harness Claude (tools, MCP,
+  skills) ou a cascata externa esgotou. Nunca como primeira opção pra task que
+  worker grátis resolve.
+- **Não existe task-type de segunda opinião.** Ele morreu em 20/set/2026: o
+  advisor cobre o caso de conselho, o `review` cobre spec e código, e uma review
+  delegada a modelo abaixo da classe do master é rebaixamento, não segunda
+  opinião.
+- **Claude Opus 4.6 (Thinking) está fora das cascatas do agy:** medido em
+  07/set/2026, leva 902s e ainda volta rc=2 em headless, contra 26s do Sonnet 4.6
+  e 30s do Gemini 3.1 Pro.
+- **Sondagem vale pra data em que rodou.** Modelo que devolveu 404 ou 400 volta
+  pra linha depois de `codex exec --model <m> "diga ok"` passar, e falha
+  observada nunca vira `enabled: false` na policy.
+- Mudança daqui pra cascata = editar `config/model-policy.json` direto. Git é o
+  histórico.
