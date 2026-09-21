@@ -247,7 +247,8 @@ chmod +x "$MOCKBIN/codex"
 out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO" - 2>"$TMP/err"); rc=$?
 assert_eq "exit 0" "$rc" "0"
 assert_contains "reporta branch" "$out" "delegate/"
-branch=$(sed -n 's/.*branch: \(delegate\/[a-z0-9-]*\).*/\1/p' <<<"$out" | head -1)
+# O identificador vem do mktemp, cujo alfabeto inclui maiúscula.
+branch=$(sed -n 's/.*branch: \(delegate\/[A-Za-z0-9-]*\).*/\1/p' <<<"$out" | head -1)
 [[ -n "$branch" ]] && git -C "$REPO" show "$branch:worker.txt" >/dev/null 2>&1 && ok "edição na branch delegate" || fail "edição na branch delegate"
 [[ ! -f "$REPO/worker.txt" ]] && ok "main intocada" || fail "main intocada"
 
@@ -524,6 +525,38 @@ out=$(run --task _probe --model codex -)
 assert_eq "exit 0: slot com prazo vencido foi tomado" "$?" "0"
 rm -f "$DELEGATE_GATE_DIR"/slot.*
 
+echo "T: slot órfão não pode ser tomado por dois ao mesmo tempo"
+# O resgate de órfão era `rm -f` e recria: dois despachos que vissem o mesmo
+# órfão passavam os dois, o segundo apagava o arquivo do primeiro, e os dois se
+# julgavam donos do balde. O `soltar` do primeiro virava no-op porque o pid
+# gravado já era do segundo. Aqui o resgate tira o órfão do caminho com `mv`, que
+# só um dos dois consegue.
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+source "$SLOT"
+slot_configurar "$DELEGATE_GATE_DIR"
+printf 'pid=999999\nid=fantasma\nprazo=1\nbalde=codex\n' > "$DELEGATE_GATE_DIR/slot.codex"
+slot_tomar codex primeiro 60 && ok "o primeiro resgata o slot órfão" || fail "o resgate do órfão falhou"
+slot_tomar codex segundo 60 && fail "o segundo tomou um balde que já tem dono" \
+  || ok "o segundo não toma balde com dono vivo"
+assert_contains "o dono gravado é o primeiro" "$(cat "$DELEGATE_GATE_DIR/slot.codex")" "id=primeiro"
+[[ "$(ls "$DELEGATE_GATE_DIR"/slot.* 2>/dev/null | wc -l | tr -d ' ')" == "1" ]] \
+  && ok "o resgate não deixa arquivo de slot sobrando" || fail "sobrou arquivo de slot: $(ls "$DELEGATE_GATE_DIR"/slot.*)"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+
+# Dez rodadas de par concorrente: com o `rm -f` do resgate antigo os dois podiam
+# vencer, e o número de vencedores era a única prova possível disso.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  rm -f "$DELEGATE_GATE_DIR"/slot.* "$TMP/vencedores"
+  printf 'pid=999999\nid=fantasma\nprazo=1\nbalde=codex\n' > "$DELEGATE_GATE_DIR/slot.codex"
+  ( slot_tomar codex A 60 && echo A >> "$TMP/vencedores" ) &
+  ( slot_tomar codex B 60 && echo B >> "$TMP/vencedores" ) &
+  wait 2>/dev/null
+  n=$(wc -l < "$TMP/vencedores" 2>/dev/null | tr -d ' ')
+  [[ "${n:-0}" == "1" ]] || { fail "o mesmo slot órfão foi tomado por $n despachos"; break; }
+done
+[[ "${n:-0}" == "1" ]] && ok "dez pares concorrentes, e o órfão só teve um vencedor por rodada"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+
 echo "T: o caminho assíncrono também não deixa a chave da API chegar ao worker"
 mock_claude   # o mock demorado de cima trocou o corpo, e ninguém devolvia
 id_async=$(ANTHROPIC_API_KEY=segredo-async MOCK_CLAUDE=ok run --task _probe --model claude --async - | sed -n 's/^task: //p')
@@ -574,7 +607,7 @@ mat=$(jq -r '.material // empty' <<<"$linha")
 # que a caçada procurava. Achado pelo diretório de trabalho, que o despachante
 # conhece porque foi ele que criou.
 sessoes="$TMP/sessoes-codex"; mkdir -p "$sessoes"
-jq --arg b "$sessoes" '.backends.codex.sessions = {"base":$b,"match":"cwd_in_file"}' \
+jq --arg b "$sessoes" '.backends.codex.sessions = {"path":$b,"grep":"\"cwd\":\"{cwd}\""}' \
   "$DELEGATE_POLICY" > "$TMP/pol" && mv "$TMP/pol" "$DELEGATE_POLICY"
 rm -f "$DELEGATE_GATE_DIR"/slot.*
 MOCK_SESSIONS="$sessoes" run --task _probe --model codex - >/dev/null
@@ -590,7 +623,7 @@ assert_contains "worker que não gravou sessão cai no output capturado" "$mat" 
 # então o assert falha se as duas derivações divergirem.
 sess_plano="$TMP/sessoes-plano"
 dir_plano="$sess_plano/$(printf '%s' "$PWD" | tr '/.' '--')"; mkdir -p "$dir_plano"
-jq --arg b "$sess_plano" '.backends.claude.sessions = {"base":$b,"match":"cwd_as_dir"}' \
+jq --arg b "$sess_plano" '.backends.claude.sessions = {"path":($b + "/{cwd_flat}")}' \
   "$DELEGATE_POLICY" > "$TMP/pol" && mv "$TMP/pol" "$DELEGATE_POLICY"
 rm -f "$DELEGATE_GATE_DIR"/slot.*
 MOCK_CLAUDE=ok MOCK_SESSIONS="$dir_plano" run --task _probe --model claude - >/dev/null
@@ -674,9 +707,11 @@ echo "T: balde sem saldo na janela desce a cascata sem gastar chamada"
 # A cascata só descia por falha, então descobrir que um balde acabou custava uma
 # chamada perdida. O gate consulta o saldo antes de invocar, e pular por saldo é
 # o mesmo movimento de pular por castigo.
+# ACUMULA, e não apaga: quem precisa de log limpo apaga antes de chamar. O schema
+# da linha de log mora só aqui, senão o campo novo entra em um sítio e o outro
+# passa a medir log de forma antiga.
 semeia_log() { # pool quantidade
   local i n="$2"; [[ "$n" =~ ^[0-9]+$ ]] || n=0
-  rm -f "$DELEGATE_GATE_DIR/delegate.log"
   for ((i=0; i<n; i++)); do
     jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg pool "$1" \
       '{ts:$ts,task:"implement",backend:"x",status:"ok",detail:"",pool:$pool,bytes_in:0,bytes_out:0,dur_s:1}' \
@@ -688,7 +723,7 @@ jq '.budgets.pools.codex.max_calls = 2' "$DELEGATE_POLICY" > "$TMP/pol-orc.json"
 TETO_CODEX=$(jq -r '.budgets.pools.codex.max_calls' "$DELEGATE_POLICY")
 [[ "$TETO_CODEX" =~ ^[0-9]+$ ]] && ok "a régua do balde é dado na policy" \
   || fail "policy não declara régua de balde (max_calls=$TETO_CODEX)"
-rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
 semeia_log codex "$TETO_CODEX"
 out=$(run --task "$CODEX_FIRST_TASK" -)
 assert_eq "exit 0: a task fechou no degrau de baixo" "$?" "0"
@@ -715,11 +750,7 @@ jq '.budgets.pools |= with_entries(.value.max_calls = 1)' "$DELEGATE_POLICY" > "
 for pool in $(jq -r '.budgets.pools | keys[]' "$DELEGATE_POLICY"); do
   teto=$(jq -r --arg p "$pool" '.budgets.pools[$p].max_calls // 0' "$DELEGATE_POLICY")
   [[ "$teto" =~ ^[0-9]+$ ]] || continue
-  for ((i=0; i<teto; i++)); do
-    jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg pool "$pool" \
-      '{ts:$ts,task:"implement",backend:"x",status:"ok",detail:"",pool:$pool,bytes_in:0,bytes_out:0,dur_s:1}' \
-      >> "$DELEGATE_GATE_DIR/delegate.log"
-  done
+  semeia_log "$pool" "$teto"
 done
 run --task "$CODEX_FIRST_TASK" - >/dev/null; rc=$?
 assert_eq "exit 2, o mesmo de fila esgotada, e não erro" "$rc" "2"
@@ -961,6 +992,22 @@ assert_contains "lista modelo nunca invocado" "$apurado" "fantasma"
 assert_contains "lista degrau de tier nunca invocado" "$apurado" "ausente"
 python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$APURA_POLICY" >/dev/null
 assert_eq "--check aceita policy apurada" "$?" "0"
+# A régua não pode só apertar. O gate bloqueia em `gastas >= teto`, então o pico
+# observado NUNCA passa do teto declarado: se o `--check` cobrasse igualdade, cada
+# linha que sai da janela de 30 dias baixaria a régua, e ela desceria pra sempre
+# sem nunca subir. Pico é piso de capacidade provada, então só é divergência
+# quando a policy declara MENOS do que o balde já provou aguentar.
+cat > "$TMP/apura-folga.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":20}}},"timeouts":{"scan":24},"tasks":{"scan":[{"backend":"codex","model":"m1"}]}}
+EOF
+python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$TMP/apura-folga.json" >/dev/null 2>&1
+assert_eq "régua acima do pico provado não é divergência" "$?" "0"
+cat > "$TMP/apura-aperto.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":5}}},"timeouts":{"scan":24},"tasks":{"scan":[{"backend":"codex","model":"m1"}]}}
+EOF
+python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$TMP/apura-aperto.json" >/dev/null 2>&1
+assert_eq "régua abaixo do pico provado é divergência" "$?" "1"
+
 # Pico medido é piso de uso, não teto de cota: duas chamadas num balde não são
 # régua, e cobrar esse número estrangularia o balde que ninguém gastou ainda. A
 # policy recusa a régua de propósito, e o apurador respeita sem perder o dado.

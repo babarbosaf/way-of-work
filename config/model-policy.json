@@ -18,8 +18,8 @@
       "model_flag": "-m",
       "effort_config": "model_reasoning_effort",
       "sessions": {
-        "base": "~/.codex/sessions",
-        "match": "cwd_in_file"
+        "path": "~/.codex/sessions",
+        "grep": "\"cwd\":\"{cwd}\""
       }
     },
     "agy": {
@@ -91,8 +91,7 @@
       ],
       "notes": "Último degrau antes do master, em TODA cascata: é o mesmo plano da sessão master, e a queda pro master deixa de ser o único fallback. MESMO plano da sessão master, então quando o balde seca os dois falham juntos, e este degrau compra contexto isolado, não resiliência de cota. `env -u ANTHROPIC_API_KEY` não é opcional: a variável pode chegar setada no ambiente, e sem removê-la o `claude -p` cobra da API em vez do plano, o que ressuscita o backend de API que saiu da policy. A guarda é estrutural, aplicada a toda invocação de backend no delegate.sh, e não um detalhe deste bloco. Esforço vai por FLAG (`--effort`), não por `-c chave=valor` como no codex, e é por isso que existe effort_flag. Medido em 21/set/2026: `claude -p --model claude-sonnet-5 --effort low --add-dir <dir> --permission-mode acceptEdits` escreveu arquivo na pasta passada, rc=0, 10s. A alternativa a este backend é o Agent tool (tier session da SKILL.md), que preserva o harness completo mas fica invisível pro delegate.log.",
       "sessions": {
-        "base": "$CLAUDE_CONFIG_DIR/projects",
-        "match": "cwd_as_dir"
+        "path": "$CLAUDE_CONFIG_DIR/projects/{cwd_flat}"
       }
     }
   },
@@ -270,7 +269,7 @@
       },
       "claude": {
         "status": "sem_regua",
-        "porque": "o pico medido aqui é piso de uso, não teto de cota, e este balde lidera a fila de implementação: régua de três chamadas o estrangularia. Sem régua vale como livre, pelo D-02."
+        "porque": "o pico medido aqui é piso de uso, não teto de cota, e este balde lidera a fila de implementação: régua tirada de um punhado de chamadas o estrangularia. Sem régua vale como livre, pelo D-02."
       }
     }
   },

@@ -48,17 +48,19 @@ slot_tomar() { # pool id prazo_segundos → 0 quando tomou
         return 0
     fi
     slot_orfao "$1" || return 1
-    rm -f "$f"
+    # O resgate do órfão tira o arquivo do caminho com `mv`, não com `rm -f`: dois
+    # despachos que vissem o mesmo órfão passariam os dois pelo teste acima, e com
+    # `rm -f` o segundo apagaria o slot que o primeiro acabou de criar, deixando os
+    # dois se julgando donos do balde. Só um `mv` acha a origem, então só um chega
+    # à recriação, e o outro desiste sem tocar em nada.
+    local resgate="$SLOT_DIR/resgate.$1.${BASHPID:-$$}"
+    mv "$f" "$resgate" 2>/dev/null || return 1
+    rm -f "$resgate"
     ( set -o noclobber; printf '%s\n' "$conteudo" > "$f" ) 2>/dev/null
 }
 
-slot_soltar() { # pool → solta o slot só quando o dono dele é este processo
-    local f="$(slot_arquivo "$1")"
-    [[ -f "$f" ]] || return 0
-    [[ "$(sed -n 's/^pid=//p' "$f" 2>/dev/null)" == "${BASHPID:-$$}" ]] && rm -f "$f"
-    return 0
-}
-
+# Quem varre slots pergunta aqui, e não sai lendo o formato do arquivo por conta:
+# o `--gc` e a camada de terminal precisam da mesma resposta.
 slot_em_curso() { # lista os baldes ocupados agora, um por linha: balde id
     local f pool
     for f in "$SLOT_DIR"/slot.*; do
@@ -67,4 +69,11 @@ slot_em_curso() { # lista os baldes ocupados agora, um por linha: balde id
         slot_orfao "$pool" && continue
         printf '%s %s\n' "$pool" "$(sed -n 's/^id=//p' "$f" 2>/dev/null)"
     done
+}
+
+slot_soltar() { # pool → solta o slot só quando o dono dele é este processo
+    local f="$(slot_arquivo "$1")"
+    [[ -f "$f" ]] || return 0
+    [[ "$(sed -n 's/^pid=//p' "$f" 2>/dev/null)" == "${BASHPID:-$$}" ]] && rm -f "$f"
+    return 0
 }

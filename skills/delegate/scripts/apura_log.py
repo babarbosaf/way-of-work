@@ -53,10 +53,19 @@ def modelo(linha):
     return achado.group(1).strip() if achado else None
 
 
+def sem_regua(declarado) -> bool:
+    """A policy recusou a régua deste balde de propósito, em vez de não ter medido."""
+    return isinstance(declarado, dict) and "max_calls" not in declarado
+
+
 def pico_por_janela(linhas, janela):
     por_pool = defaultdict(list)
     for linha in linhas:
-        if linha.get("status") in CHAMADAS and linha.get("pool"):
+        # Mesma população que o gate cobra em lib-orcamento.sh (`orcamento_gastas`):
+        # tudo que tem balde e não é cascata esgotada. Contar só `ok` e `empty_diff`
+        # aqui validaria a régua contra um número que o gate não usa, e a régua é o
+        # que decide se a fila pode virar.
+        if linha.get("status") != "unavailable" and linha.get("pool"):
             por_pool[linha["pool"]].append(linha["_ts"])
     picos = {}
     for pool, tempos in por_pool.items():
@@ -97,7 +106,7 @@ def apurar(linhas, policy):
         # régua de duas ou três chamadas, estrangulando justamente quem lidera a
         # fila. Aqui fica o que a policy declara, com o pico observado ao lado pra
         # a decisão futura ter o dado na mão.
-        if isinstance(declarado, dict) and "max_calls" not in declarado:
+        if sem_regua(declarado):
             pools[pool] = dict(declarado)
             if pool in picos:
                 pools[pool]["observado"] = picos[pool]
@@ -140,10 +149,22 @@ def divergencias(apurado, policy):
     erros = []
     for pool, valor in apurado["budgets"]["pools"].items():
         declarado = policy["budgets"]["pools"].get(pool)
-        if isinstance(declarado, dict) and "max_calls" not in declarado:
+        if sem_regua(declarado):
             continue
-        if declarado != valor:
-            erros.append(f"budgets.pools.{pool}: declarado {declarado}, apurado {valor}")
+        # O pico é PISO de capacidade provada, nunca teto. Cobrar igualdade faria a
+        # régua só apertar: o gate bloqueia em `gastas >= teto`, então o pico
+        # observado nunca passa do teto, e cada linha que sai da janela de 30 dias
+        # exigiria baixar a régua, sem nada nunca a devolver pra cima. Divergência
+        # é a policy declarar MENOS do que o balde já aguentou.
+        apurado_max = valor.get("max_calls") if isinstance(valor, dict) else None
+        declarado_max = declarado.get("max_calls") if isinstance(declarado, dict) else None
+        if not isinstance(declarado_max, int) or not isinstance(apurado_max, int):
+            if declarado != valor:
+                erros.append(f"budgets.pools.{pool}: declarado {declarado}, apurado {valor}")
+        elif declarado_max < apurado_max:
+            erros.append(
+                f"budgets.pools.{pool}: régua {declarado_max} abaixo do pico já provado {apurado_max}"
+            )
     for task, valor in apurado["timeouts"].items():
         if valor["status"] == "medido" and policy["timeouts"].get(task) != valor["seconds"]:
             erros.append(f"timeouts.{task}: declarado {policy['timeouts'].get(task)}, apurado {valor['seconds']}")

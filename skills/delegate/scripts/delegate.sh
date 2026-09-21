@@ -42,9 +42,11 @@ set -uo pipefail
 
 GATE_DIR="${DELEGATE_GATE_DIR:-$HOME/.claude/gate}"
 POLICY="${DELEGATE_POLICY:-$HOME/.claude/config/model-policy.json}"
-LIMITES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-# O repositório expõe delegate.sh também por um link em scripts/.
-[[ -f "$LIMITES_DIR/lib-limites.sh" ]] || LIMITES_DIR="$LIMITES_DIR/../skills/delegate/scripts"
+# O repositório expõe delegate.sh também por um link em scripts/, então o link se
+# resolve na origem: presumir UMA topologia de link fazia a falha aparecer como
+# "arquivo não encontrado" no meio da cascata, e um segundo ponto de exposição
+# pediria mais um fallback.
+LIMITES_DIR="$(cd "$(dirname "$(python3 -c 'import os,sys; print(os.path.realpath(sys.argv[1]))' "${BASH_SOURCE[0]}")")" && pwd)"
 source "$LIMITES_DIR/lib-limites.sh"
 source "$LIMITES_DIR/lib-orcamento.sh"
 source "$LIMITES_DIR/lib-slot.sh"
@@ -157,11 +159,8 @@ if [[ -n "$STATUS_ID" ]]; then
     _meta="$GATE_DIR/tasks/$STATUS_ID/meta"
     [[ -f "$_meta" ]] || die "--status: identificador não existe: $STATUS_ID"
     echo "id: $STATUS_ID"
-    echo "estado: $(sed -n 's/^estado=//p' "$_meta")"
-    for _c in balde rc comecou terminou; do
-        _v=$(sed -n "s/^$_c=//p" "$_meta")
-        [[ -n "$_v" ]] && echo "$_c: $_v"
-    done
+    # Um sed só, na ordem em que o arquivo grava, e campo vazio não vira linha.
+    sed -nE 's/^(estado|task|balde|rc|comecou|terminou)=(..*)/\1: \2/p' "$_meta"
     # Caminho, nunca conteúdo: o material pode carregar o repo inteiro, e despejar
     # isso no terminal é vazamento, não diagnóstico.
     [[ -f "$GATE_DIR/tasks/$STATUS_ID/out.txt" ]] && echo "material: $GATE_DIR/tasks/$STATUS_ID/out.txt"
@@ -170,8 +169,14 @@ if [[ -n "$STATUS_ID" ]]; then
 fi
 if [[ -n "$GC" ]]; then
     find "$GATE_DIR/tasks" -mindepth 1 -maxdepth 1 -type d -mtime +7 -exec rm -rf {} + 2>/dev/null
+    rm -f "$GATE_DIR"/resgate.*
+    # Ocupado é o que a biblioteca de slot diz que está ocupado; o resto é órfão e
+    # sai. Refazer a varredura aqui espalhava o formato do arquivo de slot por dois
+    # arquivos, e o `--gc` não passava pelo teste que cobre órfão.
+    _ocupados=$(slot_em_curso | awk '{print $1}')
     for _s in "$GATE_DIR"/slot.*; do
-        [[ -f "$_s" ]] && slot_orfao "$(sed -n 's/^balde=//p' "$_s")" && rm -f "$_s"
+        [[ -f "$_s" ]] || continue
+        grep -qxF "$(sed -n 's/^balde=//p' "$_s")" <<<"$_ocupados" || rm -f "$_s"
     done
     git -C "$GC" worktree prune
     git -C "$GC" worktree list | grep 'delegate/' || echo "nenhuma worktree delegate/ ativa"
@@ -289,14 +294,26 @@ else TIMEOUT_CMD=""; fi
 # fim do processo é perder o trabalho, e é esse caminho que a consulta por
 # identificador vai ler depois. O prompt segue transitório de propósito, porque
 # ele carrega conteúdo do repo e guardar isso não serve a diagnóstico nenhum.
-TASK_ID="$TASK-$(date +%s | tail -c 7)$RANDOM"
-TASK_DIR="$GATE_DIR/tasks/$TASK_ID"
+# `mktemp -d` em vez de epoch mais RANDOM: dois despachos no mesmo segundo
+# colidiam calados, e o `mkdir -p` não reclamava, então o segundo sobrescrevia o
+# meta do primeiro. Quem garante a unicidade é o sistema de arquivos.
+mkdir -p "$GATE_DIR/tasks"
+TASK_DIR=$(mktemp -d "$GATE_DIR/tasks/$TASK-XXXXXX") || die "não consegui criar o diretório da task"
+TASK_ID=$(basename "$TASK_DIR")
 mkdir -p "$TASK_DIR"; chmod 700 "$TASK_DIR"
 PROMPT_FILE=$(mktemp); TMP_OUT="$TASK_DIR/out.txt"; : > "$TMP_OUT"; chmod 600 "$TMP_OUT"
 SLOT_TOMADO=""; HOUVE_PRAZO=0
 trap 'rm -f "$PROMPT_FILE"; [[ -n "$SLOT_TOMADO" ]] && slot_soltar "$SLOT_TOMADO"' EXIT
-task_estado() { printf 'estado=%s\nrc=%s\nbalde=%s\nterminou=%s\n' "$1" "${2:-}" "${USED_POOL:-}" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TASK_DIR/meta"; }
-printf 'estado=em curso\nid=%s\ntask=%s\ncomecou=%s\n' "$TASK_ID" "$TASK" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TASK_DIR/meta"
+# O estado terminal reescreve o arquivo, então o que veio antes e continua
+# valendo tem que ser recomposto aqui: `comecou` era perdido, e o leitor procurava
+# um campo que a escrita terminal nunca produzia. O `id` saiu porque é o nome do
+# diretório, e o leitor já o tem na mão.
+task_estado() { # estado [rc]
+    printf 'estado=%s\ntask=%s\nbalde=%s\nrc=%s\ncomecou=%s\nterminou=%s\n' \
+        "$1" "$TASK" "${USED_POOL:-}" "${2:-}" "$COMECOU" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > "$TASK_DIR/meta"
+}
+COMECOU=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf 'estado=em curso\ntask=%s\ncomecou=%s\n' "$TASK" "$COMECOU" > "$TASK_DIR/meta"
 abs_path() { case "$1" in /*) printf '%s' "$1" ;; *) printf '%s/%s' "$PWD" "$1" ;; esac; }
 
 build_bulk_prompt() { # pergunta + corpus em tag XML + contrato de saída
@@ -374,31 +391,29 @@ backend_enabled() {
 # de chamada anterior sem aritmética de data: o nome do arquivo do worker de código
 # vem em hora local e o log em UTC, e reconciliar isso à mão erraria de uma hora.
 transcript_de() { # backend cwd marco → caminho do transcript, ou nada
-    local base modo alvo dir f
-    base=$(jq -r --arg b "$1" '.backends[$b].sessions.base // empty' "$POLICY")
-    modo=$(jq -r --arg b "$1" '.backends[$b].sessions.match // empty' "$POLICY")
-    [[ -n "$base" && -n "${2:-}" && -f "${3:-}" ]] || return 0
-    base="${base//\$CLAUDE_CONFIG_DIR/${CLAUDE_CONFIG_DIR:-$HOME/.claude}}"
-    base="${base/#\~/$HOME}"
+    local caminho padrao alvo f
+    caminho=$(jq -r --arg b "$1" '.backends[$b].sessions.path // empty' "$POLICY")
+    padrao=$(jq -r --arg b "$1" '.backends[$b].sessions.grep // empty' "$POLICY")
+    [[ -n "$caminho" && -n "${2:-}" && -f "${3:-}" ]] || return 0
+    caminho="${caminho//\$CLAUDE_CONFIG_DIR/${CLAUDE_CONFIG_DIR:-$HOME/.claude}}"
+    caminho="${caminho/#\~/$HOME}"
+    # Os dois workers medidos guardam a sessão de formas diferentes, e um `case`
+    # por formato punha o esquema de nomes de cada provider dentro do script. A
+    # policy declara onde procurar, com `{cwd}` e `{cwd_flat}` no caminho, e um
+    # `grep` opcional pra quem grava o diretório de trabalho DENTRO do arquivo em
+    # vez de no nome dele. Backend novo passa a ser linha de policy, não branch.
+    caminho="${caminho//\{cwd_flat\}/$(printf '%s' "$2" | tr '/.' '--')}"
+    caminho="${caminho//\{cwd\}/$2}"
+    padrao="${padrao//\{cwd\}/$2}"
     local -a achados=()
-    case "$modo" in
-        # Worker de código grava o cwd dentro do arquivo, e uma chamada pode render
-        # mais de um: a continuação aponta pro pai por `parent_thread_id`. O mais
-        # novo é o que tem o fim da história, e o pai se alcança de dentro dele.
-        cwd_in_file)
-            while IFS= read -r f; do achados+=("$f"); done < <(
-                find "$base" -name '*.jsonl' -newer "$3" 2>/dev/null |
-                while IFS= read -r f; do grep -qF "\"cwd\":\"$2\"" "$f" && printf '%s\n' "$f"; done)
-            ;;
-        # O plano nomeia o diretório da sessão pelo próprio cwd, com barra e ponto
-        # virando hífen.
-        cwd_as_dir)
-            dir="$base/$(printf '%s' "$2" | tr '/.' '--')"
-            while IFS= read -r f; do achados+=("$f"); done < <(
-                find "$dir" -maxdepth 1 -name '*.jsonl' -newer "$3" 2>/dev/null)
-            ;;
-    esac
+    while IFS= read -r f; do
+        [[ -z "$padrao" ]] || grep -qF "$padrao" "$f" || continue
+        achados+=("$f")
+    done < <(find "$caminho" -name '*.jsonl' -newer "$3" 2>/dev/null)
     (( ${#achados[@]} )) || return 0
+    # Uma chamada pode render mais de um arquivo: a continuação aponta pro pai por
+    # `parent_thread_id`. O de escrita mais recente é o que tem o fim da história,
+    # e medido no par real de 21/set/2026 o mais recente é o pai.
     alvo=$(ls -t "${achados[@]}" 2>/dev/null | head -1)
     [[ -n "$alvo" && -f "$alvo" ]] && printf '%s\n' "$alvo"
     return 0
@@ -566,7 +581,10 @@ if [[ -n "$WORKTREE" ]]; then
         git -C "$WORKTREE" rev-parse --verify -q "$base_ref" >/dev/null || die "--base '$base_ref' não resolve em $WORKTREE"
         WT_BASE_SHA=$(git -C "$WORKTREE" rev-parse --short "$base_ref")
 
-        slug="$TASK-$(date +%s | tail -c 6)$RANDOM"
+        # Mesma identidade da task: antes a árvore tinha um slug próprio, então
+        # `tasks/<id>/` e `branch=delegate/<slug>` não se juntavam, e casar os dois
+        # à mão era a caçada que o campo `material` existe pra matar.
+        slug="$TASK_ID"
         WT_BRANCH="delegate/$slug"
         WT_DIR="$WT_ROOT/$(wt_nome_repo "$WORKTREE")/$slug"
         mkdir -p "$(dirname "$WT_DIR")" || die "não consegui criar a raiz das árvores em $WT_ROOT"
@@ -617,7 +635,6 @@ run_cascade() {
         fi
         DUR_S=$(( SECONDS - t0 ))
         MATERIAL=$(transcript_de "$backend" "${WT_DIR:-$PWD}" "$PROMPT_FILE")
-        MATERIAL="${MATERIAL:-$TMP_OUT}"
         [[ $rc -eq 0 ]] && { USED="$backend"; USED_POOL=$(pool_key "$backend" "$model"); USED_MODEL="$model"; return 0; }
         # Degrau que não deu certo devolve o balde na hora. Soltar só no fim
         # deixaria um erro prender o balde pelo resto da chamada, e a cascata
@@ -686,8 +703,7 @@ if [[ "$ASYNC" == 1 ]]; then
         # Escape hatch do rollback: devolve o despacho pro modo serial sem que o
         # chamador precise mudar de flag.
         echo "▶ DELEGATE_SERIAL ligado, despachando em modo serial" >&2
-        executar
-        exit $?
+        executar   # termina em exit por todos os caminhos, então nada segue daqui
     fi
     # O prompt muda de casa antes do fork: o trap do pai apagaria ele debaixo do
     # filho. O filho apaga quando termina, porque prompt guardado é conteúdo do
