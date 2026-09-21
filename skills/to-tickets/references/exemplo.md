@@ -26,7 +26,7 @@ Contexto: a quebra de receita por categoria cai num bucket NULL porque `dim_prod
 
 O que construir: produto ingerido pelo caminho DTR chega em dim_product com
 category preenchida a partir de section. Section fora do de-para vira "OUTROS"
-e registra warn.
+e registra warn. Não toca o caminho PDV, que é o ticket 02.
 
 spec:       docs/specs/category-derivada/spec.md
 closes:     AC-01, AC-03

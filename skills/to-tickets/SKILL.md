@@ -59,6 +59,14 @@ Aceite:
 - [ ] <critério observável>
 ```
 
+**O ticket é lido junto com o `AGENTS.md`, não sozinho.** O dispatch monta o
+prompt com o ticket inteiro, as regras do `AGENTS.md` do repo e o contrato de
+report do `delegate`, então o ticket não repete convenção de código: ele carrega
+o que só ele sabe, que é o comportamento, o limite de arquivo e o comando de
+aceite. O que falta com mais frequência é o limite negativo. Uma frase de "não
+toca X" dentro do `O que construir:` custa uma linha e evita o worker melhorar o
+que ninguém pediu, o que é mais barato que descobrir isso revisando o diff.
+
 Cinco campos carregam o peso:
 
 - **`Contexto:` e `spec:` fecham a corrente pra trás.** O agente que pega o

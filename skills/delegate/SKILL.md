@@ -17,8 +17,7 @@ description: >-
 
 # Delegate, orquestração de workers externos
 
-> **D-01, reescrita em 21/set/2026: plano de tarifa fixa primeiro, na ordem de
-> qualidade.** O codex é ChatGPT Plus e o backend `claude` é a mesma assinatura
+> **D-01: plano de tarifa fixa primeiro, na ordem de qualidade.** O codex é ChatGPT Plus e o backend `claude` é a mesma assinatura
 > da sessão, então os dois custam a mesma mensalidade que já foi paga, e o que se
 > gasta é janela. O agy é grátis mas a cota é baixa, então ele é válvula de
 > excedente, não degrau de volume. Toda cascata termina no plano Claude antes de

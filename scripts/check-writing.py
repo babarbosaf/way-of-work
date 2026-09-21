@@ -1,0 +1,1 @@
+../skills/writing/scripts/check-writing.py

@@ -7,6 +7,11 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **`check-links.py` passou a cobrar caminho de script citado em code span.** O repo
+  mantém dois caminhos válidos pro mesmo arquivo, o canônico dentro da skill e o symlink
+  em `scripts/`, e o modo de falhar é um doc citar o curto onde o symlink não existe. O
+  lint aceita qualquer um dos dois e só reclama quando nenhum resolve. Achou o primeiro
+  caso na hora: `scripts/check-writing.py` era citado e não existia, e ganhou o symlink.
 - **A prateleira de modelos virou dado, e o review passou a espelhar a sessão.** A
   `model-policy.json` ganhou `review_shelf.models` (lista fechada de quem pode revisar),
   `suggested_effort` (esforço por modelo, porque cada um roda no sugerido dele e não no
@@ -112,6 +117,15 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Changed
 
+- **Skill deixou de carregar histórico de mudança.** Data de decisão e narrativa de "o
+  que morreu quando" saíram da `skills/delegate/SKILL.md`, da matriz de modelos e dos
+  `$comment` da policy: skill é o estado presente do que ela é e de como funciona, e o
+  histórico é o git, o `CHANGELOG.md` e o `FEEDBACK.md`. Data de **medição** ficou, porque
+  é parte do fato e é o que diz quando ele decai.
+- **O ticket ganhou limite negativo.** O `to-tickets` passou a pedir uma frase de "não
+  toca X" dentro do `O que construir:`. O ticket é lido junto com o `AGENTS.md` do repo e
+  o contrato de report do `delegate`, então ele não repete convenção; o que faltava era o
+  limite que impede o worker de melhorar o que ninguém pediu.
 - **D-01 mudou de sentido: plano de tarifa fixa primeiro, na ordem de qualidade.** A regra
   antiga era "custo marginal zero antes da sessão Claude", o que punha o agy grátis na
   frente de tudo. Só que a cota do agy é baixa e a do plano já está paga, então o que se

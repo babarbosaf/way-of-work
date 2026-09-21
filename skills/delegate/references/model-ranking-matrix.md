@@ -1,12 +1,11 @@
 # Prateleira de modelos e escolha manual
 
 Complemento do `config/model-policy.json`, não cópia dele. A cascata por
-task-type (`review`, `implement`, `scan`, `boilerplate`) mora
-**só** na policy, porque duas listas da mesma cascata divergem: esta página já
-apontou pra `gpt-5.5` meses depois de o default virar outro. Aqui fica o que a
-policy não carrega: a prateleira, a escolha manual e o fallback de sessão.
+task-type (`review`, `implement`, `scan`, `boilerplate`) mora **só** na policy,
+porque duas listas da mesma cascata divergem. Aqui fica o que a policy não
+carrega: a prateleira, a escolha manual e o fallback de sessão.
 
-## A prateleira (2026-09-20)
+## A prateleira
 
 Modelo bom implementa, mas **implementar bem não qualifica pra revisar**.
 
@@ -70,10 +69,9 @@ modelo melhor de outra linha, porque capacidade sobrando é quota desperdiçada.
 - **Fallback de sessão** só quando a task exige o harness Claude (tools, MCP,
   skills) ou a cascata externa esgotou. Nunca como primeira opção pra task que
   worker grátis resolve.
-- **Não existe task-type de segunda opinião.** Ele morreu em 20/set/2026: o
-  advisor cobre o caso de conselho, o `review` cobre spec e código, e uma review
-  delegada a modelo abaixo da classe do master é rebaixamento, não segunda
-  opinião.
+- **Não existe task-type de segunda opinião.** O advisor cobre o caso de
+  conselho, o `review` cobre spec e código, e review delegada a modelo abaixo da
+  classe do master é rebaixamento, não segunda opinião.
 - **Claude Opus 4.6 (Thinking) está fora das cascatas do agy:** medido em
   07/set/2026, leva 902s e ainda volta rc=2 em headless, contra 26s do Sonnet 4.6
   e 30s do Gemini 3.1 Pro.
