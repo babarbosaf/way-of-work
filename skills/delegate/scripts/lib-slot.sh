@@ -62,13 +62,23 @@ slot_tomar() { # pool id prazo_segundos → 0 quando tomou
 
 # Quem varre slots pergunta aqui, e não sai lendo o formato do arquivo por conta:
 # o `--gc` e a camada de terminal precisam da mesma resposta.
-slot_em_curso() { # lista os baldes ocupados agora, um por linha: balde id
-    local f pool
+# Aqui a pergunta é outra: não "o slot pode ser tomado", mas "tem alguém
+# trabalhando". As duas divergem num caso real, e a diferença é mentira na tela:
+# o prazo começa na tomada do slot e o prazo do worker começa depois do preparo
+# da chamada, então worker vivo passa do prazo do slot e desaparecia da
+# listagem. Quem decide tomar continua usando `slot_orfao`, porque lá segurar
+# balde de worker travado é o dano.
+slot_em_curso() { # lista os baldes com dono vivo, um por linha: balde id
+    local f pool pid id
     for f in "$SLOT_DIR"/slot.*; do
         [[ -f "$f" ]] || continue
-        pool=$(sed -n 's/^balde=//p' "$f" 2>/dev/null)
-        slot_orfao "$pool" && continue
-        printf '%s %s\n' "$pool" "$(sed -n 's/^id=//p' "$f" 2>/dev/null)"
+        # Uma abertura só: o arquivo é reescrito por outro processo, e dois seds
+        # podiam validar o dono de uma versão e imprimir o id de outra.
+        IFS=$'\t' read -r pool pid id < <(
+            awk -F= '$1=="balde"{b=$2} $1=="pid"{p=$2} $1=="id"{i=$2} END{printf "%s\t%s\t%s\n", b, p, i}' "$f" 2>/dev/null)
+        [[ "$pid" =~ ^[0-9]+$ ]] || continue
+        kill -0 "$pid" 2>/dev/null || continue
+        printf '%s %s\n' "$pool" "$id"
     done
 }
 

@@ -29,6 +29,7 @@ case "${MOCK_CODEX:-ok}" in
      [[ -n "${MOCK_SESSIONS:-}" ]] && printf '{"cwd":"%s"}\n' "$PWD" > "$MOCK_SESSIONS/rollout-$$.jsonl"
      echo "codex-resposta:$*"; exit 0 ;;
   eco) cat; echo "codex-resposta:$*"; exit 0 ;;
+  desculpa) cat >/dev/null; echo "warning: run ended with no output and no recorded error"; exit 0 ;;
   multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
   tierreset) echo "quota exceeded; reset at 2100-01-01T00:00:00Z"; exit 1 ;;
@@ -37,6 +38,7 @@ case "${MOCK_CODEX:-ok}" in
   notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
   fail) echo "erro interno"; exit 1 ;;
   absent) exit 127 ;;
+  *) echo "mock codex: MOCK_CODEX='${MOCK_CODEX:-}' não existe neste mock" >&2; exit 99 ;;
 esac
 EOF
 chmod +x "$MOCKBIN/codex"
@@ -53,6 +55,7 @@ case "${MOCK_AGY:-ok}" in
   desculpa) echo "warning: run ended with no output and no recorded error"; exit 0 ;;
   curto) echo "linha unica"; exit 0 ;;
   drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
+  *) echo "mock agy: MOCK_AGY='${MOCK_AGY:-}' não existe neste mock" >&2; exit 99 ;;
 esac
 EOF
 chmod +x "$MOCKBIN/agy"
@@ -74,6 +77,7 @@ case "${MOCK_CLAUDE:-fail}" in
   ratelimit) cat >/dev/null; echo "429 too many requests: rate limit"; exit 1 ;;
   fail) cat >/dev/null; echo "erro interno claude"; exit 1 ;;
   absent) exit 127 ;;
+  *) echo "mock claude: MOCK_CLAUDE='${MOCK_CLAUDE:-}' não existe neste mock" >&2; exit 99 ;;
 esac
 EOF
 chmod +x "$MOCKBIN/claude"
@@ -1040,6 +1044,69 @@ echo x | MOCK_CODEX=desculpa bash "$DELEGATE" --task _probe --model codex - >/de
 [[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] \
   && ok "desculpa dita pelo worker continua armando cooldown" \
   || fail "o detector morreu: desculpa do worker não arma mais nada"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: a listagem pergunta se o dono está vivo, não se o slot é tomável"
+# Achado da revisão do codex: o prazo do slot começa na tomada e o prazo do
+# worker começa depois do preparo da chamada, então worker vivo passa do prazo do
+# slot. Com a regra de "tomável", a task viva desaparecia da tela.
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+TIDV="implement-vivo"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TIDV"
+printf 'estado=em curso\ntask=implement\nbalde=codex\nbranch=delegate/%s\n' "$TIDV" \
+  > "$DELEGATE_GATE_DIR/tasks/$TIDV/meta"
+printf 'pid=%s\nid=%s\nprazo=1\nbalde=codex\n' "$$" "$TIDV" > "$DELEGATE_GATE_DIR/slot.codex"
+vivo=$(bash "$DELEGATE" --tasks 2>&1)
+assert_contains "dono vivo com prazo vencido continua na listagem" "$vivo" "$TIDV"
+# E o inverso segue valendo: dono morto sai, senão a tela encheria de fantasma.
+printf 'pid=999999\nid=%s\nprazo=%s\nbalde=codex\n' "$TIDV" "$(( $(date +%s) + 300 ))" \
+  > "$DELEGATE_GATE_DIR/slot.codex"
+morto=$(bash "$DELEGATE" --tasks 2>&1)
+grep -q "$TIDV" <<<"$morto" && fail "dono morto apareceu como task em curso" \
+  || ok "dono morto sai da listagem mesmo dentro do prazo"
+rm -f "$DELEGATE_GATE_DIR"/slot.*; rm -rf "$DELEGATE_GATE_DIR/tasks/$TIDV"
+
+echo "T: o meta é publicado inteiro, nunca pela metade"
+# Truncar e depois escrever deixava janela: o leitor pegava o arquivo no meio e
+# imprimia campo vazio. Este assert é guarda, não reprodução: a janela é de
+# microssegundos, e o que ele cobra é que nenhuma leitura concorrente veja linha
+# sem tipo de task.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+mock_codex
+TIDA="implement-atomico"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TIDA"
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=codex\n' "$$" "$TIDA" "$(( $(date +%s) + 300 ))" \
+  > "$DELEGATE_GATE_DIR/slot.codex"
+( for _i in $(seq 1 120); do
+    printf 'estado=em curso\ntask=implement\nbalde=codex\nbranch=delegate/%s\ncomecou=x\n' "$TIDA" \
+      > "$DELEGATE_GATE_DIR/tasks/$TIDA/meta.novo"
+    mv "$DELEGATE_GATE_DIR/tasks/$TIDA/meta.novo" "$DELEGATE_GATE_DIR/tasks/$TIDA/meta"
+  done ) &
+_escritor=$!
+parciais=0
+for _i in $(seq 1 60); do
+  linha=$(bash "$DELEGATE" --tasks 2>/dev/null | grep "$TIDA" || true)
+  [[ -z "$linha" ]] && continue
+  grep -qE "$TIDA +codex +implement +delegate/$TIDA" <<<"$linha" || parciais=$(( parciais + 1 ))
+done
+wait "$_escritor"
+assert_eq "nenhuma leitura concorrente viu meta pela metade" "$parciais" "0"
+[[ -f "$DELEGATE_GATE_DIR/tasks/$TIDA/meta.novo" ]] && fail "o temporário do meta ficou pra trás" \
+  || ok "a publicação não deixa temporário"
+rm -f "$DELEGATE_GATE_DIR"/slot.*; rm -rf "$DELEGATE_GATE_DIR/tasks/$TIDA"
+
+echo "T: cascata esgotada não anuncia branch que a limpeza já apagou"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+REPO_D="$TMP/repo-branch-morta"; rm -rf "$REPO_D"; mkdir -p "$REPO_D"
+git -C "$REPO_D" init -q -b main; echo x > "$REPO_D/f.txt"
+git -C "$REPO_D" add f.txt; git -C "$REPO_D" -c user.email=t@t -c user.name=t commit -qm base
+MOCK_CODEX=fail MOCK_AGY=fail MOCK_CLAUDE=fail run --task _probe --worktree "$REPO_D" - >/dev/null 2>&1
+id_morta=$(ls -t "$DELEGATE_GATE_DIR/tasks" | head -1)
+consulta=$(bash "$DELEGATE" --status "$id_morta" 2>&1)
+grep -q '^branch:' <<<"$consulta" && fail "o meta aponta pra branch que a limpeza apagou: $consulta" \
+  || ok "branch apagada não fica no meta"
+git -C "$REPO_D" branch --list 'delegate/*' | grep -q . && fail "a branch do worker sobrou no repo" \
+  || ok "a limpeza apagou a branch de verdade"
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
 
 echo "T: o leitor de tasks não cria nem toca em nada no gate"

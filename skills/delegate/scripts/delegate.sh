@@ -169,12 +169,15 @@ if [[ "$TASKS" == 1 ]]; then
     # Quem está em curso é o que a biblioteca de slot diz, e não a lista de
     # diretórios em `tasks/`: task que terminou deixa o diretório pra trás de
     # propósito, e listar ele mostraria trabalho que ninguém está fazendo.
+    # Uma abertura por task: dois `sed` no mesmo arquivo podiam cair em lados
+    # diferentes de uma reescrita e imprimir tipo de uma versão com branch de
+    # outra.
     _n=0
     while read -r _pool _id; do
         [[ -n "$_id" && -f "$GATE_DIR/tasks/$_id/meta" ]] || continue
-        printf '%-22s %-12s %-12s %s\n' "$_id" "$_pool" \
-            "$(sed -n 's/^task=//p' "$GATE_DIR/tasks/$_id/meta")" \
-            "$(sed -n 's/^branch=//p' "$GATE_DIR/tasks/$_id/meta")"
+        awk -v id="$_id" -v pool="$_pool" -F= \
+            '$1=="task"{t=$2} $1=="branch"{b=$2} END{printf "%-22s %-12s %-12s %s\n", id, pool, t, b}' \
+            "$GATE_DIR/tasks/$_id/meta"
         _n=$(( _n + 1 ))
     done < <(slot_em_curso)
     (( _n )) || echo "nenhuma task em curso"
@@ -346,10 +349,18 @@ trap 'rm -f "$PROMPT_FILE" ${_EFF:+"$_EFF"}; [[ -n "$SLOT_TOMADO" ]] && slot_sol
 # O `branch` entra porque a camada de terminal o mostra, e derivar
 # `delegate/<id>` na leitura mentiria pra despacho sem árvore de trabalho, que não
 # tem branch nenhuma.
+# Publica por rename: truncar e depois escrever deixava uma janela em que o
+# leitor abria o arquivo no meio e imprimia campo vazio, ou misturava a versão
+# velha com a nova. `mv` no mesmo diretório é atômico, então quem lê vê a versão
+# inteira de antes ou a inteira de depois, e nunca metade.
 task_estado() { # estado [rc]
-    printf 'estado=%s\ntask=%s\nbalde=%s\nbranch=%s\nrc=%s\ncomecou=%s\n' \
-        "$1" "$TASK" "${USED_POOL:-}" "${WT_BRANCH:-}" "${2:-}" "$COMECOU" > "$TASK_DIR/meta"
-    [[ "$1" == "em curso" ]] || printf 'terminou=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$TASK_DIR/meta"
+    local novo="$TASK_DIR/meta.novo"
+    {
+        printf 'estado=%s\ntask=%s\nbalde=%s\nbranch=%s\nrc=%s\ncomecou=%s\n' \
+            "$1" "$TASK" "${USED_POOL:-}" "${WT_BRANCH:-}" "${2:-}" "$COMECOU"
+        [[ "$1" == "em curso" ]] || printf 'terminou=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+    } > "$novo"
+    mv "$novo" "$TASK_DIR/meta"
 }
 COMECOU=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 task_estado "em curso"
@@ -758,7 +769,9 @@ executar() {
     fi
 
     # cascata esgotada: só remove worktree criada nesta chamada; --continue nunca apaga trabalho reaproveitado
-    [[ -n "$WT_DIR" && "$WT_FRESH" == "1" ]] && { git -C "$WORKTREE" worktree remove --force "$WT_DIR" 2>/dev/null; git -C "$WORKTREE" branch -D "$WT_BRANCH" 2>/dev/null; } >/dev/null
+    # A branch sai do meta junto com a branch de verdade: o campo diz onde o
+    # trabalho está, e apontar pra ref apagada é pior que não apontar pra nada.
+    [[ -n "$WT_DIR" && "$WT_FRESH" == "1" ]] && { git -C "$WORKTREE" worktree remove --force "$WT_DIR" 2>/dev/null; git -C "$WORKTREE" branch -D "$WT_BRANCH" 2>/dev/null; WT_BRANCH=""; } >/dev/null
     echo "⚠️  Nenhum worker disponível na cascata pra task '$TASK'. A sessão assume." >&2
     log_usage "$TASK" "-" "unavailable" "cascata esgotada: ${TRILHA:-nenhum degrau elegível}"
     # Dos quatro estados terminais, prazo estourado é o único que a cascata sabe
