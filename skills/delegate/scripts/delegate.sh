@@ -44,6 +44,7 @@ LIMITES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # O repositório expõe delegate.sh também por um link em scripts/.
 [[ -f "$LIMITES_DIR/lib-limites.sh" ]] || LIMITES_DIR="$LIMITES_DIR/../skills/delegate/scripts"
 source "$LIMITES_DIR/lib-limites.sh"
+source "$LIMITES_DIR/lib-orcamento.sh"
 # Override project-specific (finding_routing) vive em
 # <base>.local.json (gitignored). Merge base * local (deep; arrays do local vencem).
 # Espelho consciente de model-policy-effective.sh — manter em sincronia.
@@ -173,11 +174,13 @@ if ! jq -e . "$POLICY" >/dev/null 2>&1; then
               "worktree_invoke": "agy --dangerously-skip-permissions --add-dir {worktree} --print-timeout 30m -p"}
   },
   "tasks": {"_any": [{"backend": "codex"}, {"backend": "agy"}]},
-  "cooldowns": {"rate_limit_mins": 1, "tier_fallback_mins": 60, "transient_mins": 10}
+  "cooldowns": {"rate_limit_mins": 1, "tier_fallback_mins": 60, "transient_mins": 10},
+  "budgets": {"window_mins": 300, "pools": {}}
 }
 JSON
 fi
 limites_configurar "$POLICY" "$GATE_DIR" || die "policy sem cooldowns válidos"
+orcamento_configurar "$POLICY" "$LOG" || die "policy sem budgets válidos"
 # Tier troca o PONTO DE ENTRADA da cascata, não o task-type: só o tier amplo é
 # declarado na policy, e padrão (ou tier ausente) resolve a lista de tasks.<task>.
 # Duas listas da mesma fila divergiriam, e foi o que já aconteceu com a matriz.
@@ -307,6 +310,14 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     local pkey; pkey=$(pool_key "$backend" "$model")
     if rem=$(cooldown_remaining "$pkey"); then
         echo "▶ $pkey em cooldown (~$(( (rem+59)/60 ))min)" >&2; return 3
+    fi
+    # Saldo antes de gastar. Pular por saldo é o mesmo movimento de pular por
+    # castigo, e é por isso que devolve o mesmo rc: a cascata desce, e cascata
+    # inteira sem saldo esgota igual a cascata inteira em castigo, entregando o
+    # trabalho pra sessão em vez de virar erro.
+    if ! SALDO_NA_ESCOLHA=$(orcamento_restante "$pkey"); then
+        echo "▶ $pkey sem saldo na janela de ${ORCAMENTO_WINDOW_MINS}min, pulando sem gastar chamada" >&2
+        return 3
     fi
     backend_enabled "$backend" || { echo "▶ $backend desabilitado na policy" >&2; return 4; }
     local bin; bin=$(backend_field "$backend" bin)
@@ -496,7 +507,7 @@ run_cascade() {
     return 1
 }
 
-USED="" USED_POOL="" USED_MODEL=""
+USED="" USED_POOL="" USED_MODEL="" SALDO_NA_ESCOLHA=""
 if run_cascade; then
     echo "worker: $USED" >&2   # linha estável pra consumidores (peer-review) — não reformatar
     if [[ -n "$WT_DIR" ]]; then
@@ -509,7 +520,7 @@ if run_cascade; then
             echo "branch: $WT_BRANCH (base=$base_ref @ $WT_BASE_SHA)" >&2
             echo "--- resumo do worker ---" >&2
             cat "$TMP_OUT" >&2
-            log_usage "$TASK" "$USED" "empty_diff" "${USED_MODEL:+model=$USED_MODEL }branch=$WT_BRANCH base=$base_ref" "$USED_POOL" 0 0 "${DUR_S:-0}"
+            log_usage "$TASK" "$USED" "empty_diff" "${USED_MODEL:+model=$USED_MODEL }branch=$WT_BRANCH base=$base_ref saldo=${SALDO_NA_ESCOLHA:-livre}" "$USED_POOL" 0 0 "${DUR_S:-0}"
             exit 5
         fi
 
@@ -525,7 +536,7 @@ if run_cascade; then
     else
         cat "$TMP_OUT"
     fi
-    log_usage "$TASK" "$USED" "ok" "${USED_MODEL:+model=$USED_MODEL}${WT_BRANCH:+ branch=$WT_BRANCH}" "$USED_POOL" \
+    log_usage "$TASK" "$USED" "ok" "${USED_MODEL:+model=$USED_MODEL}${WT_BRANCH:+ branch=$WT_BRANCH} saldo=${SALDO_NA_ESCOLHA:-livre}" "$USED_POOL" \
         "$(wc -c < "$PROMPT_FILE")" "$(wc -c < "$TMP_OUT")" "${DUR_S:-0}"
     exit 0
 fi

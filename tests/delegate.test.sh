@@ -76,7 +76,15 @@ export PATH="$MOCKBIN:$PATH"
 export DELEGATE_GATE_DIR="$TMP/gate"
 export DELEGATE_POLICY="$TMP/policy.json"
 export DELEGATE_INBOX="$TMP/inbox.md"
-cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
+# A policy do teste é a do repo com a régua de balde levantada: a suíte dispara
+# dezenas de chamadas em segundos, e a régua real (pico de 30 dias) esgotaria no
+# meio da rodada, fazendo todo teste seguinte medir o gate em vez do que ele quer
+# medir. Quem exercita o gate baixa a régua no próprio bloco.
+policy_fresh() {
+  jq '.budgets.pools |= with_entries(.value.max_calls = 9999)' \
+    "$HERE/../config/model-policy.json" > "$DELEGATE_POLICY"
+}
+policy_fresh
 
 run() { echo "prompt de teste" | bash "$DELEGATE" "$@" 2>"$TMP/err"; }
 
@@ -200,7 +208,7 @@ out=$(run --task review -); rc=$?
 assert_eq "exit 0 no fallback" "$rc" "0"
 assert_contains "aviso no stderr" "$(cat "$TMP/err")" "policy inválida"
 assert_contains "linha no inbox" "$(cat "$DELEGATE_INBOX" 2>/dev/null)" "model-policy.json inválida"
-cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
+policy_fresh
 
 echo "T: kill switch DELEGATE_DISABLED=1 → exit 2"
 DELEGATE_DISABLED=1 run --task scan - >/dev/null; rc=$?
@@ -285,7 +293,7 @@ MOCK_CODEX=ratelimit MOCK_AGY=ratelimit bash "$HERE/../scripts/peer-review.sh" s
 assert_eq "cascata esgotada → peer-review exit 2" "$rc" "2"
 
 echo "T: merge de model-policy.local.json — override project-specific sobre a base"
-cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
+policy_fresh
 # base sem override; local injeta scope real → efetiva deve refletir o local
 echo '{"backends":{"codex":{"note":"from-local"}},"tasks":{"_probe":[{"backend":"codex"}]}}' > "$TMP/policy.local.json"
 eff=$(bash "$HERE/../scripts/model-policy-effective.sh" "$DELEGATE_POLICY")
@@ -414,6 +422,77 @@ rem=$(( ${armed#expiry:} - $(date +%s) ))
 [[ $rem -gt 0 && $rem -le $transient_secs ]] && ok "sonda classifica rc=124 como transiente" \
   || fail "sonda não aplicou prazo transiente ao rc=124 (rem=${rem}s)"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: balde sem saldo na janela desce a cascata sem gastar chamada"
+# A cascata só descia por falha, então descobrir que um balde acabou custava uma
+# chamada perdida. O gate consulta o saldo antes de invocar, e pular por saldo é
+# o mesmo movimento de pular por castigo.
+semeia_log() { # pool quantidade
+  local i n="$2"; [[ "$n" =~ ^[0-9]+$ ]] || n=0
+  rm -f "$DELEGATE_GATE_DIR/delegate.log"
+  for ((i=0; i<n; i++)); do
+    jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg pool "$1" \
+      '{ts:$ts,task:"implement",backend:"x",status:"ok",detail:"",pool:$pool,bytes_in:0,bytes_out:0,dur_s:1}' \
+      >> "$DELEGATE_GATE_DIR/delegate.log"
+  done
+}
+jq '.budgets.pools.codex.max_calls = 2' "$DELEGATE_POLICY" > "$TMP/pol-orc.json" \
+  && mv "$TMP/pol-orc.json" "$DELEGATE_POLICY"
+TETO_CODEX=$(jq -r '.budgets.pools.codex.max_calls' "$DELEGATE_POLICY")
+[[ "$TETO_CODEX" =~ ^[0-9]+$ ]] && ok "a régua do balde é dado na policy" \
+  || fail "policy não declara régua de balde (max_calls=$TETO_CODEX)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+semeia_log codex "$TETO_CODEX"
+out=$(run --task "$CODEX_FIRST_TASK" -)
+assert_eq "exit 0: a task fechou no degrau de baixo" "$?" "0"
+assert_contains "quem respondeu foi o agy, não o codex" "$out" "agy-resposta"
+grep -q "codex-resposta" <<<"$out" && fail "o codex foi invocado apesar de estar sem saldo" \
+  || ok "nenhuma chamada gasta no balde sem saldo"
+assert_contains "o motivo do pulo aparece" "$(cat "$TMP/err")" "sem saldo"
+
+echo "T: o log diz qual balde levou a chamada e quanto restava dele"
+saldo_gravado=$(grep -o 'saldo=[^"]*' "$DELEGATE_GATE_DIR/delegate.log" | tail -1)
+[[ -n "$saldo_gravado" ]] && ok "log grava o saldo da hora da escolha ($saldo_gravado)" \
+  || fail "log não grava saldo nenhum"
+
+echo "T: log ilegível vale como balde livre, e a fila volta a descer por falha"
+printf 'isto nao e json\n{quebrado\n' > "$DELEGATE_GATE_DIR/delegate.log"
+out=$(run --task "$CODEX_FIRST_TASK" -)
+assert_eq "exit 0 com log ilegível" "$?" "0"
+assert_contains "o topo da fila foi invocado normalmente" "$out" "codex-resposta"
+
+echo "T: todos os baldes sem saldo entrega pra sessão com o exit de fila esgotada"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+jq '.budgets.pools |= with_entries(.value.max_calls = 1)' "$DELEGATE_POLICY" > "$TMP/pol-orc.json" \
+  && mv "$TMP/pol-orc.json" "$DELEGATE_POLICY"
+for pool in $(jq -r '.budgets.pools | keys[]' "$DELEGATE_POLICY"); do
+  teto=$(jq -r --arg p "$pool" '.budgets.pools[$p].max_calls // 0' "$DELEGATE_POLICY")
+  [[ "$teto" =~ ^[0-9]+$ ]] || continue
+  for ((i=0; i<teto; i++)); do
+    jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg pool "$pool" \
+      '{ts:$ts,task:"implement",backend:"x",status:"ok",detail:"",pool:$pool,bytes_in:0,bytes_out:0,dur_s:1}' \
+      >> "$DELEGATE_GATE_DIR/delegate.log"
+  done
+done
+run --task "$CODEX_FIRST_TASK" - >/dev/null; rc=$?
+assert_eq "exit 2, o mesmo de fila esgotada, e não erro" "$rc" "2"
+assert_contains "a sessão é avisada que assume" "$(cat "$TMP/err")" "A sessão assume"
+
+echo "T: o gate nunca rebaixa a revisão pra classe abaixo da sessão que pediu"
+# Com pareamento, a cascata de review só tem entrada da classe da sessão. Balde
+# sem saldo tem que esgotar a fila, nunca escorregar pra um modelo de fora dela.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+CLS=$(jq -r '.review_pairing | keys[] | select(startswith("$") | not)' "$DELEGATE_POLICY" | head -1)
+PAR=$(jq -r --arg c "$CLS" '.review_pairing[$c] | join(" ")' "$DELEGATE_POLICY")
+out=$(DELEGATE_SESSION_CLASS="$CLS" run --task review - 2>/dev/null)
+fora=""
+for m in $(jq -r '.tasks.review[].model' "$DELEGATE_POLICY"); do
+  grep -q "\[$m\]" <<<"$out" && [[ " $PAR " != *" $m "* ]] && fora="$m"
+done
+[[ -z "$fora" ]] && ok "nenhum modelo fora do pareamento da classe $CLS respondeu" \
+  || fail "o gate rebaixou a revisão pro modelo $fora, fora da classe $CLS"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+policy_fresh
 
 echo "T: o classificador ancora no vocabulário de limite, e não em palavra solta"
 # Worker que falha imprimindo comando de git levava 60min de castigo num balde

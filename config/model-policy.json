@@ -247,6 +247,16 @@
     "prompt_warn_bytes": 100000,
     "prompt_max_bytes": 250000
   },
+  "budgets": {
+    "$comment": "Saldo por balde de cota, contado no gate/delegate.log. window_mins=300 é a forma da janela dos planos (5h) e é escolha declarada, não medição. max_calls saiu do pico de chamadas por janela nos 30 dias gravados, medido em 21/set/2026: codex 10, agy:gemini 4, agy:claude_gpt 2. O balde claude não tem uma única chamada gravada, então ele fica sem régua e vale como livre, igual a log ilegível: régua zero por falta de amostra bloquearia o plano principal justamente na fila que ele vai liderar. Quem recalcula isto é o apura_log.py.",
+    "window_mins": 300,
+    "pools": {
+      "codex": {"max_calls": 10},
+      "agy:gemini": {"max_calls": 4},
+      "agy:claude_gpt": {"max_calls": 2},
+      "claude": {"sem_amostra": true}
+    }
+  },
   "cooldowns": {
     "$comment": "Minutos por classe de limite. Tier sem reset legível cai em tier_fallback_mins.",
     "rate_limit_mins": 1,
