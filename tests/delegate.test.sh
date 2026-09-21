@@ -1046,6 +1046,52 @@ echo x | MOCK_CODEX=desculpa bash "$DELEGATE" --task _probe --model codex - >/de
   || fail "o detector morreu: desculpa do worker não arma mais nada"
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
 
+echo "T: a árvore do worker nasce no HEAD de quem despachou, não no trunk"
+# Medido em 21/set/2026, no primeiro despacho real: a sessão estava na branch da
+# spec, a base saiu do trunk do project.yaml, e o worker construiu contra um
+# arquivo onde a flag que ele devia cobrir não existia. O diff dele não entrou
+# por cherry-pick.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+cat > "$MOCKBIN/codex" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null; echo mudanca > worker.txt; echo "codex-worktree-ok"; exit 0
+EOF
+chmod +x "$MOCKBIN/codex"
+REPO_B="$TMP/repo-base"; rm -rf "$REPO_B"; mkdir -p "$REPO_B/.claude"
+git -C "$REPO_B" init -q -b main
+printf 'repo:\n  trunk: main\n' > "$REPO_B/.claude/project.yaml"
+echo trunk > "$REPO_B/f.txt"
+git -C "$REPO_B" add -A; git -C "$REPO_B" -c user.email=t@t -c user.name=t commit -qm base
+git -C "$REPO_B" switch -q -c feature/spec
+echo "so na branch" > "$REPO_B/da-branch.txt"
+git -C "$REPO_B" add -A; git -C "$REPO_B" -c user.email=t@t -c user.name=t commit -qm "trabalho da spec"
+out=$(run --task _probe --model codex --worktree "$REPO_B" -); rc=$?
+assert_eq "despacho de branch não-trunk: exit 0" "$rc" "0"
+assert_contains "a base reportada é a branch de quem despachou" "$out" "^base: feature/spec @"
+wt_criada=$(git -C "$REPO_B" worktree list | grep 'delegate/' | awk '{print $1}')
+[[ -f "$wt_criada/da-branch.txt" ]] \
+  && ok "a árvore do worker tem o trabalho da branch" \
+  || fail "a árvore nasceu sem o trabalho da branch: base errada"
+git -C "$REPO_B" worktree remove --force "$wt_criada" 2>/dev/null
+git -C "$REPO_B" branch -D $(git -C "$REPO_B" branch --list 'delegate/*' | tr -d ' *') 2>/dev/null
+# No trunk, nada muda: a base continua sendo o trunk, e é o mesmo commit.
+git -C "$REPO_B" switch -q main
+out=$(run --task _probe --model codex --worktree "$REPO_B" -)
+assert_contains "no trunk a base continua o trunk" "$out" "^base: main @"
+wt_criada=$(git -C "$REPO_B" worktree list | grep 'delegate/' | awk '{print $1}')
+[[ -f "$wt_criada/da-branch.txt" ]] && fail "a árvore do trunk trouxe trabalho da branch" \
+  || ok "no trunk a árvore não tem o trabalho da branch"
+git -C "$REPO_B" worktree remove --force "$wt_criada" 2>/dev/null
+git -C "$REPO_B" branch -D $(git -C "$REPO_B" branch --list 'delegate/*' | tr -d ' *') 2>/dev/null
+# E o explícito continua vencendo o default.
+git -C "$REPO_B" switch -q feature/spec
+out=$(run --task _probe --model codex --worktree "$REPO_B" --base main -)
+assert_contains "--base explícito vence o default" "$out" "^base: main @"
+git -C "$REPO_B" worktree remove --force "$(git -C "$REPO_B" worktree list | grep 'delegate/' | awk '{print $1}')" 2>/dev/null
+git -C "$REPO_B" branch -D $(git -C "$REPO_B" branch --list 'delegate/*' | tr -d ' *') 2>/dev/null
+mock_codex
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
 echo "T: a listagem pergunta se o dono está vivo, não se o slot é tomável"
 # Achado da revisão do codex: o prazo do slot começa na tomada e o prazo do
 # worker começa depois do preparo da chamada, então worker vivo passa do prazo do

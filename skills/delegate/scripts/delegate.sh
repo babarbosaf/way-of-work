@@ -647,11 +647,17 @@ if [[ -n "$WORKTREE" ]]; then
         [[ -n "$base_ref" ]] || base_ref="$WT_BRANCH^"
         WT_BASE_SHA=$(git -C "$WORKTREE" rev-parse --short "$base_ref" 2>/dev/null || echo "?")
     else
-        # base da worktree: --base explícito > repo.trunk do project.yaml > HEAD atual. NUNCA origin/main implícito.
+        # base da worktree: --base explícito > branch em que o repo está > HEAD.
+        # NUNCA origin/main implícito, e não mais o trunk do project.yaml: a sessão
+        # que despacha quase sempre está na branch de uma spec, e o trunk fazia o
+        # worker construir contra uma base sem o trabalho dela. Medido em
+        # 21/set/2026: ele cobriu doze flags porque a décima terceira não existia
+        # na base que recebeu, e o diff não entrou por cherry-pick. Repo parado no
+        # trunk cai no mesmo commit de antes, porque aí a branch É o trunk. O nome
+        # da branch em vez de "HEAD" porque ele vai pro report, e "base: HEAD" não
+        # diz a ninguém de onde o trabalho saiu.
         base_ref="$BASE_REF"
-        if [[ -z "$base_ref" && -f "$WORKTREE/.claude/project.yaml" ]]; then
-            base_ref=$(awk '/^repo:/{f=1;next} f && /^[^ ]/{f=0} f && /trunk:/{gsub(/^[ \t]*trunk:[ \t]*/,""); sub(/[ \t]*#.*$/,""); gsub(/["\x27]/,""); sub(/[ \t]+$/,""); print; exit}' "$WORKTREE/.claude/project.yaml")
-        fi
+        [[ -n "$base_ref" ]] || base_ref=$(git -C "$WORKTREE" symbolic-ref --short -q HEAD)
         [[ -n "$base_ref" ]] || base_ref="HEAD"
         git -C "$WORKTREE" rev-parse --verify -q "$base_ref" >/dev/null || die "--base '$base_ref' não resolve em $WORKTREE"
         WT_BASE_SHA=$(git -C "$WORKTREE" rev-parse --short "$base_ref")
