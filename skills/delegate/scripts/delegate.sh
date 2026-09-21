@@ -69,6 +69,7 @@ WT_ROOT="${DELEGATE_WT_ROOT:-$HOME/.delegate-wt}"
 # existe pra evitar.
 wt_nome_repo() { local n; n=$(basename "$(cd "$1" && pwd)"); echo "${n#.}"; }
 LOG="$GATE_DIR/delegate.log"
+TMP_OUT=""; MATERIAL=""
 mkdir -p "$GATE_DIR"; touch "$LOG"; chmod 600 "$LOG"
 slot_configurar "$GATE_DIR"
 
@@ -84,11 +85,19 @@ log_usage() { # task backend status detail pool [bytes_in] [bytes_out] [dur_s]
     local bin bout dur
     bin=$(tr -dc '0-9' <<<"${6:-0}"); bout=$(tr -dc '0-9' <<<"${7:-0}")
     dur=$(tr -dc '0-9' <<<"${8:-0}")
+    # `material` é o campo que liga a chamada ao que o worker produziu. Vai em
+    # TODA chamada, e não só quando falha: transcript existe e não rotaciona,
+    # medido em 21/set/2026 com 712 arquivos do worker de código desde fevereiro
+    # e 547 do Claude, mas são mais de mil nomes opacos e nada ligava uma task ao
+    # material dela. Gravado aqui, a ligação sobrevive ao terminal fechar, que é
+    # o que "imprimir na falha" não dá. CAMINHO, nunca conteúdo: o prompt pode
+    # carregar o repo inteiro, e despejar isso no log é vazamento, não diagnóstico.
     jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg task "$1" --arg backend "$2" \
         --arg status "$3" --arg detail "${4:-}" --arg pool "${5:-}" \
+        --arg material "${MATERIAL:-$TMP_OUT}" \
         --argjson bytes_in "${bin:-0}" --argjson bytes_out "${bout:-0}" \
         --argjson dur_s "${dur:-0}" \
-        '{ts:$ts,task:$task,backend:$backend,status:$status,detail:$detail,pool:$pool,bytes_in:$bytes_in,bytes_out:$bytes_out,dur_s:$dur_s}' >> "$LOG"
+        '{ts:$ts,task:$task,backend:$backend,status:$status,detail:$detail,pool:$pool,material:$material,bytes_in:$bytes_in,bytes_out:$bytes_out,dur_s:$dur_s}' >> "$LOG"
 }
 
 # --- pool: só rótulo pro log de auditoria; prioridade real vem da ordem da cascata na policy ---
@@ -357,6 +366,44 @@ backend_enabled() {
     [[ "$(jq -r --arg b "$1" '.backends[$b].enabled // false' "$POLICY")" == "true" ]]
 }
 
+# O transcript do worker vence o output capturado quando existe: o output traz o
+# que o worker imprimiu, o transcript traz como ele chegou lá. Eles não rotacionam,
+# mas são mais de mil arquivos de nome opaco, e a chave que distingue um é o
+# diretório de trabalho, que o despachante conhece porque foi ele que criou.
+# O `-newer` sobre o arquivo de prompt, montado antes da chamada, descarta sessão
+# de chamada anterior sem aritmética de data: o nome do arquivo do worker de código
+# vem em hora local e o log em UTC, e reconciliar isso à mão erraria de uma hora.
+transcript_de() { # backend cwd marco → caminho do transcript, ou nada
+    local base modo alvo dir f
+    base=$(jq -r --arg b "$1" '.backends[$b].sessions.base // empty' "$POLICY")
+    modo=$(jq -r --arg b "$1" '.backends[$b].sessions.match // empty' "$POLICY")
+    [[ -n "$base" && -n "${2:-}" && -f "${3:-}" ]] || return 0
+    base="${base//\$CLAUDE_CONFIG_DIR/${CLAUDE_CONFIG_DIR:-$HOME/.claude}}"
+    base="${base/#\~/$HOME}"
+    local -a achados=()
+    case "$modo" in
+        # Worker de código grava o cwd dentro do arquivo, e uma chamada pode render
+        # mais de um: a continuação aponta pro pai por `parent_thread_id`. O mais
+        # novo é o que tem o fim da história, e o pai se alcança de dentro dele.
+        cwd_in_file)
+            while IFS= read -r f; do achados+=("$f"); done < <(
+                find "$base" -name '*.jsonl' -newer "$3" 2>/dev/null |
+                while IFS= read -r f; do grep -qF "\"cwd\":\"$2\"" "$f" && printf '%s\n' "$f"; done)
+            ;;
+        # O plano nomeia o diretório da sessão pelo próprio cwd, com barra e ponto
+        # virando hífen.
+        cwd_as_dir)
+            dir="$base/$(printf '%s' "$2" | tr '/.' '--')"
+            while IFS= read -r f; do achados+=("$f"); done < <(
+                find "$dir" -maxdepth 1 -name '*.jsonl' -newer "$3" 2>/dev/null)
+            ;;
+    esac
+    (( ${#achados[@]} )) || return 0
+    alvo=$(ls -t "${achados[@]}" 2>/dev/null | head -1)
+    [[ -n "$alvo" && -f "$alvo" ]] && printf '%s\n' "$alvo"
+    return 0
+}
+
 invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit, 4 ausente, 1 falha)
     local backend="$1" model="$2" effort="${3:-}" rem cmd model_flag effort_config
     # cooldown por pool (backend:pool), não por backend inteiro — agy tem pools
@@ -569,6 +616,8 @@ run_cascade() {
             invoke_backend "$backend" "$model" "$effort"; rc=$?
         fi
         DUR_S=$(( SECONDS - t0 ))
+        MATERIAL=$(transcript_de "$backend" "${WT_DIR:-$PWD}" "$PROMPT_FILE")
+        MATERIAL="${MATERIAL:-$TMP_OUT}"
         [[ $rc -eq 0 ]] && { USED="$backend"; USED_POOL=$(pool_key "$backend" "$model"); USED_MODEL="$model"; return 0; }
         # Degrau que não deu certo devolve o balde na hora. Soltar só no fim
         # deixaria um erro prender o balde pelo resto da chamada, e a cascata

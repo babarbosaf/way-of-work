@@ -25,7 +25,9 @@ mock_codex() {
 cat > "$MOCKBIN/codex" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_CODEX:-ok}" in
-  ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
+  ok) cat >/dev/null
+     [[ -n "${MOCK_SESSIONS:-}" ]] && printf '{"cwd":"%s"}\n' "$PWD" > "$MOCK_SESSIONS/rollout-$$.jsonl"
+     echo "codex-resposta:$*"; exit 0 ;;
   multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
   tierreset) echo "quota exceeded; reset at 2100-01-01T00:00:00Z"; exit 1 ;;
@@ -60,10 +62,13 @@ mock_codex; mock_agy
 # "cascata esgotada" sairia 0 chamando o claude REAL e queimando cota do plano.
 # O `ok` ecoa a ANTHROPIC_API_KEY que chegou ao processo: é assim que se prova que
 # o delegate remove a variável antes de invocar worker (senão o plano vira API).
+mock_claude() {
 cat > "$MOCKBIN/claude" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_CLAUDE:-fail}" in
-  ok) cat >/dev/null; echo "claude-resposta:$* key=${ANTHROPIC_API_KEY:-unset}"; exit 0 ;;
+  ok) cat >/dev/null
+      [[ -n "${MOCK_SESSIONS:-}" ]] && echo '{"type":"summary"}' > "$MOCK_SESSIONS/sessao-$$.jsonl"
+      echo "claude-resposta:$* key=${ANTHROPIC_API_KEY:-unset}"; exit 0 ;;
   multilinha) cat >/dev/null; printf "claude-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) cat >/dev/null; echo "429 too many requests: rate limit"; exit 1 ;;
   fail) cat >/dev/null; echo "erro interno claude"; exit 1 ;;
@@ -71,6 +76,8 @@ case "${MOCK_CLAUDE:-fail}" in
 esac
 EOF
 chmod +x "$MOCKBIN/claude"
+}
+mock_claude
 export PATH="$MOCKBIN:$PATH"
 
 # ambiente isolado: gate dir e policy próprios do teste
@@ -513,14 +520,7 @@ assert_eq "exit 0: slot com prazo vencido foi tomado" "$?" "0"
 rm -f "$DELEGATE_GATE_DIR"/slot.*
 
 echo "T: o caminho assíncrono também não deixa a chave da API chegar ao worker"
-cat > "$MOCKBIN/claude" <<'EOF'
-#!/usr/bin/env bash
-case "${MOCK_CLAUDE:-fail}" in
-  ok) cat >/dev/null; echo "claude-resposta:$* key=${ANTHROPIC_API_KEY:-unset}"; exit 0 ;;
-  *) cat >/dev/null; echo "erro interno claude"; exit 1 ;;
-esac
-EOF
-chmod +x "$MOCKBIN/claude"
+mock_claude   # o mock demorado de cima trocou o corpo, e ninguém devolvia
 id_async=$(ANTHROPIC_API_KEY=segredo-async MOCK_CLAUDE=ok run --task _probe --model claude --async - | sed -n 's/^task: //p')
 [[ -n "$id_async" ]] && ok "o despacho assíncrono devolveu id" || fail "nenhum id no despacho assíncrono"
 for _ in 1 2 3 4 5 6 7 8 9 10; do
@@ -544,6 +544,67 @@ assert_eq "exit 0 no modo serial" "$rc" "0"
 assert_contains "o modo serial ainda devolve identificador" "$out" "^task: "
 mock_codex; mock_agy
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: o log liga cada chamada ao material do worker que a atendeu"
+# Os transcripts existem e não rotacionam (712 do worker de código desde
+# fevereiro, mais 547 do Claude, medido em 21/set/2026), mas são mais de mil
+# arquivos de nome opaco e nada ligava uma task ao material dela: diagnóstico
+# começava por uma caçada.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+mock_codex
+run --task _probe --model codex - >/dev/null
+linha=$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")
+mat=$(jq -r '.material // empty' <<<"$linha")
+[[ -n "$mat" ]] && ok "chamada que fechou grava o caminho do material" || fail "nenhum material no log: $linha"
+[[ -f "$mat" ]] && ok "o caminho gravado existe no disco" || fail "o caminho gravado não existe: $mat"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+MOCK_CODEX=fail run --task _probe --model codex - >/dev/null 2>&1
+linha=$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")
+mat=$(jq -r '.material // empty' <<<"$linha")
+[[ -n "$mat" && -f "$mat" ]] && ok "chamada que falhou também aponta pro material, e ele existe" \
+  || fail "falha sem material apontável: $linha"
+
+# O transcript do worker vence o output capturado quando existe: o output traz o
+# que o worker imprimiu, o transcript traz como ele chegou lá, e é esse o material
+# que a caçada procurava. Achado pelo diretório de trabalho, que o despachante
+# conhece porque foi ele que criou.
+sessoes="$TMP/sessoes-codex"; mkdir -p "$sessoes"
+jq --arg b "$sessoes" '.backends.codex.sessions = {"base":$b,"match":"cwd_in_file"}' \
+  "$DELEGATE_POLICY" > "$TMP/pol" && mv "$TMP/pol" "$DELEGATE_POLICY"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+MOCK_SESSIONS="$sessoes" run --task _probe --model codex - >/dev/null
+mat=$(jq -r '.material // empty' <<<"$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")")
+assert_contains "o transcript do worker vence o output capturado" "$mat" "$sessoes/rollout-"
+[[ -f "$mat" ]] && ok "o transcript apontado existe" || fail "o transcript apontado não existe: $mat"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+run --task _probe --model codex - >/dev/null
+mat=$(jq -r '.material // empty' <<<"$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")")
+assert_contains "worker que não gravou sessão cai no output capturado" "$mat" "out.txt"
+# O plano não grava o cwd dentro do arquivo: ele nomeia o diretório da sessão pelo
+# cwd. O teste monta o caminho por fora e o despachante deriva o dele por dentro,
+# então o assert falha se as duas derivações divergirem.
+sess_plano="$TMP/sessoes-plano"
+dir_plano="$sess_plano/$(printf '%s' "$PWD" | tr '/.' '--')"; mkdir -p "$dir_plano"
+jq --arg b "$sess_plano" '.backends.claude.sessions = {"base":$b,"match":"cwd_as_dir"}' \
+  "$DELEGATE_POLICY" > "$TMP/pol" && mv "$TMP/pol" "$DELEGATE_POLICY"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+MOCK_CLAUDE=ok MOCK_SESSIONS="$dir_plano" run --task _probe --model claude - >/dev/null
+mat=$(jq -r '.material // empty' <<<"$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")")
+assert_contains "a sessão do plano é achada pelo nome de diretório" "$mat" "$dir_plano/sessao-"
+policy_fresh
+
+echo "T: o log grava caminho, nunca conteúdo"
+prompt_secreto="marcador-que-nao-pode-vazar-no-log"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+echo "$prompt_secreto" | bash "$DELEGATE" --task _probe --model codex - >/dev/null 2>&1
+grep -q "$prompt_secreto" "$DELEGATE_GATE_DIR/delegate.log" \
+  && fail "conteúdo do prompt vazou pro log" || ok "nenhum conteúdo de prompt no log"
+grep -q 'codex-resposta' "$DELEGATE_GATE_DIR/delegate.log" \
+  && fail "conteúdo da resposta vazou pro log" || ok "nenhum conteúdo de resposta no log"
+tam=$(wc -c < "$DELEGATE_GATE_DIR/delegate.log")
+[[ "$tam" -lt 4000 ]] && ok "o log segue sendo índice, não depósito (${tam} bytes)" \
+  || fail "o log engordou pra ${tam} bytes, o que cheira a conteúdo dentro dele"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR/delegate.log"
 
 echo "T: o resultado da task se consulta pelo identificador do despacho"
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
