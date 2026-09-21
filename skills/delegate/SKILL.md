@@ -276,7 +276,11 @@ cai pra fallback interno mais barato (nunca opus/fable sem pedido explícito).
   um scan do repo inteiro, com o mesmo número de chamadas.
 - Log de uso (metadados): `~/.claude/gate/delegate.log`, com `bytes_in`/`bytes_out`
   por chamada. É com ele que o degrau do `.shunt` se calibra; sem tamanho, o
-  threshold é palpite.
+  threshold é palpite. Cada linha traz também `material`, o caminho do que o
+  worker deixou no disco: o transcript da sessão dele quando ele grava uma, e o
+  output capturado quando não grava. Caminho, nunca conteúdo, então diagnosticar
+  uma falha é abrir o arquivo que a linha aponta, sem caçar entre mil sessões de
+  nome opaco.
 - **Eval de conformidade real** (sem mock, contra os CLIs de verdade):
   `scripts/smoke_backends.sh [--task <type>]`, sonda cada modelo/pool
   habilitado na policy com prompt trivial, confirma resposta não-vazia, e já

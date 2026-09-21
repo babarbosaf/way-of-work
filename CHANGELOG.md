@@ -7,6 +7,38 @@ versionamento [SemVer](https://semver.org/lang/pt-BR/).
 
 ### Added
 
+- **Orquestração da delegação: a fila deixou de aprender só por dano.** Antes a cascata
+  descia um degrau quando o de cima falhava, e não existia outro jeito de ela andar:
+  descobrir que um balde acabou custava uma chamada perdida, e por isso o melhor worker
+  ficava em último. Agora cada balde tem régua de saldo por janela, apurada do próprio
+  log, e o despachante consulta antes de gastar. Com o gate no lugar, a fila de
+  implementação passou a liderar pelo plano principal, medido pelo trilho de verdade
+  antes de virar. O castigo por limite virou proporcional ao tipo (minuto, cota de tier
+  até o reset declarado, tropeço de provider), e as durações são dado na policy, não
+  número em script. Efeito real medido no mesmo dia: o `rc=124` que de manhã tirava um
+  balde são por uma hora passou a tirar por dez minutos.
+- **Despacho assíncrono, com um worker por balde.** `delegate.sh --async` devolve
+  identificador e volta na hora, `--status <id>` consulta o resultado, e o slot por
+  balde (arquivo tomado com `noclobber`) impede dois workers no mesmo balde mesmo com
+  dois despachos simultâneos. Slot de processo morto ou de prazo vencido se solta sozinho.
+- **Cada chamada do log aponta pro material do worker.** `gate/delegate.log` ganhou
+  `material`: o transcript da sessão do worker quando ele grava uma, o output capturado
+  quando não grava, e nos dois casos o arquivo existe quando a linha é escrita. São mais
+  de mil transcripts de nome opaco no disco, e nada ligava uma task ao material dela, de
+  modo que diagnosticar falha começava por uma caçada. Caminho, nunca conteúdo: prompt
+  pode carregar o repo inteiro.
+- **`apura_log.py`, as réguas saem do histórico.** Teto de espera por tipo de task, régua
+  de saldo por balde e a lista de degraus declarados que nunca resolveram nome de modelo,
+  tudo apurado do log com `--check` pra falhar quando a policy divergir. Balde cuja régua
+  a policy recusa de propósito mostra o pico observado sem virar divergência, porque pico
+  medido é piso de uso e não teto de cota.
+- **A árvore de trabalho da delegação saiu de dentro do repo.** Ela ia pra
+  `.delegate-wt/` dentro do próprio repositório, e isso tornava impossível delegar neste
+  repo pro worker do plano: o repo é o diretório de configuração dele, que ele protege, e
+  a escrita voltava como caminho sensível sem nem pedir confirmação, porque a sessão do
+  worker não tem terminal. Agora a raiz é `~/.delegate-wt`, com `DELEGATE_WT_ROOT` pra
+  sobrepor.
+
 - **Duas guardas novas no gate de agnosticismo.** `plano ou preço do dono` barra nome de
   plano comercial, preço e estado da máquina do dono, porque o repo diz que existe
   hierarquia de modelos e como ela se declara, nunca de quem é a fatura. `ID de spec ou
