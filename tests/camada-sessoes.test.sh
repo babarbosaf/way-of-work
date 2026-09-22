@@ -512,13 +512,13 @@ export DELEGATE_ADAPTADOR="$ADAPT"
 cat > "$TMP/espacos-dois.json" <<'JSON'
 {"result":{"workspaces":[
  {"workspace_id":"w1","label":"~"},
- {"workspace_id":"w7","label":"exitlag"}
+ {"workspace_id":"w7","label":"projeto-um"}
 ]}}
 JSON
 
 linhas=$(PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
   bash "$ADAPT" espacos 2>/dev/null)
-if grep -qF $'w7\texitlag' <<<"$linhas"; then ok "espacos devolve grupo e nome"
+if grep -qF $'w7\tprojeto-um' <<<"$linhas"; then ok "espacos devolve grupo e nome"
 else fail "espacos não devolveu os grupos (veio: '$linhas')"; fi
 
 # shellcheck disable=SC1090
@@ -530,7 +530,7 @@ else fail "visivel_espaco não existe"; fi
 # abas do mesmo projeto por dois lugares, que é o contrário do que a fatia quer.
 : > "$HERDR_CHAMADAS"
 espaco=$(PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
-  visivel_espaco /qualquer/caminho/exitlag 2>/dev/null)
+  visivel_espaco /qualquer/caminho/projeto-um 2>/dev/null)
 if [[ "$espaco" == "w7" ]]; then ok "o projeto que já tem grupo reusa o dele"
 else fail "não reusou o grupo existente (veio: '$espaco')"; fi
 if ! grep -q 'workspace create' "$HERDR_CHAMADAS"; then ok "e nenhum grupo novo nasce"
@@ -538,10 +538,10 @@ else fail "criou grupo que já existia"; fi
 
 : > "$HERDR_CHAMADAS"
 espaco=$(PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
-  visivel_espaco /qualquer/caminho/kirara 2>/dev/null)
+  visivel_espaco /qualquer/caminho/projeto-dois 2>/dev/null)
 if [[ "$espaco" == "wN" ]]; then ok "projeto sem grupo ganha o dele"
 else fail "projeto sem grupo não ganhou grupo (veio: '$espaco')"; fi
-if grep -qF -- '--label kirara' "$HERDR_CHAMADAS"; then
+if grep -qF -- '--label projeto-dois' "$HERDR_CHAMADAS"; then
   ok "e o grupo leva o nome do projeto"
 else fail "o grupo nasceu sem o nome do projeto (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
 
@@ -551,7 +551,7 @@ else fail "o grupo nasceu sem o nome do projeto (veio: '$(cat "$HERDR_CHAMADAS")
 printf 'Ask anything\n' > "$HERDR_TELA"
 PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
   DELEGATE_POLICY="$TMP/policy.json" ABRE_PRAZO_TELA_S=1 \
-  bash "$ABRE" --nome t99-algo --backend bom --cwd /qualquer/caminho/exitlag >/dev/null 2>&1
+  bash "$ABRE" --nome t99-algo --backend bom --cwd /qualquer/caminho/projeto-um >/dev/null 2>&1
 if grep -qF -- '--workspace w7' "$HERDR_CHAMADAS"; then
   ok "a aba nasce no grupo do projeto dela"
 else fail "a aba nasceu fora do grupo (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
@@ -559,7 +559,7 @@ else fail "a aba nasceu fora do grupo (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
 : > "$HERDR_CHAMADAS"
 PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
   DELEGATE_POLICY="$TMP/policy.json" ABRE_PRAZO_TELA_S=1 \
-  bash "$ABRE" --nome t98-outro --backend bom --cwd /qualquer/caminho/kirara >/dev/null 2>&1
+  bash "$ABRE" --nome t98-outro --backend bom --cwd /qualquer/caminho/projeto-dois >/dev/null 2>&1
 if grep -qF -- '--workspace wN' "$HERDR_CHAMADAS"; then
   ok "trabalho de outro projeto nasce em outro grupo"
 else fail "os dois projetos caíram no mesmo grupo"; fi
