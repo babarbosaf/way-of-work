@@ -764,6 +764,65 @@ if grep -q 'nenhuma task em curso' <<<"$tab_ocioso"; then
   ok "e ocioso na tabela continua dizendo o que dizia"
 else fail "a tabela de ocioso mudou (veio: '$tab_ocioso')"; fi
 
+echo "== cenário de ponta a ponta =="
+# O único bloco que abre aba de verdade e gasta chamada de worker. Roda sozinho,
+# sem ninguém olhando, que é o ponto: cenário que só roda à mão passa uma vez e
+# nunca mais é verificável. `CAMADA_E2E=0` desliga, e o pulo sai escrito.
+cenario_e2e() { # → rc 0 quando o commit da sessão dirigida carrega a marca
+  local marca repo backend modelo esforco pane tab espaco log
+  # Exclusiva da execução: duas rodadas seguidas não podem se confundir, e uma
+  # marca repetida faria a segunda passar com o commit da primeira.
+  marca="E2E-$$-${RANDOM}-$(date +%s)"
+  repo="$TMP/e2e-$marca"
+  mkdir -p "$repo" || return 1
+  git -C "$repo" init -q 2>/dev/null || return 1
+  git -C "$repo" config user.email cenario@teste
+  git -C "$repo" config user.name cenario
+  echo base > "$repo/README.md"
+  git -C "$repo" add -A && git -C "$repo" commit -qm base || return 1
+
+  # Mesma escolha que o despacho faria: primeiro da fila que a medição aprovou.
+  visivel_configurar "$POLICY" || return 1
+  while IFS=$'\t' read -r b m e; do
+    [[ -n "$b" ]] || continue
+    if visivel_elegivel "$b"; then backend="$b"; modelo="$m"; esforco="$e"; break; fi
+  done < <(jq -r '.tasks.implement[]? | [.backend, (.model // ""), (.effort // "")] | @tsv' "$POLICY")
+  [[ -n "${backend:-}" ]] || return 1
+
+  pane=$(bash "$ABRE" --nome "cenario-$marca" --backend "$backend" \
+    ${modelo:+--model "$modelo"} ${esforco:+--effort "$esforco"} --cwd "$repo") || return 1
+  [[ -n "$pane" ]] || return 1
+
+  DIRIGE_PRAZO_S=240 bash "$DIRIGE" instruir "$pane" \
+    "Crie o arquivo marca.txt com o conteudo exato $marca, depois rode git add -A e git commit -m $marca. Nao faca mais nada." \
+    >/dev/null 2>&1
+
+  tab=$(bash "$ADAPT" listar | awk -F'\t' -v n="cenario-$marca" 'index($2,n){print $1; exit}')
+  [[ -n "$tab" ]] && herdr tab close "$tab" >/dev/null 2>&1
+  # O grupo do projeto nasce com a aba, e repo temporário não pode deixar grupo
+  # vazio pra trás: duas rodadas por execução vira lixo acumulado na tela do dono.
+  espaco=$(bash "$ADAPT" espacos | awk -F'\t' -v n="$(basename "$repo")" '$2==n{print $1; exit}')
+  [[ -n "$espaco" ]] && herdr workspace close "$espaco" >/dev/null 2>&1
+
+  log=$(git -C "$repo" log -1 --format=%s 2>/dev/null)
+  [[ "$log" == *"$marca"* ]]
+}
+
+if [[ "${CAMADA_E2E:-1}" == 0 ]]; then
+  echo "  ~ pulado: CAMADA_E2E=0, o cenário gasta chamada de worker de verdade"
+elif ! command -v herdr >/dev/null 2>&1; then
+  echo "  ~ pulado: a ferramenta não está nesta máquina"
+elif [[ -z "$(visivel_configurar "$POLICY" && visivel_lista | head -1)" ]]; then
+  echo "  ~ pulado: nenhum worker elegível na policy deste repo"
+else
+  if cenario_e2e; then ok "o cenário abre, dirige e fecha, e o commit carrega a marca"
+  else fail "o cenário não produziu o commit com a marca"; fi
+  # Duas rodadas seguidas: veredito que muda entre execuções idênticas não é
+  # prova de nada, é sorte medida uma vez.
+  if cenario_e2e; then ok "e a segunda rodada seguida dá o mesmo veredito"
+  else fail "a segunda rodada divergiu da primeira"; fi
+fi
+
 echo
 echo "== $PASS passed, $FAIL failed =="
 (( FAIL == 0 ))

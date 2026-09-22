@@ -42,9 +42,27 @@ parada() { # → rc 0 quando a sessão não está trabalhando
     [[ "$e" == idle || "$e" == done || "$e" == blocked ]]
 }
 
+# A TUI leva segundos pra terminar de desenhar, e `agent_status` já diz parado
+# antes disso. Texto que chega no meio do desenho se perde sem erro nenhum, e a
+# sessão principal fica esperando resposta de uma instrução que ninguém recebeu.
+# Tela que não muda entre duas leituras é o sinal genérico de pronta, e vale pros
+# três workers medidos sem cada um precisar do seu padrão.
+espera_tela_parar() { # → rc 0 quando a tela repete
+    local antes agora fim
+    fim=$(( SECONDS + PARTIDA ))
+    agora=$("$ADAPTADOR" ler "$PANE" 40)
+    while (( SECONDS < fim )); do
+        sleep 2
+        antes="$agora"; agora=$("$ADAPTADOR" ler "$PANE" 40)
+        [[ -n "$agora" && "$agora" == "$antes" ]] && return 0
+    done
+    return 1
+}
+
 case "$VERBO" in
     instruir)
         [[ $# -ge 3 ]] || die "dirige-sessao: instruir precisa do texto"
+        espera_tela_parar || true
         "$ADAPTADOR" instruir "$PANE" "$3" || exit 1
         fim=$(( SECONDS + PARTIDA ))
         while (( SECONDS < fim )); do parada || break; sleep 1; done
