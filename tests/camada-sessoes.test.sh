@@ -555,6 +555,101 @@ else fail "cascata sem elegível despachou calada no modo de lote"; fi
 if [[ ! -s "$ABRIDOR_CHAMADAS" ]]; then ok "e não chegou a chamar o abridor"
 else fail "chamou o abridor com cascata inelegível"; fi
 
+echo "== sem o modo, e sem a ferramenta, nada muda =="
+# Worker de mentira no PATH: o despacho roda do começo ao fim sem gastar cota, e
+# o que ele grava é o que prova que a escolha não mudou.
+mkdir -p "$TMP/bin3"
+cat > "$TMP/bin3/falso" <<'SH'
+#!/usr/bin/env bash
+echo "$*" >> "$FALSO_CHAMADAS"
+echo "resposta do falso"
+SH
+chmod +x "$TMP/bin3/falso"
+cat > "$TMP/policy-lote.json" <<'JSON'
+{
+  "tasks": { "implement": [ { "backend": "falso", "model": "m1", "effort": "alto" } ] },
+  "backends": { "falso": { "enabled": true, "bin": "falso", "invoke": "falso -",
+                           "prompt_via": "stdin", "model_flag": "-m" } },
+  "timeouts": { "implement": 30 },
+  "cooldowns": { "rate_limit_mins": 1, "tier_fallback_mins": 60,
+                 "transient_mins": 10, "silent_fail_mins": 60 },
+  "budgets": { "window_mins": 300, "pools": {} },
+  "limits": { "prompt_bytes": 100000 },
+  "visivel": { "backends": { "falso": { "elegivel": true, "medido_em": "2026-09-22",
+                "invoke": "falso --interativo", "porque": "medido" } } }
+}
+JSON
+# Adaptador espião: existe, é executável, e grava toda chamada. No modo desligado
+# o arquivo tem que ficar vazio, e é esse vazio que a D-01 promete.
+cat > "$TMP/bin3/espiao.sh" <<'SH'
+#!/usr/bin/env bash
+echo "$*" >> "$ESPIAO_CHAMADAS"
+SH
+chmod +x "$TMP/bin3/espiao.sh"
+export FALSO_CHAMADAS="$TMP/falso.txt"
+export ESPIAO_CHAMADAS="$TMP/espiao.txt"
+: > "$FALSO_CHAMADAS"; : > "$ESPIAO_CHAMADAS"
+LOTE="$TMP/gate-lote"
+
+lote() { # roda um despacho de lote no ambiente controlado
+  echo "trabalho de teste" | env PATH="$TMP/bin3:$PATH" \
+    DELEGATE_POLICY="$TMP/policy-lote.json" DELEGATE_GATE_DIR="$LOTE" \
+    DELEGATE_ADAPTADOR="$TMP/bin3/espiao.sh" \
+    bash "$DELEG" --task implement - 2>&1
+}
+
+saida=$(lote); rc=$?
+if (( rc == 0 )); then ok "modo desligado: o despacho completa"
+else fail "modo desligado falhou (rc=$rc): $saida"; fi
+if grep -qF -- '-m m1' "$FALSO_CHAMADAS"; then
+  ok "modo desligado escolhe o mesmo modelo da cascata"
+else fail "o modelo mudou (veio: '$(cat "$FALSO_CHAMADAS")')"; fi
+meta=$(cat "$LOTE"/tasks/*/meta 2>/dev/null)
+if grep -q '^balde=falso$' <<<"$meta"; then ok "e o mesmo balde"
+else fail "o balde mudou (meta: '$meta')"; fi
+faltando=""
+for campo in estado task balde branch rc comecou terminou; do
+  grep -q "^$campo=" <<<"$meta" || faltando="$faltando $campo"
+done
+if [[ -z "$faltando" ]]; then ok "o registro grava todos os campos obrigatórios"
+else fail "campo faltando no registro:$faltando"; fi
+if [[ ! -s "$ESPIAO_CHAMADAS" ]]; then ok "e o adaptador não é chamado nenhuma vez"
+else fail "o modo desligado chamou o adaptador: $(cat "$ESPIAO_CHAMADAS")"; fi
+
+# Máquina sem a ferramenta é o caso da maioria, e nela o despacho comum não pode
+# nem perceber que a camada existe.
+rm -rf "$LOTE"; : > "$FALSO_CHAMADAS"
+saida=$(echo "trabalho de teste" | env PATH="$TMP/bin3:/usr/bin:/bin" \
+  DELEGATE_POLICY="$TMP/policy-lote.json" DELEGATE_GATE_DIR="$LOTE" \
+  bash "$DELEG" --task implement - 2>&1); rc=$?
+if (( rc == 0 )); then ok "ferramenta ausente com modo desligado: completa igual"
+else fail "sem a ferramenta o despacho comum quebrou (rc=$rc): $saida"; fi
+
+# Cair calado no modo antigo entregaria trabalho feito onde ninguém pediu, e quem
+# pediu pra ver ficaria olhando uma aba que nunca abre.
+: > "$FALSO_CHAMADAS"
+saida=$(env PATH="$TMP/bin3:$PATH" DELEGATE_POLICY="$TMP/policy-lote.json" \
+  DELEGATE_GATE_DIR="$TMP/gate-sem-adapt" DELEGATE_ADAPTADOR="$TMP/nao-existe.sh" \
+  bash "$DELEG" --task implement --visivel pedido-sem-adaptador 2>&1); rc=$?
+if (( rc != 0 )); then ok "modo visível sem adaptador falha"
+else fail "modo visível sem adaptador seguiu adiante (rc=0)"; fi
+if grep -qi 'adaptador' <<<"$saida"; then ok "e a falha nomeia a causa"
+else fail "a falha não nomeia a causa (veio: '$saida')"; fi
+if [[ ! -s "$FALSO_CHAMADAS" ]]; then ok "e não caiu calado no modo antigo"
+else fail "caiu no modo de lote: $(cat "$FALSO_CHAMADAS")"; fi
+
+# Ferramenta ausente é causa diferente de adaptador ausente, e quem lê precisa
+# saber qual das duas instalar.
+: > "$FALSO_CHAMADAS"
+saida=$(env PATH="$TMP/bin3:/usr/bin:/bin" DELEGATE_POLICY="$TMP/policy-lote.json" \
+  DELEGATE_GATE_DIR="$TMP/gate-sem-ferramenta" \
+  bash "$DELEG" --task implement --visivel pedido-sem-ferramenta 2>&1); rc=$?
+if (( rc != 0 )) && grep -qi 'herdr' <<<"$saida"; then
+  ok "modo visível sem a ferramenta falha nomeando a ferramenta"
+else fail "sem a ferramenta o modo visível não nomeou a causa (rc=$rc): '$saida'"; fi
+if [[ ! -s "$FALSO_CHAMADAS" ]]; then ok "e também não caiu no modo antigo"
+else fail "caiu no modo de lote sem a ferramenta"; fi
+
 echo
 echo "== $PASS passed, $FAIL failed =="
 (( FAIL == 0 ))
