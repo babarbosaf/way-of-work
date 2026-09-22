@@ -8,6 +8,13 @@ escreve nele**. O despachante não cita o herdr em nenhuma linha, então desliga
 camada muda o que aparece e não muda quem trabalha. O porquê da escolha e o que
 foi recusado estão em `docs/adrs/adr-0001-camada-de-terminal.md`.
 
+## Índice
+
+- **O leitor**, os dois modos de `delegate.sh --tasks` e o contrato de cada um
+- **A tela**, a barra de status como default e o pane em laço como alternativa
+- **Como o servidor sobe**, o pty e o ambiente que ele guarda enquanto viver
+- **O que a camada não faz**, a fronteira que o ADR desenhou
+
 ## O leitor
 
 ```bash
@@ -75,6 +82,32 @@ pane quebra no `do` antes de rodar qualquer coisa.
 Num pane vale o modo de várias linhas, que mostra identificador e branch. O
 `date` que já apareceu neste laço era heartbeat de quem estava testando, e num
 pane ocioso ele vira um relógio ocupando a tela: fora.
+
+## Como o servidor sobe, e por que isso importa
+
+O herdr não tem comando de subida: `herdr server` só aceita `stop` e
+`reload-config`, e quem levanta o servidor é o TUI, na primeira vez que alguém
+roda `herdr`. Daí sai a armadilha, porque **o servidor guarda o ambiente de quem
+o levantou enquanto viver**, e todo pane nasce filho dele.
+
+Subir de dentro de uma sessão de agente exporta as variáveis `CLAUDE_*` daquela
+sessão pra cada pane, e a `CLAUDE_CODE_CHILD_SESSION=1` desliga o salvamento de
+transcript de qualquer sessão aberta ali, dias depois, sem que nada no cliente
+mostre a causa.
+
+Suba de um terminal de gente. Se for preciso subir de um script, limpe o
+ambiente antes do `exec`:
+
+```zsh
+#!/bin/zsh
+for v in ${(f)"$(env | grep -o '^CLAUDE[^=]*')"}; do unset "$v"; done
+exec script -q /dev/null herdr
+```
+
+O `script -q /dev/null` existe porque o TUI precisa de pty, que é o que falta
+quando um agente chama o binário direto. Conferir é `ps eww <pid-do-servidor>`,
+e a prova de verdade é abrir um pane e olhar o ambiente lá dentro: numa máquina
+limpa sobra só o que o `.zshenv` do dono põe.
 
 ## O que a camada não faz
 
