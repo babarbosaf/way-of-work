@@ -181,7 +181,7 @@ done
 [[ "$ONELINE" == 1 && "$TASKS" != 1 ]] && die "--oneline: só vale junto com --tasks"
 
 if [[ "$TASKS" == 1 ]]; then
-    # A camada de terminal (ADR-0001) roda isto em laço num pane: o gate é a fonte,
+    # A camada de terminal (ADR-0002) roda isto em laço num pane: o gate é a fonte,
     # a leitura não escreve nada, e não existe aqui caminho que toque policy. É o
     # que faz desligar a camada mudar a tela e não o roteamento.
     # Quem está em curso é o que a biblioteca de slot diz, e não a lista de

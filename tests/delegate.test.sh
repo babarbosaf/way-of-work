@@ -685,7 +685,7 @@ rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
 
 echo "T: a camada de terminal lê as tasks em curso, e não decide nada"
 # AC-14 e AC-15. O leitor é o que o pane do herdr roda em laço, e a fronteira dura
-# é a razão do ADR-0001: sem caminho de escrita, a camada não tem por onde
+# é a razão do ADR-0002: no caminho padrão não há escrita, então a camada não tem por onde
 # escolher worker nem modelo, então desligá-la muda a tela e não o roteamento.
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
 rm -rf "$DELEGATE_GATE_DIR/tasks"
@@ -713,7 +713,7 @@ assert_contains "a listagem nomeia a branch" "$lista" "delegate/$TID"
 
 # Só de leitura, e o assert é o gate inteiro byte a byte: se o leitor criasse
 # log, lock ou cache, a camada passaria a ter estado próprio e a fronteira do
-# ADR-0001 cairia sem ninguém ver.
+# ADR-0002 cairia sem ninguém ver.
 estado_gate() { find "$DELEGATE_GATE_DIR" | sort | tr '\n' ' '; find "$DELEGATE_GATE_DIR" -type f | sort | xargs cat 2>/dev/null | cksum; }
 antes=$(estado_gate); bash "$DELEGATE" --tasks >/dev/null 2>&1; depois=$(estado_gate)
 assert_eq "a leitura não escreve nada no gate" "$depois" "$antes"
@@ -798,7 +798,7 @@ assert_contains "o segundo balde também aparece" "$duas" "agy:gemini"
 multi=$(bash "$DELEGATE" --tasks 2>&1)
 assert_eq "o modo de várias linhas dá uma linha por task" "$(wc -l <<<"$multi" | tr -d ' ')" "2"
 
-# Só de leitura também neste modo, pela mesma fronteira do ADR-0001.
+# Só de leitura também neste modo, pela mesma fronteira do ADR-0002.
 antes=$(estado_gate); bash "$DELEGATE" --tasks --oneline >/dev/null 2>&1; depois=$(estado_gate)
 assert_eq "o leitor de uma linha não escreve nada no gate" "$depois" "$antes"
 

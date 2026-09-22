@@ -1,6 +1,6 @@
 # ADR-0001: a camada de terminal é o herdr, e só lê
 
-- **Status:** aceita
+- **Status:** substituída por ADR-0002, em 22/set/2026
 - **Contexto:** `docs/specs/orquestracao-delegacao/spec.md`, D-07 e AC-15
 
 ## O que estava em jogo

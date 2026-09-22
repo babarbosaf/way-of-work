@@ -3,15 +3,21 @@
 Com despacho assíncrono, três tasks correm em baldes de cota diferentes e o
 terminal da sessão mostra uma por vez. A camada é a tela que mostra as três.
 
-A ferramenta é o herdr, e a fronteira é dura: **a camada lê o gate e nunca
-escreve nele**. O despachante não cita o herdr em nenhuma linha, então desligar a
-camada muda o que aparece e não muda quem trabalha. O porquê da escolha e o que
-foi recusado estão em `docs/adrs/adr-0001-camada-de-terminal.md`.
+A ferramenta é o herdr, e a fronteira é dura no caminho padrão: **a camada lê o
+gate e nunca escreve nele**. Sem pedir nada, o despacho não toca a ferramenta, e
+desligar a camada muda o que aparece e não muda quem trabalha.
+
+Existe um caminho de escrita, e um só: `delegate.sh --visivel <trabalho>` faz a
+task virar uma aba nomeada com o worker rodando dentro dela. Ele se pede, falha
+nomeando a causa quando a ferramenta não está lá, e não muda nada de quem não o
+pede. O porquê da escolha e o que foi recusado estão em
+`docs/adrs/adr-0002-camada-de-sessoes.md`.
 
 ## Índice
 
 - **O leitor**, os dois modos de `delegate.sh --tasks` e o contrato de cada um
 - **A tela**, a barra de status como default e o pane em laço como alternativa
+- **O modo visível**, a aba nomeada com o worker vivo dentro
 - **Como o servidor sobe**, o pty e o ambiente que ele guarda enquanto viver
 - **O que a camada não faz**, a fronteira que o ADR desenhou
 
@@ -36,8 +42,10 @@ Para caber numa barra de status existe o modo de uma linha:
 delegate.sh --tasks --oneline
 ```
 
-Ele devolve `dlg: <balde> <balde>` com os baldes que têm worker vivo, e **não
-devolve nada** quando não há nenhum. O silêncio é o contrato, não economia de
+Ele devolve `dlg: <balde> <balde>` com os baldes que têm worker vivo, **não
+devolve nada** quando não há nenhum, e devolve `dlg: ?` quando não consegue ler o
+estado. Ocioso e quebrado precisam de telas diferentes: sair vazio nos dois casos
+foi o que deixou a camada morta por um dia inteiro sem ninguém notar. O silêncio é o contrato, não economia de
 texto: a barra do herdr limpa a entrada quando o output vem vazio, então ocioso
 custa zero. Pedir `--oneline` sem `--tasks` é erro de uso e sai 1, porque
 modificador de leitura aceito num despacho despacharia calado.
@@ -83,6 +91,40 @@ Num pane vale o modo de várias linhas, que mostra identificador e branch. O
 `date` que já apareceu neste laço era heartbeat de quem estava testando, e num
 pane ocioso ele vira um relógio ocupando a tela: fora.
 
+## O modo visível
+
+```bash
+delegate.sh --task implement --visivel t04-revisao
+```
+
+A task vira uma aba com o nome do trabalho, o worker sobe dentro dela em modo
+interativo, e o despacho devolve o endereço do painel. A aba nasce no grupo do
+projeto, prefixada por `» `, que é o que distingue as dirigidas da sessão que
+dirige.
+
+Quem escolhe o worker é a mesma cascata de sempre, filtrada por quem a medição
+aprovou para o modo interativo: o veredito de cada backend mora na policy, com
+data e motivo, e worker não medido fica de fora. Cascata inteira inelegível
+recusa em vez de cair calada no modo de lote.
+
+Depois de aberta, a sessão se dirige:
+
+```bash
+dirige-sessao.sh instruir <painel> "<instrução>"
+dirige-sessao.sh ler <painel>
+dirige-sessao.sh assumir <painel>
+```
+
+`assumir` foca o painel que já existe, então a conversa inteira continua viva e o
+processo não troca. Dois detalhes medidos: a instrução vai como texto digitado,
+porque o canal de prompt da ferramenta entrega instrução longa como conteúdo
+colado e o worker a recusa como injeção; e a espera é por consulta de estado com
+prazo próprio, porque a espera embutida já pendurou além de dois minutos com o
+worker já tendo respondido.
+
+Os nomes da ferramenta moram em `scripts/herdr-adapter.sh`, e em nenhum outro
+arquivo. Trocar de multiplexer é reescrever esse arquivo.
+
 ## Como o servidor sobe, e por que isso importa
 
 O herdr não tem comando de subida: `herdr server` só aceita `stop` e
@@ -112,5 +154,6 @@ limpa sobra só o que o `.zshenv` do dono põe.
 ## O que a camada não faz
 
 Não escolhe worker nem modelo, não lê policy, não mata task e não mostra conteúdo
-de transcript, só o caminho dele. Worker interativo dentro de pane está fora, e é
-a alternativa que o ADR recusou de propósito.
+de transcript, só o caminho dele. Worker interativo dentro de aba entra pelo modo
+visível, que se pede: no caminho padrão ele continua fora, que é a recusa que a
+ADR-0001 escreveu e que a ADR-0002 substitui só onde o modo é pedido.
