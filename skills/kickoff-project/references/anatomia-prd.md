@@ -21,12 +21,14 @@ migra.
 Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
 
 - **Padrão de seção repetido.** Cada feature segue: modelo conceitual, depois estrutura,
-  depois as regras em tabela, depois edge cases explícitos, e quase sempre um bloco de
-  "pontos a definir".
+  depois as regras em tabela, depois edge cases explícitos.
 - **Edge cases por feature.** Fluxo feliz é o mínimo. O valor está nos casos de borda
   listados: o que anula, o que adia, o que empata, o que acontece no esquecimento.
-- **Pontos a definir.** Honestidade sobre o que ainda não foi decidido. Melhor registrar
-  a lacuna do que inventar um número.
+- **Lacuna declarada onde ela morde.** O que ainda não foi decidido não vira bloco no fim
+  da seção, que some da vista e apodrece sem dono nem prazo. Vira `a definir` na célula
+  exata da tabela, onde quem for implementar esbarra, ou item no backlog, que decai. O
+  `check-docs.py --estado` bloqueia a seção, e o padrão 35 do catálogo de escrita explica
+  o porquê.
 - **Restrição no imperativo, nunca decisão logada.** A escolha difícil vira uma regra na
   seção que possui o assunto ("o número publicado mora na tabela"), no presente, sem data
   e sem as alternativas descartadas. O racional completo mora no ADR enquanto ele estiver
@@ -55,7 +57,6 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
    ### Estrutura        -> partes, tipos, estados
    ### Regras / tabelas -> números exatos em tabela (pontuação, janelas, limites)
    ### Edge cases       -> casos fora do fluxo feliz
-   ### Pontos a definir -> o que falta decidir
 
 ## <Restrições invioláveis>
    Regras, requisitos e limitações capturados na Fase 0 que não podem ser quebrados
@@ -107,4 +108,4 @@ fecho transitivo é o PRD inteiro de volta.
 `exemplos/PRD.md` é o padrão-ouro. Ao escrever uma seção nova, abrir a seção equivalente
 do exemplo e reproduzir o nível de detalhe, não o conteúdo. O exemplo é de um bolão de
 futebol; o produto em mãos pode ser qualquer coisa. O que se copia é a disciplina:
-modelo, estrutura, tabela de regras, edge cases, pontos a definir.
+modelo, estrutura, tabela de regras e edge cases.

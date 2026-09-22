@@ -5,6 +5,8 @@ set -u
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DELEGATE="$HERE/../scripts/delegate.sh"
+SMOKE="$HERE/../skills/delegate/scripts/smoke_backends.sh"
+LIMITES="$HERE/../skills/delegate/scripts/lib-limites.sh"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 
@@ -12,7 +14,8 @@ PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); echo "  ✓ $1"; }
 fail() { FAIL=$((FAIL+1)); echo "  ✗ $1"; }
 assert_eq() { [[ "$2" == "$3" ]] && ok "$1" || fail "$1 (esperado='$3' obtido='$2')"; }
-assert_contains() { grep -q "$3" <<<"$2" && ok "$1" || fail "$1 (não contém '$3')"; }
+# -e porque padrão que começa com hífen (--model, por exemplo) senão vira opção do grep.
+assert_contains() { grep -qe "$3" <<<"$2" && ok "$1" || fail "$1 (não contém '$3')"; }
 
 # --- mocks ---
 MOCKBIN="$TMP/bin"; mkdir -p "$MOCKBIN"
@@ -22,12 +25,20 @@ mock_codex() {
 cat > "$MOCKBIN/codex" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_CODEX:-ok}" in
-  ok) cat >/dev/null; echo "codex-resposta:$*"; exit 0 ;;
+  ok) cat >/dev/null
+     [[ -n "${MOCK_SESSIONS:-}" ]] && printf '{"cwd":"%s"}\n' "$PWD" > "$MOCK_SESSIONS/rollout-$$.jsonl"
+     echo "codex-resposta:$*"; exit 0 ;;
+  eco) cat; echo "codex-resposta:$*"; exit 0 ;;
+  desculpa) cat >/dev/null; echo "warning: run ended with no output and no recorded error"; exit 0 ;;
   multilinha) cat >/dev/null; printf "codex-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) echo "429 too many requests: rate limit"; exit 1 ;;
+  tierreset) echo "quota exceeded; reset at 2100-01-01T00:00:00Z"; exit 1 ;;
+  tierunreadable) echo "quota exceeded; reset em breve"; exit 1 ;;
+  timeout) exit 124 ;;
   notfound) cat >/dev/null; echo "ERROR: unexpected status 404 Not Found: The model \`gpt-5.5\` does not exist or you do not have access to it."; exit 1 ;;
   fail) echo "erro interno"; exit 1 ;;
   absent) exit 127 ;;
+  *) echo "mock codex: MOCK_CODEX='${MOCK_CODEX:-}' não existe neste mock" >&2; exit 99 ;;
 esac
 EOF
 chmod +x "$MOCKBIN/codex"
@@ -38,11 +49,13 @@ cat > "$MOCKBIN/agy" <<'EOF'
 case "${MOCK_AGY:-ok}" in
   ok) echo "agy-resposta:$*"; exit 0 ;;
   ratelimit) echo "quota exceeded"; exit 1 ;;
+  timeout) exit 124 ;;
   fail) echo "erro interno agy"; exit 1 ;;
   empty) exit 0 ;;
   desculpa) echo "warning: run ended with no output and no recorded error"; exit 0 ;;
   curto) echo "linha unica"; exit 0 ;;
   drainstdin) cat >/dev/null; echo "erro interno agy"; exit 1 ;;
+  *) echo "mock agy: MOCK_AGY='${MOCK_AGY:-}' não existe neste mock" >&2; exit 99 ;;
 esac
 EOF
 chmod +x "$MOCKBIN/agy"
@@ -53,24 +66,52 @@ mock_codex; mock_agy
 # "cascata esgotada" sairia 0 chamando o claude REAL e queimando cota do plano.
 # O `ok` ecoa a ANTHROPIC_API_KEY que chegou ao processo: é assim que se prova que
 # o delegate remove a variável antes de invocar worker (senão o plano vira API).
+mock_claude() {
 cat > "$MOCKBIN/claude" <<'EOF'
 #!/usr/bin/env bash
 case "${MOCK_CLAUDE:-fail}" in
-  ok) cat >/dev/null; echo "claude-resposta:$* key=${ANTHROPIC_API_KEY:-unset}"; exit 0 ;;
+  ok) cat >/dev/null
+      [[ -n "${MOCK_SESSIONS:-}" ]] && echo '{"type":"summary"}' > "$MOCK_SESSIONS/sessao-$$.jsonl"
+      echo "claude-resposta:$* key=${ANTHROPIC_API_KEY:-unset}"; exit 0 ;;
   multilinha) cat >/dev/null; printf "claude-resposta:%s\nb\nc\nd\ne\n" "$*"; exit 0 ;;
   ratelimit) cat >/dev/null; echo "429 too many requests: rate limit"; exit 1 ;;
   fail) cat >/dev/null; echo "erro interno claude"; exit 1 ;;
   absent) exit 127 ;;
+  *) echo "mock claude: MOCK_CLAUDE='${MOCK_CLAUDE:-}' não existe neste mock" >&2; exit 99 ;;
 esac
 EOF
 chmod +x "$MOCKBIN/claude"
+}
+mock_claude
 export PATH="$MOCKBIN:$PATH"
 
 # ambiente isolado: gate dir e policy próprios do teste
 export DELEGATE_GATE_DIR="$TMP/gate"
+# A raiz das árvores de trabalho saiu de dentro do repo, e sem sobrepor aqui a
+# suíte passou a semear diretório no $HOME de verdade: 160 husks vazios numa
+# rodada só, que ninguém colhe porque `worktree prune` não vê diretório que nunca
+# virou worktree.
+export DELEGATE_WT_ROOT="$TMP/wt"
 export DELEGATE_POLICY="$TMP/policy.json"
 export DELEGATE_INBOX="$TMP/inbox.md"
-cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
+# A policy do teste é a do repo com a régua de balde levantada: a suíte dispara
+# dezenas de chamadas em segundos, e a régua real (pico de 30 dias) esgotaria no
+# meio da rodada, fazendo todo teste seguinte medir o gate em vez do que ele quer
+# medir. Quem exercita o gate baixa a régua no próprio bloco.
+# `_probe` existe porque as provas de MECÂNICA de cascata (desce por falha, arma
+# castigo, pula por saldo) precisam de uma fila com três backends distinguíveis, e
+# não podem quebrar toda vez que o dono reordena uma fila real por medição. Ela é
+# montada com as entradas de verdade da implementação, só reagrupadas, então
+# continua satisfazendo todo invariante que a policy cobra. A ordem que a
+# implementação declara é cobrada em assert próprio, com outro nome.
+policy_fresh() {
+  jq '.budgets.pools |= with_entries(.value.max_calls = 9999)
+      | .tasks._probe = ([.tasks.implement[] | select(.backend == "codex")]
+                       + [.tasks.implement[] | select(.backend == "agy")]
+                       + [.tasks.implement[] | select(.backend == "claude")])' \
+    "$HERE/../config/model-policy.json" > "$DELEGATE_POLICY"
+}
+policy_fresh
 
 run() { echo "prompt de teste" | bash "$DELEGATE" "$@" 2>"$TMP/err"; }
 
@@ -194,7 +235,7 @@ out=$(run --task review -); rc=$?
 assert_eq "exit 0 no fallback" "$rc" "0"
 assert_contains "aviso no stderr" "$(cat "$TMP/err")" "policy inválida"
 assert_contains "linha no inbox" "$(cat "$DELEGATE_INBOX" 2>/dev/null)" "model-policy.json inválida"
-cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
+policy_fresh
 
 echo "T: kill switch DELEGATE_DISABLED=1 → exit 2"
 DELEGATE_DISABLED=1 run --task scan - >/dev/null; rc=$?
@@ -211,7 +252,8 @@ chmod +x "$MOCKBIN/codex"
 out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO" - 2>"$TMP/err"); rc=$?
 assert_eq "exit 0" "$rc" "0"
 assert_contains "reporta branch" "$out" "delegate/"
-branch=$(sed -n 's/.*branch: \(delegate\/[a-z0-9-]*\).*/\1/p' <<<"$out" | head -1)
+# O identificador vem do mktemp, cujo alfabeto inclui maiúscula.
+branch=$(sed -n 's/.*branch: \(delegate\/[A-Za-z0-9-]*\).*/\1/p' <<<"$out" | head -1)
 [[ -n "$branch" ]] && git -C "$REPO" show "$branch:worker.txt" >/dev/null 2>&1 && ok "edição na branch delegate" || fail "edição na branch delegate"
 [[ ! -f "$REPO/worker.txt" ]] && ok "main intocada" || fail "main intocada"
 
@@ -238,10 +280,31 @@ out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO
 assert_eq "exit 0" "$rc" "0"
 argv=$(cat "$AGY_ARGV_DUMP" 2>/dev/null)
 grep -q '{worktree}' <<<"$argv" && fail "placeholder {worktree} não sobrou no comando" || ok "placeholder {worktree} não sobrou no comando"
-assert_contains "--add-dir aponta pra worktree" "$argv" "\.delegate-wt"
+assert_contains "--add-dir aponta pra worktree" "$argv" "$DELEGATE_WT_ROOT/"
 assert_contains "prompt abre com o diretório de trabalho" "$argv" "^Diretório de trabalho: /"
 grep -q 'Diretório de trabalho: .*/\.\./' <<<"$argv" && fail "caminho do prompt normalizado (sem /../)" || ok "caminho do prompt normalizado (sem /../)"
 [[ ! -f "$REPO/worker-agy.txt" ]] && ok "árvore principal intocada" || fail "árvore principal intocada"
+
+echo "T: a árvore de trabalho nasce fora do repositório, e o lugar é dado"
+# Medido em 21/set/2026: o worker do plano principal recusa escrita dentro deste
+# repo, porque o repo é o diretório de configuração dele e ele trata isso como
+# caminho sensível, sem pedir confirmação. Árvore dentro do repo deixa aquele
+# degrau sem como rodar, e é ele que vai liderar a fila de implementação.
+export DELEGATE_WT_ROOT="$TMP/arvores"
+out=$(echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO" - 2>"$TMP/err"); rc=$?
+assert_eq "exit 0 com árvore fora do repo" "$rc" "0"
+wt_path=$(sed -n 's/^worktree: //p' <<<"$out" | head -1)
+[[ -n "$wt_path" ]] && ok "o report nomeia o caminho da árvore" || fail "o report não nomeia o caminho da árvore"
+[[ "$wt_path" == "$TMP/arvores"/* ]] && ok "a árvore nasceu no lugar declarado" \
+  || fail "a árvore ignorou o lugar declarado (nasceu em $wt_path)"
+REPO_REAL=$(cd "$REPO" && pwd)
+case "$wt_path" in "$REPO_REAL"/*) fail "a árvore nasceu dentro do repositório" ;; *) ok "nenhuma árvore dentro do repositório" ;; esac
+[[ ! -d "$REPO/.delegate-wt" ]] && ok "o repo não ganhou diretório de árvore" || fail "o repo ganhou .delegate-wt"
+
+echo "T: a limpeza acha árvore no lugar novo e no antigo"
+gc_out=$(bash "$DELEGATE" --gc "$REPO" 2>&1)
+assert_contains "a limpeza lista a branch de delegação" "$gc_out" "delegate/"
+export DELEGATE_WT_ROOT="$TMP/wt"   # devolve o default da suíte, senão o resto semeia no $HOME
 
 echo "T: one-shot não recebe o preâmbulo de worktree"
 : > "$AGY_ARGV_DUMP"
@@ -279,7 +342,7 @@ MOCK_CODEX=ratelimit MOCK_AGY=ratelimit bash "$HERE/../scripts/peer-review.sh" s
 assert_eq "cascata esgotada → peer-review exit 2" "$rc" "2"
 
 echo "T: merge de model-policy.local.json — override project-specific sobre a base"
-cp "$HERE/../config/model-policy.json" "$DELEGATE_POLICY"
+policy_fresh
 # base sem override; local injeta scope real → efetiva deve refletir o local
 echo '{"backends":{"codex":{"note":"from-local"}},"tasks":{"_probe":[{"backend":"codex"}]}}' > "$TMP/policy.local.json"
 eff=$(bash "$HERE/../scripts/model-policy-effective.sh" "$DELEGATE_POLICY")
@@ -369,21 +432,657 @@ assert_contains "caiu pro agy" "$out" "agy-resposta"
 [[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] && ok "404 arma cooldown (janela ruim não se paga a cada chamada)" \
   || fail "404 não armou cooldown"
 assert_contains "stderr nomeia a janela, não o backend morto" "$(cat "$TMP/err")" "transiente"
-# cooldown de transiente é CURTO: janela ruim de provider passa sozinha
-# expira pela mesma conta que o cooldown_remaining faz (COOLDOWN_MINS=60)
+# Cooldown transiente expira em minutos, conforme a policy.
 armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex")
-rem=$(( armed + 60*60 - $(date +%s) ))
-[[ $rem -gt 0 && $rem -le 600 ]] && ok "cooldown de transiente expira em <=10min, não nos 60 do rate limit" \
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+transient_secs=$(( $(jq -r '.cooldowns.transient_mins' "$DELEGATE_POLICY") * 60 ))
+[[ $rem -gt 0 && $rem -le $transient_secs ]] && ok "cooldown de transiente expira no prazo da policy" \
   || fail "cooldown de transiente não é curto (rem=${rem}s)"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 MOCK_CODEX=ratelimit run --task "$CODEX_FIRST_TASK" - >/dev/null
 armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex" 2>/dev/null || echo 0)
-rem=$(( armed + 60*60 - $(date +%s) ))
-[[ $rem -gt 600 ]] && ok "rate limit real mantém o cooldown longo" || fail "rate limit perdeu o cooldown longo (rem=${rem}s)"
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+rate_secs=$(( $(jq -r '.cooldowns.rate_limit_mins' "$DELEGATE_POLICY") * 60 ))
+[[ $rem -gt 0 && $rem -le $rate_secs ]] && ok "rate limit por minuto usa o prazo da policy" || fail "rate limit não usa o prazo da policy (rem=${rem}s)"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 # o backend segue habilitado: 404 não é decisão de policy
 [[ "$(jq -r '.backends.codex.enabled' "$DELEGATE_POLICY")" == "true" ]] \
   && ok "404 não desabilita o backend na policy" || fail "backend foi desabilitado"
+
+echo "T: limite de tier respeita o reset declarado; reset ilegível cai no prazo longo"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=tierreset run --task "$CODEX_FIRST_TASK" - >/dev/null
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex")
+[[ "$armed" == "expiry:4102444800" ]] && ok "reset declarado arma até a hora informada" \
+  || fail "reset declarado não virou a expiração informada ($armed)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=tierunreadable run --task "$CODEX_FIRST_TASK" - >/dev/null
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex")
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+fallback_secs=$(( $(jq -r '.cooldowns.tier_fallback_mins' "$DELEGATE_POLICY") * 60 ))
+[[ $rem -gt 0 && $rem -le $fallback_secs ]] && ok "reset ilegível cai no prazo longo da policy" \
+  || fail "reset ilegível não caiu no prazo longo da policy (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: timeout da sonda é tropeço de provider e usa o prazo transiente"
+MOCK_AGY=timeout bash "$SMOKE" --task scan >/dev/null 2>&1 || true
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.agy:gemini")
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+[[ $rem -gt 0 && $rem -le $transient_secs ]] && ok "sonda classifica rc=124 como transiente" \
+  || fail "sonda não aplicou prazo transiente ao rc=124 (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: despacho assíncrono devolve identificador e não fica pendurado"
+SLOT="$HERE/../skills/delegate/scripts/lib-slot.sh"
+[[ -f "$SLOT" ]] && ok "biblioteca de slot existe" || fail "biblioteca de slot ausente"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR/delegate.log"
+mock_demorado() { # backend segundos
+  cat > "$MOCKBIN/$1" <<EOF
+#!/usr/bin/env bash
+cat >/dev/null; sleep $2; echo "$1-resposta:\$*"; exit 0
+EOF
+  chmod +x "$MOCKBIN/$1"
+}
+mock_demorado codex 4
+t0=$SECONDS
+out=$(run --task _probe --model codex --async -); rc=$?
+gastou=$(( SECONDS - t0 ))
+assert_eq "exit 0 no despacho assíncrono" "$rc" "0"
+assert_contains "devolve identificador da task" "$out" "^task: "
+[[ $gastou -lt 3 ]] && ok "não esperou o worker terminar (${gastou}s)" \
+  || fail "ficou pendurado ${gastou}s, o worker leva 4s"
+
+echo "T: um slot por balde, e o balde ocupado não recebe um segundo worker"
+espera_slot() { local i; for i in 1 2 3 4 5 6 7 8 9 10; do [[ -f "$DELEGATE_GATE_DIR/slot.$1" ]] && return 0; sleep 0.3; done; return 1; }
+espera_slot codex && ok "o balde em curso tem slot no disco" || fail "nenhum slot foi tomado"
+id2=$(run --task _probe --model codex --async - | sed -n 's/^task: //p')
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  grep -q '^estado=' "$DELEGATE_GATE_DIR/tasks/$id2/meta" 2>/dev/null \
+    && ! grep -q '^estado=em curso' "$DELEGATE_GATE_DIR/tasks/$id2/meta" && break
+  sleep 0.3
+done
+estado2=$(sed -n 's/^estado=//p' "$DELEGATE_GATE_DIR/tasks/$id2/meta" 2>/dev/null)
+[[ "$estado2" == falhou ]] && ok "o segundo despacho no balde ocupado não virou worker (estado=$estado2)" \
+  || fail "o segundo despacho no balde ocupado terminou em '$estado2'"
+assert_contains "o motivo do pulo fica no report da task" "$(cat "$DELEGATE_GATE_DIR/tasks/$id2/report.txt" 2>/dev/null)" "ocupado"
+[[ "$(ls "$DELEGATE_GATE_DIR"/slot.codex* 2>/dev/null | wc -l | tr -d ' ')" == "1" ]] \
+  && ok "um slot só no balde, nunca dois" || fail "o balde ganhou mais de um slot"
+
+echo "T: três tasks em baldes diferentes correm ao mesmo tempo"
+mock_demorado agy 4
+mock_demorado claude 4
+run --task _probe --model agy --async - >/dev/null
+run --task _probe --model claude --async - >/dev/null
+espera_slot "agy:gemini"; espera_slot claude
+ocupados=$(ls "$DELEGATE_GATE_DIR"/slot.* 2>/dev/null | wc -l | tr -d ' ')
+[[ "$ocupados" == "3" ]] && ok "três baldes ocupados ao mesmo tempo" \
+  || fail "esperava 3 baldes em curso, achei $ocupados"
+wait 2>/dev/null
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+
+echo "T: slot de worker morto volta a ficar livre sem intervenção"
+printf 'pid=999999\nid=fantasma\nprazo=%s\nbalde=codex\n' "$(( $(date +%s) + 9999 ))" > "$DELEGATE_GATE_DIR/slot.codex"
+mock_codex
+out=$(run --task _probe --model codex -)
+assert_eq "exit 0: slot de processo morto foi tomado" "$?" "0"
+printf 'pid=%s\nid=vencido\nprazo=1\nbalde=codex\n' "$$" > "$DELEGATE_GATE_DIR/slot.codex"
+out=$(run --task _probe --model codex -)
+assert_eq "exit 0: slot com prazo vencido foi tomado" "$?" "0"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+
+echo "T: slot órfão não pode ser tomado por dois ao mesmo tempo"
+# O resgate de órfão era `rm -f` e recria: dois despachos que vissem o mesmo
+# órfão passavam os dois, o segundo apagava o arquivo do primeiro, e os dois se
+# julgavam donos do balde. O `soltar` do primeiro virava no-op porque o pid
+# gravado já era do segundo. Aqui o resgate tira o órfão do caminho com `mv`, que
+# só um dos dois consegue.
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+source "$SLOT"
+slot_configurar "$DELEGATE_GATE_DIR"
+printf 'pid=999999\nid=fantasma\nprazo=1\nbalde=codex\n' > "$DELEGATE_GATE_DIR/slot.codex"
+slot_tomar codex primeiro 60 && ok "o primeiro resgata o slot órfão" || fail "o resgate do órfão falhou"
+slot_tomar codex segundo 60 && fail "o segundo tomou um balde que já tem dono" \
+  || ok "o segundo não toma balde com dono vivo"
+assert_contains "o dono gravado é o primeiro" "$(cat "$DELEGATE_GATE_DIR/slot.codex")" "id=primeiro"
+[[ "$(ls "$DELEGATE_GATE_DIR"/slot.* 2>/dev/null | wc -l | tr -d ' ')" == "1" ]] \
+  && ok "o resgate não deixa arquivo de slot sobrando" || fail "sobrou arquivo de slot: $(ls "$DELEGATE_GATE_DIR"/slot.*)"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+
+# Dez rodadas de par concorrente: com o `rm -f` do resgate antigo os dois podiam
+# vencer, e o número de vencedores era a única prova possível disso.
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  rm -f "$DELEGATE_GATE_DIR"/slot.* "$TMP/vencedores"
+  printf 'pid=999999\nid=fantasma\nprazo=1\nbalde=codex\n' > "$DELEGATE_GATE_DIR/slot.codex"
+  ( slot_tomar codex A 60 && echo A >> "$TMP/vencedores" ) &
+  ( slot_tomar codex B 60 && echo B >> "$TMP/vencedores" ) &
+  wait 2>/dev/null
+  n=$(wc -l < "$TMP/vencedores" 2>/dev/null | tr -d ' ')
+  [[ "${n:-0}" == "1" ]] || { fail "o mesmo slot órfão foi tomado por $n despachos"; break; }
+done
+[[ "${n:-0}" == "1" ]] && ok "dez pares concorrentes, e o órfão só teve um vencedor por rodada"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+
+echo "T: o caminho assíncrono também não deixa a chave da API chegar ao worker"
+mock_claude   # o mock demorado de cima trocou o corpo, e ninguém devolvia
+id_async=$(ANTHROPIC_API_KEY=segredo-async MOCK_CLAUDE=ok run --task _probe --model claude --async - | sed -n 's/^task: //p')
+[[ -n "$id_async" ]] && ok "o despacho assíncrono devolveu id" || fail "nenhum id no despacho assíncrono"
+for _ in 1 2 3 4 5 6 7 8 9 10; do
+  [[ -s "$DELEGATE_GATE_DIR/tasks/$id_async/out.txt" ]] && break
+  sleep 1
+done
+material=$(cat "$DELEGATE_GATE_DIR/tasks/$id_async/out.txt" 2>/dev/null)
+assert_contains "a chave não chegou ao worker no caminho assíncrono" "$material" "key=unset"
+grep -q "segredo-async" <<<"$material" && fail "a chave vazou pro worker assíncrono" \
+  || ok "nenhum rastro da chave no worker assíncrono"
+
+echo "T: variável de ambiente devolve o despacho pro modo serial"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+mock_demorado codex 3
+t0=$SECONDS
+out=$(DELEGATE_SERIAL=1 run --task _probe --model codex --async -); rc=$?
+gastou=$(( SECONDS - t0 ))
+assert_eq "exit 0 no modo serial" "$rc" "0"
+[[ $gastou -ge 3 ]] && ok "no modo serial o despacho espera o worker (${gastou}s)" \
+  || fail "o modo serial não esperou (${gastou}s)"
+assert_contains "o modo serial ainda devolve identificador" "$out" "^task: "
+mock_codex; mock_agy
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: o log liga cada chamada ao material do worker que a atendeu"
+# Os transcripts existem e não rotacionam, e medido em 21/set/2026 eram mais de
+# mil arquivos de nome opaco desde fevereiro, sem nada que ligasse uma task ao
+# material dela: diagnóstico começava por uma caçada.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+mock_codex
+run --task _probe --model codex - >/dev/null
+linha=$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")
+mat=$(jq -r '.material // empty' <<<"$linha")
+[[ -n "$mat" ]] && ok "chamada que fechou grava o caminho do material" || fail "nenhum material no log: $linha"
+[[ -f "$mat" ]] && ok "o caminho gravado existe no disco" || fail "o caminho gravado não existe: $mat"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+MOCK_CODEX=fail run --task _probe --model codex - >/dev/null 2>&1
+linha=$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")
+mat=$(jq -r '.material // empty' <<<"$linha")
+[[ -n "$mat" && -f "$mat" ]] && ok "chamada que falhou também aponta pro material, e ele existe" \
+  || fail "falha sem material apontável: $linha"
+
+# O transcript do worker vence o output capturado quando existe: o output traz o
+# que o worker imprimiu, o transcript traz como ele chegou lá, e é esse o material
+# que a caçada procurava. Achado pelo diretório de trabalho, que o despachante
+# conhece porque foi ele que criou.
+sessoes="$TMP/sessoes-codex"; mkdir -p "$sessoes"
+jq --arg b "$sessoes" '.backends.codex.sessions = {"path":$b,"grep":"\"cwd\":\"{cwd}\""}' \
+  "$DELEGATE_POLICY" > "$TMP/pol" && mv "$TMP/pol" "$DELEGATE_POLICY"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+MOCK_SESSIONS="$sessoes" run --task _probe --model codex - >/dev/null
+mat=$(jq -r '.material // empty' <<<"$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")")
+assert_contains "o transcript do worker vence o output capturado" "$mat" "$sessoes/rollout-"
+[[ -f "$mat" ]] && ok "o transcript apontado existe" || fail "o transcript apontado não existe: $mat"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+run --task _probe --model codex - >/dev/null
+mat=$(jq -r '.material // empty' <<<"$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")")
+assert_contains "worker que não gravou sessão cai no output capturado" "$mat" "out.txt"
+# O plano não grava o cwd dentro do arquivo: ele nomeia o diretório da sessão pelo
+# cwd. O teste monta o caminho por fora e o despachante deriva o dele por dentro,
+# então o assert falha se as duas derivações divergirem.
+sess_plano="$TMP/sessoes-plano"
+dir_plano="$sess_plano/$(printf '%s' "$PWD" | tr '/.' '--')"; mkdir -p "$dir_plano"
+jq --arg b "$sess_plano" '.backends.claude.sessions = {"path":($b + "/{cwd_flat}")}' \
+  "$DELEGATE_POLICY" > "$TMP/pol" && mv "$TMP/pol" "$DELEGATE_POLICY"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+MOCK_CLAUDE=ok MOCK_SESSIONS="$dir_plano" run --task _probe --model claude - >/dev/null
+mat=$(jq -r '.material // empty' <<<"$(tail -1 "$DELEGATE_GATE_DIR/delegate.log")")
+assert_contains "a sessão do plano é achada pelo nome de diretório" "$mat" "$dir_plano/sessao-"
+policy_fresh
+
+echo "T: o log grava caminho, nunca conteúdo"
+prompt_secreto="marcador-que-nao-pode-vazar-no-log"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+echo "$prompt_secreto" | bash "$DELEGATE" --task _probe --model codex - >/dev/null 2>&1
+grep -q "$prompt_secreto" "$DELEGATE_GATE_DIR/delegate.log" \
+  && fail "conteúdo do prompt vazou pro log" || ok "nenhum conteúdo de prompt no log"
+grep -q 'codex-resposta' "$DELEGATE_GATE_DIR/delegate.log" \
+  && fail "conteúdo da resposta vazou pro log" || ok "nenhum conteúdo de resposta no log"
+tam=$(wc -c < "$DELEGATE_GATE_DIR/delegate.log")
+[[ "$tam" -lt 4000 ]] && ok "o log segue sendo índice, não depósito (${tam} bytes)" \
+  || fail "o log engordou pra ${tam} bytes, o que cheira a conteúdo dentro dele"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR/delegate.log"
+
+echo "T: o resultado da task se consulta pelo identificador do despacho"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+mock_codex
+id_ok=$(run --task _probe --model codex --async - | sed -n 's/^task: //p')
+espera_estado() { local i; for i in $(seq 1 20); do
+    grep -q '^estado=em curso' "$DELEGATE_GATE_DIR/tasks/$1/meta" 2>/dev/null || return 0; sleep 0.3; done; return 1; }
+espera_estado "$id_ok"
+consulta=$(bash "$DELEGATE" --status "$id_ok" 2>&1); rc=$?
+assert_eq "consulta sai 0" "$rc" "0"
+assert_contains "a consulta nomeia o estado" "$consulta" "^estado: pronta"
+assert_contains "a consulta aponta pro material" "$consulta" "out.txt"
+[[ -s "$(sed -n 's/^material: //p' <<<"$consulta")" ]] \
+  && ok "o material apontado existe e tem conteúdo" || fail "o material apontado não existe"
+
+echo "T: os quatro estados terminais, e nenhum inventado"
+for e in "em curso" pronta falhou "estourou o prazo"; do
+  grep -q "$e" "$DELEGATE"  && ok "o despachante conhece o estado '$e'" \
+    || fail "o estado '$e' não existe no despachante"
+done
+grep -q 'cancelada' "$DELEGATE" && fail "estado cancelada apareceu, e matar worker está fora desta entrega" \
+  || ok "cancelada não existe, como a spec declara"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+MOCK_CODEX=fail run --task _probe --model codex - >/dev/null 2>&1
+id_falho=$(ls -t "$DELEGATE_GATE_DIR/tasks" | head -1)
+assert_contains "task que não fechou nomeia falha" "$(bash "$DELEGATE" --status "$id_falho" 2>&1)" "^estado: falhou"
+
+echo "T: identificador que não existe responde sem estourar"
+saida=$(bash "$DELEGATE" --status nao-existe-mesmo 2>&1); rc=$?
+assert_eq "exit 1, erro de uso e não crash" "$rc" "1"
+assert_contains "diz que não conhece o identificador" "$saida" "não existe"
+saida=$(bash "$DELEGATE" --status "../../etc/passwd" 2>&1); rc=$?
+[[ "$rc" != 0 ]] && ok "identificador com travessia de caminho é recusado" \
+  || fail "identificador com ../ foi aceito"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: a camada de terminal lê as tasks em curso, e não decide nada"
+# AC-14 e AC-15. O leitor é o que o pane do herdr roda em laço, e a fronteira dura
+# é a razão do ADR-0002: no caminho padrão não há escrita, então a camada não tem por onde
+# escolher worker nem modelo, então desligá-la muda a tela e não o roteamento.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+rm -rf "$DELEGATE_GATE_DIR/tasks"
+vazio=$(bash "$DELEGATE" --tasks 2>&1); rc=$?
+assert_eq "sem task em curso a listagem sai 0" "$rc" "0"
+assert_contains "e diz que não tem nada em curso" "$vazio" "nenhuma task em curso"
+
+# Task em curso montada à mão: o que o leitor promete é ler o estado que o
+# despacho deixa, e montar isso aqui prova o contrato sem esperar worker.
+TID="implement-fixture"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TID"
+cat > "$DELEGATE_GATE_DIR/tasks/$TID/meta" <<EOF
+estado=em curso
+task=implement
+balde=codex
+branch=delegate/$TID
+comecou=2026-09-21T12:00:00Z
+EOF
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=%s\n' "$$" "$TID" "$(( $(date +%s) + 300 ))" "codex" \
+  > "$DELEGATE_GATE_DIR/slot.codex"
+lista=$(bash "$DELEGATE" --tasks 2>&1)
+assert_contains "a listagem nomeia o balde" "$lista" "codex"
+assert_contains "a listagem nomeia o tipo de task" "$lista" "implement"
+assert_contains "a listagem nomeia a branch" "$lista" "delegate/$TID"
+
+# Só de leitura, e o assert é o gate inteiro byte a byte: se o leitor criasse
+# log, lock ou cache, a camada passaria a ter estado próprio e a fronteira do
+# ADR-0002 cairia sem ninguém ver.
+estado_gate() { find "$DELEGATE_GATE_DIR" | sort | tr '\n' ' '; find "$DELEGATE_GATE_DIR" -type f | sort | xargs cat 2>/dev/null | cksum; }
+antes=$(estado_gate); bash "$DELEGATE" --tasks >/dev/null 2>&1; depois=$(estado_gate)
+assert_eq "a leitura não escreve nada no gate" "$depois" "$antes"
+
+# Sem policy o leitor continua inteiro: é a prova de que não existe caminho de
+# escolha de worker ou modelo no meio dele, porque escolha exige policy.
+sem_policy=$(DELEGATE_POLICY="$TMP/policy-que-nao-existe.json" bash "$DELEGATE" --tasks 2>&1); rc=$?
+assert_eq "a listagem não depende da policy" "$rc" "0"
+assert_contains "e sem policy ainda lista a task" "$sem_policy" "delegate/$TID"
+
+# Slot órfão é task que ninguém está rodando, e listar ela mentiria pra quem olha
+# a tela: a mesma expiração que solta o balde tira a linha da listagem.
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=%s\n' "999999" "$TID" "1" "codex" > "$DELEGATE_GATE_DIR/slot.codex"
+orfao=$(bash "$DELEGATE" --tasks 2>&1)
+grep -q "delegate/$TID" <<<"$orfao" && fail "slot órfão apareceu como task em curso" \
+  || ok "slot órfão não entra na listagem"
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+rm -rf "$DELEGATE_GATE_DIR/tasks/$TID"
+
+# Desligar a camada é não rodar o leitor, e o despachante não tem como notar.
+grep -qi 'herdr' "$DELEGATE" \
+  && fail "o despachante cita a ferramenta de terminal, e aí desligá-la pode mudar roteamento" \
+  || ok "o despachante não conhece a ferramenta de terminal"
+mock_codex
+sem_camada=$(run --task _probe -)
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+( for _i in $(seq 1 10); do bash "$DELEGATE" --tasks >/dev/null 2>&1; done ) &
+_leitor=$!
+com_camada=$(run --task _probe -)
+wait "$_leitor"
+assert_eq "com a camada lendo em laço, o roteamento é idêntico" "$com_camada" "$sem_camada"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+
+echo "T: o leitor de uma linha cabe na barra de status, e cala quando não há nada"
+# AC-27. A barra de status usa a última linha do output e limpa a entrada quando
+# ele vem vazio, então o contrato tem duas metades que só valem juntas: uma linha
+# exata com worker vivo, e zero byte sem nenhum. Imprimir "nenhuma task em curso"
+# aqui deixaria a entrada acesa sem informação, que é o defeito que este modo
+# existe pra consertar.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+rm -rf "$DELEGATE_GATE_DIR/tasks"
+
+quieto=$(bash "$DELEGATE" --tasks --oneline 2>&1); rc=$?
+assert_eq "sem worker vivo o leitor de uma linha sai 0" "$rc" "0"
+assert_eq "e não devolve byte nenhum" "$quieto" ""
+
+TID1="implement-umalinha"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TID1"
+cat > "$DELEGATE_GATE_DIR/tasks/$TID1/meta" <<EOF
+estado=em curso
+task=implement
+balde=codex
+branch=delegate/$TID1
+comecou=2026-09-21T12:00:00Z
+EOF
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=%s\n' "$$" "$TID1" "$(( $(date +%s) + 300 ))" "codex" \
+  > "$DELEGATE_GATE_DIR/slot.codex"
+uma=$(bash "$DELEGATE" --tasks --oneline 2>&1)
+assert_eq "com um worker vivo devolve uma linha só" "$(wc -l <<<"$uma" | tr -d ' ')" "1"
+assert_contains "e a linha nomeia o balde" "$uma" "codex"
+
+# Dois baldes ocupados continuam numa linha. A barra corta o que não cabe na
+# largura, então quebrar linha aqui perde a segunda task em vez de mostrar ela.
+TID2="review-umalinha"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TID2"
+cat > "$DELEGATE_GATE_DIR/tasks/$TID2/meta" <<EOF
+estado=em curso
+task=review
+balde=agy:gemini
+branch=
+comecou=2026-09-21T12:00:00Z
+EOF
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=%s\n' "$$" "$TID2" "$(( $(date +%s) + 300 ))" "agy:gemini" \
+  > "$DELEGATE_GATE_DIR/slot.agy:gemini"
+duas=$(bash "$DELEGATE" --tasks --oneline 2>&1)
+assert_eq "dois workers vivos continuam numa linha" "$(wc -l <<<"$duas" | tr -d ' ')" "1"
+assert_contains "e a linha nomeia os dois baldes" "$duas" "codex"
+assert_contains "o segundo balde também aparece" "$duas" "agy:gemini"
+
+# O modo de várias linhas é o que o pane roda, e ele não pode ter mudado de forma
+# por causa deste ticket: uma linha por task, como o ticket 08 entregou.
+multi=$(bash "$DELEGATE" --tasks 2>&1)
+assert_eq "o modo de várias linhas dá uma linha por task" "$(wc -l <<<"$multi" | tr -d ' ')" "2"
+
+# Só de leitura também neste modo, pela mesma fronteira do ADR-0002.
+antes=$(estado_gate); bash "$DELEGATE" --tasks --oneline >/dev/null 2>&1; depois=$(estado_gate)
+assert_eq "o leitor de uma linha não escreve nada no gate" "$depois" "$antes"
+
+# Flag que não faz nada é a classe de falha silenciosa que esta spec persegue, e
+# num modificador de leitura ela é pior: o despacho acontece e ninguém vê aviso.
+mock_codex
+solto=$(echo x | bash "$DELEGATE" --oneline --task _probe - 2>&1); rc=$?
+assert_eq "o modo de uma linha sem a leitura falha" "$rc" "1"
+assert_contains "e diz qual flag falta" "$solto" "--tasks"
+
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+rm -rf "$DELEGATE_GATE_DIR/tasks"
+
+echo "T: a fila de implementação lidera pelo plano principal, e só ela mudou"
+# A ordem só pôde virar depois de o caminho do plano principal rodar pelo próprio
+# despachante em árvore isolada, medido em 21/set/2026: status ok, pool claude,
+# dur_s 18. Antes disso o primeiro lugar seria um degrau que nunca rodou.
+[[ "$(jq -r '.tasks.implement[0].backend' "$HERE/../config/model-policy.json")" == "claude" ]] \
+  && ok "implementação lidera pelo balde do plano principal" \
+  || fail "implementação lidera por $(jq -r '.tasks.implement[0].backend' "$DELEGATE_POLICY")"
+for fila in review scan boilerplate; do
+  primeiro=$(jq -r --arg f "$fila" '.tasks[$f][0].backend' "$DELEGATE_POLICY")
+  [[ "$primeiro" != "claude" ]] && ok "a fila $fila não teve a ordem alterada (lidera $primeiro)" \
+    || fail "a fila $fila virou de ordem, e este ticket é só da implementação"
+done
+# Esgotar o balde do topo não pode custar a task: o gate desce sem gastar chamada.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+jq '.budgets.pools.claude = {"max_calls": 0}' "$DELEGATE_POLICY" > "$TMP/pol-lider.json" \
+  && mv "$TMP/pol-lider.json" "$DELEGATE_POLICY"
+out=$(run --task implement -)
+assert_eq "exit 0 com o balde do líder esgotado" "$?" "0"
+grep -q "claude-resposta" <<<"$out" && fail "o líder foi invocado com o balde esgotado" \
+  || ok "líder esgotado não gasta chamada"
+[[ -n "$out" ]] && ok "o mesmo trabalho fechou no degrau seguinte" || fail "nenhum degrau assumiu"
+policy_fresh
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+
+echo "T: balde sem saldo na janela desce a cascata sem gastar chamada"
+# A cascata só descia por falha, então descobrir que um balde acabou custava uma
+# chamada perdida. O gate consulta o saldo antes de invocar, e pular por saldo é
+# o mesmo movimento de pular por castigo.
+# ACUMULA, e não apaga: quem precisa de log limpo apaga antes de chamar. O schema
+# da linha de log mora só aqui, senão o campo novo entra em um sítio e o outro
+# passa a medir log de forma antiga.
+semeia_log() { # pool quantidade
+  local i n="$2"; [[ "$n" =~ ^[0-9]+$ ]] || n=0
+  for ((i=0; i<n; i++)); do
+    jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg pool "$1" \
+      '{ts:$ts,task:"implement",backend:"x",status:"ok",detail:"",pool:$pool,bytes_in:0,bytes_out:0,dur_s:1}' \
+      >> "$DELEGATE_GATE_DIR/delegate.log"
+  done
+}
+jq '.budgets.pools.codex.max_calls = 2' "$DELEGATE_POLICY" > "$TMP/pol-orc.json" \
+  && mv "$TMP/pol-orc.json" "$DELEGATE_POLICY"
+TETO_CODEX=$(jq -r '.budgets.pools.codex.max_calls' "$DELEGATE_POLICY")
+[[ "$TETO_CODEX" =~ ^[0-9]+$ ]] && ok "a régua do balde é dado na policy" \
+  || fail "policy não declara régua de balde (max_calls=$TETO_CODEX)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+semeia_log codex "$TETO_CODEX"
+out=$(run --task "$CODEX_FIRST_TASK" -)
+assert_eq "exit 0: a task fechou no degrau de baixo" "$?" "0"
+assert_contains "quem respondeu foi o agy, não o codex" "$out" "agy-resposta"
+grep -q "codex-resposta" <<<"$out" && fail "o codex foi invocado apesar de estar sem saldo" \
+  || ok "nenhuma chamada gasta no balde sem saldo"
+assert_contains "o motivo do pulo aparece" "$(cat "$TMP/err")" "sem saldo"
+
+echo "T: o log diz qual balde levou a chamada e quanto restava dele"
+saldo_gravado=$(grep -o 'saldo=[^"]*' "$DELEGATE_GATE_DIR/delegate.log" | tail -1)
+[[ -n "$saldo_gravado" ]] && ok "log grava o saldo da hora da escolha ($saldo_gravado)" \
+  || fail "log não grava saldo nenhum"
+
+echo "T: log ilegível vale como balde livre, e a fila volta a descer por falha"
+printf 'isto nao e json\n{quebrado\n' > "$DELEGATE_GATE_DIR/delegate.log"
+out=$(run --task "$CODEX_FIRST_TASK" -)
+assert_eq "exit 0 com log ilegível" "$?" "0"
+assert_contains "o topo da fila foi invocado normalmente" "$out" "codex-resposta"
+
+echo "T: todos os baldes sem saldo entrega pra sessão com o exit de fila esgotada"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+jq '.budgets.pools |= with_entries(.value.max_calls = 1)' "$DELEGATE_POLICY" > "$TMP/pol-orc.json" \
+  && mv "$TMP/pol-orc.json" "$DELEGATE_POLICY"
+for pool in $(jq -r '.budgets.pools | keys[]' "$DELEGATE_POLICY"); do
+  teto=$(jq -r --arg p "$pool" '.budgets.pools[$p].max_calls // 0' "$DELEGATE_POLICY")
+  [[ "$teto" =~ ^[0-9]+$ ]] || continue
+  semeia_log "$pool" "$teto"
+done
+run --task "$CODEX_FIRST_TASK" - >/dev/null; rc=$?
+assert_eq "exit 2, o mesmo de fila esgotada, e não erro" "$rc" "2"
+assert_contains "a sessão é avisada que assume" "$(cat "$TMP/err")" "A sessão assume"
+
+echo "T: o gate nunca rebaixa a revisão pra classe abaixo da sessão que pediu"
+# Com pareamento, a cascata de review só tem entrada da classe da sessão. Balde
+# sem saldo tem que esgotar a fila, nunca escorregar pra um modelo de fora dela.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+CLS=$(jq -r '.review_pairing | keys[] | select(startswith("$") | not)' "$DELEGATE_POLICY" | head -1)
+PAR=$(jq -r --arg c "$CLS" '.review_pairing[$c] | join(" ")' "$DELEGATE_POLICY")
+out=$(DELEGATE_SESSION_CLASS="$CLS" run --task review - 2>/dev/null)
+fora=""
+for m in $(jq -r '.tasks.review[].model' "$DELEGATE_POLICY"); do
+  grep -q "\[$m\]" <<<"$out" && [[ " $PAR " != *" $m "* ]] && fora="$m"
+done
+[[ -z "$fora" ]] && ok "nenhum modelo fora do pareamento da classe $CLS respondeu" \
+  || fail "o gate rebaixou a revisão pro modelo $fora, fora da classe $CLS"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+policy_fresh
+
+echo "T: degrau que alcançou o worker e falhou entra no saldo do balde"
+# O log só gravava chamada que fechou. Rate limit, tropeço de provider e rc≠0 do
+# worker chegaram ao provider, gastaram cota e não deixavam linha: o gate de saldo
+# e o apurador leem o mesmo log, então os dois subcontavam, e numa janela ruim
+# passava mais chamada do que a régua permite.
+# A fila é a `_probe`, e não uma task real: estes asserts medem MECÂNICA de
+# cobrança, e amarrá-los à ordem concreta de `tasks.scan` faria um reordenamento
+# por medição apagar a cobertura em silêncio.
+linhas_do_balde() { jq -r --arg p "$1" 'select(.pool == $p) | .status' "$DELEGATE_GATE_DIR/delegate.log" 2>/dev/null | grep -c . ; }
+# Cobrança é POR DEGRAU, não por cascata: `fail` é rc≠0 não classificado, que não
+# arma castigo, então todo degrau de codex da fila é alcançado e cada um gasta uma
+# chamada. Contar "alguma linha" deixaria passar uma implementação que cobra uma
+# vez só e subconta o resto, que é exatamente o bug deste ticket.
+N_CODEX=$(jq '[.tasks._probe[] | select(.backend == "codex")] | length' "$DELEGATE_POLICY")
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+MOCK_CODEX=fail run --task _probe - >/dev/null
+assert_eq "cada degrau de codex alcançado deixa a sua linha" "$(linhas_do_balde codex)" "$N_CODEX"
+
+for modo in fail ratelimit timeout notfound; do
+  rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+  MOCK_CODEX=$modo run --task _probe - >/dev/null
+  (( $(linhas_do_balde codex) > 0 )) && ok "falha '$modo' do worker deixa linha no balde codex" \
+    || fail "falha '$modo' do worker não deixou linha no balde codex"
+done
+
+# rc=0 que não é resposta gastou a chamada igual: o provider atendeu. Aqui a
+# cascata inteira falha, então dois baldes DIFERENTES têm que sair cobrados na
+# mesma chamada — é o que separa "cobra por degrau" de "cobra uma vez".
+for modo in empty desculpa; do
+  rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+  MOCK_CODEX=fail MOCK_AGY=$modo run --task _probe - >/dev/null
+  agy_cobrado=$(jq -r 'select(.pool | startswith("agy:")) | .pool' "$DELEGATE_GATE_DIR/delegate.log" | sort -u | head -1)
+  [[ -n "$agy_cobrado" ]] && ok "falha silenciosa '$modo' cobra o balde $agy_cobrado" \
+    || fail "falha silenciosa '$modo' não cobrou balde nenhum do agy"
+  (( $(linhas_do_balde codex) > 0 )) && ok "e o codex do mesmo despacho segue cobrado ('$modo')" \
+    || fail "o codex do mesmo despacho não foi cobrado ('$modo')"
+done
+
+# A linha da falha carrega o que entrou e o que voltou: sem isso, calibrar o
+# threshold do shunt mede só a população que deu certo.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+MOCK_CODEX=fail run --task _probe - >/dev/null
+jq -e 'select(.pool == "codex") | .bytes_in > 0' "$DELEGATE_GATE_DIR/delegate.log" >/dev/null \
+  && ok "a linha da falha grava os bytes que entraram" || fail "a linha da falha grava bytes_in=0"
+
+echo "T: o saldo da janela cobra a chamada que falhou"
+# O assert nomeia o BALDE: "não respondeu" e "sem saldo" solto passariam também
+# por castigo armado ou por outro balde estourado, e aí o verde não prova nada.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+jq '.budgets.pools.codex.max_calls = 1' "$DELEGATE_POLICY" > "$TMP/pol-falha.json" \
+  && mv "$TMP/pol-falha.json" "$DELEGATE_POLICY"
+MOCK_CODEX=fail run --task _probe - >/dev/null
+[[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] \
+  && fail "rc≠0 não classificado armou castigo: o pulo seguinte não prova saldo" \
+  || ok "nenhum castigo armado no codex, então o pulo seguinte só pode ser saldo"
+out=$(run --task _probe -)
+grep -q "codex-resposta" <<<"$out" && fail "o balde do codex não cobrou a chamada que falhou" \
+  || ok "a chamada que falhou gastou o balde, e o degrau de baixo assumiu"
+assert_contains "o pulo nomeia o balde codex e o motivo saldo" "$(cat "$TMP/err")" "codex sem saldo"
+policy_fresh
+
+echo "T: cascata esgotada, que não alcançou worker nenhum, continua não contando"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+jq '.budgets.pools |= with_entries(.value.max_calls = 0)' "$DELEGATE_POLICY" > "$TMP/pol-zero.json" \
+  && mv "$TMP/pol-zero.json" "$DELEGATE_POLICY"
+rc=0; run --task _probe - >/dev/null || rc=$?
+assert_eq "exit 2 de fila esgotada" "$rc" "2"
+com_balde=$(jq -r 'select(.pool != "") | .pool' "$DELEGATE_GATE_DIR/delegate.log")
+[[ -z "$com_balde" ]] && ok "nenhum balde cobrado: nenhum worker foi alcançado" \
+  || fail "cascata esgotada cobrou o balde '$com_balde' sem alcançar worker"
+policy_fresh
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+
+echo "T: o classificador ancora no vocabulário de limite, e não em palavra solta"
+# Worker que falha imprimindo comando de git levava 60min de castigo num balde
+# são: o regex de cota casava a palavra "reset" em qualquer contexto. Achado na
+# integração do ticket 01, 21/set/2026.
+source "$LIMITES"; limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
+classe_de() { local f="$TMP/classe.txt"; printf '%s\n' "$1" > "$f"; classificar_limite "$f"; }
+[[ "$(classe_de 'resolve com: git reset --hard origin/main')" == desconhecido ]] \
+  && ok "output que só menciona reset não é cota de tier" \
+  || fail "palavra reset solta virou $(classe_de 'resolve com: git reset --hard origin/main')"
+[[ "$(classe_de 'usage limit reached, request timed out')" == tier_quota ]] \
+  && ok "cota esgotada continua cota mesmo dizendo timeout" \
+  || fail "cota com timeout na mensagem virou $(classe_de 'usage limit reached, request timed out')"
+[[ "$(classe_de '429 too many requests: rate limit')" == rate_limit ]] \
+  && ok "rate limit por minuto segue rate limit" || fail "rate limit foi reclassificado"
+[[ "$(classe_de 'status 404: model does not exist or you do not have access')" == transiente ]] \
+  && ok "404 de janela ruim segue transiente" || fail "404 foi reclassificado"
+[[ "$(classe_de '5-hour limit reached; resets at 2026-09-21T23:00:00Z')" == tier_quota ]] \
+  && ok "limite com hora de reset é cota de tier" || fail "limite com reset não é cota"
+
+
+echo "T: falha silenciosa é classe de limite própria, com prazo declarado na policy"
+# Devolução vazia e desculpa em vez de resposta armavam castigo chamando a duração
+# longa direto, por fora do classificador. Isso amarrava as duas à cota de tier:
+# calibrar uma movia a outra sem aviso, e a tabela de castigos da policy não
+# declarava esse prazo em lugar nenhum.
+source "$LIMITES"; limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
+[[ "$(classe_de 'warning: run ended with no output and no recorded error')" == silent_fail ]] \
+  && ok "desculpa do worker tem classe própria no classificador" \
+  || fail "desculpa virou $(classe_de 'warning: run ended with no output and no recorded error')"
+# As três classes que já existiam não mudam de prazo: este ticket separa o botão,
+# não recalibra nada.
+[[ "$(classe_de '429 too many requests: rate limit')" == rate_limit ]] \
+  && ok "rate_limit segue rate_limit" || fail "rate_limit foi reclassificado"
+[[ "$(classe_de 'usage limit reached')" == tier_quota ]] \
+  && ok "tier_quota segue tier_quota" || fail "tier_quota foi reclassificado"
+[[ "$(classe_de 'status 404: model does not exist or you do not have access')" == transiente ]] \
+  && ok "transiente segue transiente" || fail "transiente foi reclassificado"
+[[ "$(classe_de 'erro interno qualquer')" == desconhecido ]] \
+  && ok "output sem vocabulário de limite segue desconhecido" \
+  || fail "desconhecido virou $(classe_de 'erro interno qualquer')"
+# Regressão: rc≠0 sem nada impresso é falha comum, não falha silenciosa. Tratar o
+# vazio como classe aqui faria todo worker que morre mudo castigar o balde por
+# 60min, quando o certo é a cascata descer limpa e o degrau de baixo assumir.
+[[ "$(classe_de '')" == desconhecido ]] \
+  && ok "saída vazia não é classificada: quem lê vazio é o despachante, e só no rc=0" \
+  || fail "saída vazia virou $(classe_de '') no classificador"
+
+echo "T: o prazo da falha silenciosa é dado na policy, e nenhum ponto de chamada escolhe duração"
+grep -n 'arm_cooldown_longo' "$DELEGATE" \
+  && fail "o despachante ainda escolhe a duração do castigo no ponto de chamada" \
+  || ok "nenhum ponto de chamada do despachante escolhe duração"
+echo '{"cooldowns":{"rate_limit_mins":1,"tier_fallback_mins":60,"transient_mins":10}}' > "$TMP/pol-sem-silent.json"
+( limites_configurar "$TMP/pol-sem-silent.json" "$DELEGATE_GATE_DIR" ) \
+  && fail "policy sem silent_fail_mins passou, e o prazo veio de outro lugar" \
+  || ok "policy sem silent_fail_mins não passa"
+limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
+
+echo "T: falha silenciosa no despacho usa o prazo dela, e não o da cota de tier"
+# Os dois prazos são iguais no repo hoje, então medi-los com o mesmo número não
+# provaria separação nenhuma: o teste afasta os dois de propósito.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+jq '.cooldowns.silent_fail_mins = 7 | .cooldowns.tier_fallback_mins = 600' "$DELEGATE_POLICY" \
+  > "$TMP/pol-silent.json" && mv "$TMP/pol-silent.json" "$DELEGATE_POLICY"
+silent_secs=$(( $(jq -r '.cooldowns.silent_fail_mins' "$DELEGATE_POLICY") * 60 ))
+for modo in empty desculpa; do
+  rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+  MOCK_AGY=$modo run --task scan - >/dev/null 2>&1
+  armado=$(cat "$DELEGATE_GATE_DIR/cooldown.agy:gemini" 2>/dev/null || echo "expiry:0")
+  rem=$(( ${armado#expiry:} - $(date +%s) ))
+  [[ $rem -gt 0 && $rem -le $silent_secs ]] \
+    && ok "'$modo' arma o prazo da classe silent_fail (${rem}s <= ${silent_secs}s)" \
+    || fail "'$modo' não usou o prazo de silent_fail (rem=${rem}s, esperado <= ${silent_secs}s)"
+done
+policy_fresh
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
+echo "T: policy sem cooldowns falha alto, nunca cai calada em outra policy"
+# Rede de segurança que lê OUTRO arquivo faz todo teste com policy própria medir
+# o número do repo sem avisar: o assert fica verde provando nada.
+echo '{"tasks":{}}' > "$TMP/pol-sem-cooldown.json"
+( LIMITES_DEFAULT_POLICY="$HERE/../config/model-policy.json" \
+  limites_configurar "$TMP/pol-sem-cooldown.json" "$DELEGATE_GATE_DIR" ) \
+  && fail "policy sem cooldowns passou, e o prazo veio de outro arquivo" \
+  || ok "policy sem cooldowns não passa"
+limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
+
+echo "T: rc=124 é tropeço de provider nos DOIS invocadores, não só na sonda"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+MOCK_CODEX=timeout run --task "$CODEX_FIRST_TASK" - >/dev/null 2>&1
+armed=$(cat "$DELEGATE_GATE_DIR/cooldown.codex" 2>/dev/null || echo "expiry:0")
+rem=$(( ${armed#expiry:} - $(date +%s) ))
+[[ $rem -gt 0 && $rem -le $transient_secs ]] \
+  && ok "despachante classifica rc=124 como transiente, igual à sonda" \
+  || fail "despachante não armou prazo transiente no rc=124 (rem=${rem}s)"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: os dois invocadores usam o mesmo classificador de limites"
+for invoker in "$DELEGATE" "$SMOKE"; do
+  grep -q 'lib-limites.sh' "$invoker" && ok "$(basename "$invoker") sourceia a biblioteca" \
+    || fail "$(basename "$invoker") não sourceia a biblioteca"
+  grep -Eq '^(is_ratelimit|is_transient|classificar_limite)\(\)' "$invoker" \
+    && fail "$(basename "$invoker") ainda classifica limite sozinho" \
+    || ok "$(basename "$invoker") não classifica limite sozinho"
+done
+[[ -f "$LIMITES" ]] && ok "biblioteca de limites existe" || fail "biblioteca de limites ausente"
 
 echo "T: review não rebaixa — cascata de review só tira da review_shelf (prateleira, 20/set/2026)"
 SHELF=$(jq -r '.review_shelf.models[]' "$DELEGATE_POLICY" | sort)
@@ -439,10 +1138,15 @@ for cls in fable opus; do
     || fail "review_pairing.$cls não cruza com tasks.review"
 done
 
-echo "T: toda cascata termina no plano Claude antes de esgotar (o master é o fallback real, não o único)"
-semclaude=$(jq -r '.tasks | to_entries[] | select((.value|type)=="array") | select(.value[-1].backend != "claude") | .key' "$DELEGATE_POLICY")
-[[ -z "$semclaude" ]] && ok "último degrau de toda task é o backend claude" \
-  || fail "task sem degrau Claude no fim: $semclaude"
+echo "T: o plano Claude está em toda cascata (o master é o fallback real, não o único)"
+# A régua era "último degrau é claude", e ela codificava que o plano do dono
+# sempre fecha o trabalho. Com o gate de saldo isso mudou de lugar: cascata
+# esgotada já entrega pra sessão com exit 2, e a fila de implementação passou a
+# LIDERAR pelo plano, o que é mais forte que fechar com ele. O que segue valendo,
+# e é o que este assert cobra, é o plano aparecer em toda cascata.
+semclaude=$(jq -r '.tasks | to_entries[] | select((.value|type)=="array") | select([.value[].backend] | index("claude") | not) | .key' "$DELEGATE_POLICY")
+[[ -z "$semclaude" ]] && ok "toda task tem o backend claude em algum degrau" \
+  || fail "task sem degrau Claude: $semclaude"
 ult=$(jq -r '.tiers | to_entries[] | select(.key|startswith("$")|not) | .value | to_entries[] | select(.value[-1].backend != "claude") | .key' "$DELEGATE_POLICY")
 [[ -z "$ult" ]] && ok "último degrau de todo tier é o backend claude" || fail "tier sem degrau Claude no fim: $ult"
 
@@ -466,16 +1170,23 @@ done
 echo "T: --tier troca o ponto de entrada da cascata, e não o task-type (21/set/2026)"
 AMPLO_1=$(jq -r '.tiers.implement.amplo[0].model' "$DELEGATE_POLICY")
 PADRAO_1=$(jq -r '.tasks.implement[0].model' "$DELEGATE_POLICY")
+# A flag do modelo é por backend (-m no codex, --model nos outros), e desde que a
+# implementação lidera pelo plano principal os dois pontos de entrada da fila não
+# usam mais a mesma flag. Cravar "-m" media o backend, não o ponto de entrada.
+flag_de() { jq -r --arg m "$1" '[.tasks.implement[], .tiers.implement.amplo[]]
+  | map(select(.model == $m)) | .[0].backend as $b | $b' "$DELEGATE_POLICY" \
+  | xargs -I{} jq -r --arg b {} '.backends[$b].model_flag // "-m"' "$DELEGATE_POLICY"; }
+AMPLO_FLAG=$(flag_de "$AMPLO_1"); PADRAO_FLAG=$(flag_de "$PADRAO_1")
 [[ "$AMPLO_1" != "$PADRAO_1" ]] && ok "tier amplo entra por modelo diferente do padrão" \
   || fail "amplo e padrão entram pelo mesmo modelo: o tier não muda nada"
-out=$(run --task implement --tier amplo -)
-assert_contains "amplo entra no $AMPLO_1" "$out" "[-]m $AMPLO_1"
+out=$(MOCK_CLAUDE=ok run --task implement --tier amplo -)
+assert_contains "amplo entra no $AMPLO_1" "$out" "$AMPLO_FLAG $AMPLO_1"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
-out=$(run --task implement --tier padrao -)
-assert_contains "padrão entra no $PADRAO_1" "$out" "[-]m $PADRAO_1"
+out=$(MOCK_CLAUDE=ok run --task implement --tier padrao -)
+assert_contains "padrão entra no $PADRAO_1" "$out" "$PADRAO_FLAG $PADRAO_1"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
-out=$(run --task implement -)
-assert_contains "sem --tier resolve a mesma fila do padrão" "$out" "[-]m $PADRAO_1"
+out=$(MOCK_CLAUDE=ok run --task implement -)
+assert_contains "sem --tier resolve a mesma fila do padrão" "$out" "$PADRAO_FLAG $PADRAO_1"
 rm -f "$DELEGATE_GATE_DIR"/cooldown.*
 run_nostdin --task implement --tier gigante --paths "$A" --question "q" >/dev/null 2>&1; rc=$?
 assert_eq "tier inválido é erro de uso (exit 1), não fila silenciosa" "$rc" "1"
@@ -504,6 +1215,348 @@ diverg=$(jq -r '[(.tasks|to_entries[]|select((.value|type)=="array")|.value[]),
   --argjson suge "$(jq -c '.suggested_effort | with_entries(select(.key|startswith("$")|not))' "$DELEGATE_POLICY")" \
   "$DELEGATE_POLICY")
 [[ -z "$diverg" ]] && ok "nenhuma entrada diverge do esforço sugerido" || fail "entrada divergindo: $diverg"
+
+echo "T: prompt que carrega frase de limite não castiga balde nem descarta resposta"
+# Medido em 21/set/2026: revisar o diff deste despachante mandou pro worker a
+# linha do próprio detector de desculpa, o codex ecoou o prompt no stdout como
+# sempre faz, e o detector casou com ele mesmo. A revisão inteira foi pro lixo e
+# o balde levou 60min de castigo. A população do classificador é o que o worker
+# acrescentou, nunca o prompt de volta.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+mock_codex
+out=$(printf 'Revise este trecho:\nis_sem_resposta() { grep -qiE "(run ended with no output|no recorded error)" "$1"; }\nquota exceeded aparece aqui como dado, nao como resposta\n' \
+  | MOCK_CODEX=eco bash "$DELEGATE" --task _probe --model codex - 2>"$TMP/err"); rc=$?
+assert_eq "resposta boa com frase de limite no prompt: exit 0" "$rc" "0"
+assert_contains "a resposta do worker sobreviveu" "$out" "codex-resposta"
+[[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] \
+  && fail "o prompt ecoado castigou o balde por 60min" \
+  || ok "frase de limite no prompt não arma cooldown"
+# Contraprova no mesmo par: a MESMA frase, agora dita pelo worker, continua
+# castigando. Sem isso o conserto seria só desligar o detector.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+echo x | MOCK_CODEX=desculpa bash "$DELEGATE" --task _probe --model codex - >/dev/null 2>&1
+[[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] \
+  && ok "desculpa dita pelo worker continua armando cooldown" \
+  || fail "o detector morreu: desculpa do worker não arma mais nada"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: o worker do plano roda comando na árvore dele, e só nela"
+# Medido em 21/set/2026, num despacho real: o worker devolveu a implementação com
+# a verificação declarada e NÃO executada, porque o harness dele recusa todo
+# binário fora de um allowlist mínimo e a sessão é headless, sem ninguém pra
+# aprovar. `bash`, `sh`, `git`, `ls` e `grep` todos negados. Sem permissão de
+# comando, o bloco de verify do report é promessa.
+[[ "$(jq -r '.backends.claude.worktree_invoke' "$HERE/../config/model-policy.json")" == *"--allowedTools Bash"* ]] \
+  && ok "o modo worktree do worker do plano carrega permissão de comando" \
+  || fail "o modo worktree não passa permissão de comando: o verify do worker não roda"
+[[ "$(jq -r '.backends.claude.invoke' "$HERE/../config/model-policy.json")" == *"allowedTools"* ]] \
+  && fail "o modo sem escrita ganhou permissão de comando, e ali não há árvore isolada" \
+  || ok "o modo sem escrita não ganha permissão nenhuma"
+for _b in codex agy; do
+  [[ "$(jq -r --arg b "$_b" '.backends[$b].worktree_invoke // ""' "$HERE/../config/model-policy.json")" == *"allowedTools"* ]] \
+    && fail "$_b mudou de invocação, e a mudança era só do worker do plano" \
+    || ok "$_b segue com a invocação de antes"
+done
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+REPO_P="$TMP/repo-permissao"; rm -rf "$REPO_P"; mkdir -p "$REPO_P"
+git -C "$REPO_P" init -q -b main; echo base > "$REPO_P/f.txt"
+git -C "$REPO_P" add -A; git -C "$REPO_P" -c user.email=t@t -c user.name=t commit -qm base
+export CLAUDE_ARGV_DUMP="$TMP/claude-argv.txt"
+cat > "$MOCKBIN/claude" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null; printf '%s\n' "$@" > "$CLAUDE_ARGV_DUMP"
+echo mudanca > worker-claude.txt; echo "claude-worktree-ok"; exit 0
+EOF
+chmod +x "$MOCKBIN/claude"
+echo "task de teste" | bash "$DELEGATE" --task implement --worktree "$REPO_P" --model claude - >/dev/null 2>&1
+argv_wt=$(cat "$CLAUDE_ARGV_DUMP" 2>/dev/null)
+assert_contains "o dispatch em worktree passa a permissão ao binário" "$argv_wt" "allowedTools"
+: > "$CLAUDE_ARGV_DUMP"
+echo "task de teste" | MOCK_CLAUDE=ok bash "$DELEGATE" --task _probe --model claude - >/dev/null 2>&1
+argv_one=$(cat "$CLAUDE_ARGV_DUMP" 2>/dev/null)
+grep -q 'allowedTools' <<<"$argv_one" && fail "o dispatch sem worktree passou permissão de comando" \
+  || ok "o dispatch sem worktree não passa permissão"
+git -C "$REPO_P" worktree remove --force "$(git -C "$REPO_P" worktree list | grep 'delegate/' | awk '{print $1}')" 2>/dev/null
+mock_claude
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: a árvore do worker nasce no HEAD de quem despachou, não no trunk"
+# Medido em 21/set/2026, no primeiro despacho real: a sessão estava na branch da
+# spec, a base saiu do trunk do project.yaml, e o worker construiu contra um
+# arquivo onde a flag que ele devia cobrir não existia. O diff dele não entrou
+# por cherry-pick.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+cat > "$MOCKBIN/codex" <<'EOF'
+#!/usr/bin/env bash
+cat >/dev/null; echo mudanca > worker.txt; echo "codex-worktree-ok"; exit 0
+EOF
+chmod +x "$MOCKBIN/codex"
+REPO_B="$TMP/repo-base"; rm -rf "$REPO_B"; mkdir -p "$REPO_B/.claude"
+git -C "$REPO_B" init -q -b main
+printf 'repo:\n  trunk: main\n' > "$REPO_B/.claude/project.yaml"
+echo trunk > "$REPO_B/f.txt"
+git -C "$REPO_B" add -A; git -C "$REPO_B" -c user.email=t@t -c user.name=t commit -qm base
+git -C "$REPO_B" switch -q -c feature/spec
+echo "so na branch" > "$REPO_B/da-branch.txt"
+git -C "$REPO_B" add -A; git -C "$REPO_B" -c user.email=t@t -c user.name=t commit -qm "trabalho da spec"
+out=$(run --task _probe --model codex --worktree "$REPO_B" -); rc=$?
+assert_eq "despacho de branch não-trunk: exit 0" "$rc" "0"
+assert_contains "a base reportada é a branch de quem despachou" "$out" "^base: feature/spec @"
+wt_criada=$(git -C "$REPO_B" worktree list | grep 'delegate/' | awk '{print $1}')
+[[ -f "$wt_criada/da-branch.txt" ]] \
+  && ok "a árvore do worker tem o trabalho da branch" \
+  || fail "a árvore nasceu sem o trabalho da branch: base errada"
+git -C "$REPO_B" worktree remove --force "$wt_criada" 2>/dev/null
+git -C "$REPO_B" branch -D $(git -C "$REPO_B" branch --list 'delegate/*' | tr -d ' *') 2>/dev/null
+# No trunk, nada muda: a base continua sendo o trunk, e é o mesmo commit.
+git -C "$REPO_B" switch -q main
+out=$(run --task _probe --model codex --worktree "$REPO_B" -)
+assert_contains "no trunk a base continua o trunk" "$out" "^base: main @"
+wt_criada=$(git -C "$REPO_B" worktree list | grep 'delegate/' | awk '{print $1}')
+[[ -f "$wt_criada/da-branch.txt" ]] && fail "a árvore do trunk trouxe trabalho da branch" \
+  || ok "no trunk a árvore não tem o trabalho da branch"
+git -C "$REPO_B" worktree remove --force "$wt_criada" 2>/dev/null
+git -C "$REPO_B" branch -D $(git -C "$REPO_B" branch --list 'delegate/*' | tr -d ' *') 2>/dev/null
+# E o explícito continua vencendo o default.
+git -C "$REPO_B" switch -q feature/spec
+out=$(run --task _probe --model codex --worktree "$REPO_B" --base main -)
+assert_contains "--base explícito vence o default" "$out" "^base: main @"
+git -C "$REPO_B" worktree remove --force "$(git -C "$REPO_B" worktree list | grep 'delegate/' | awk '{print $1}')" 2>/dev/null
+git -C "$REPO_B" branch -D $(git -C "$REPO_B" branch --list 'delegate/*' | tr -d ' *') 2>/dev/null
+mock_codex
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: a listagem pergunta se o dono está vivo, não se o slot é tomável"
+# Achado da revisão do codex: o prazo do slot começa na tomada e o prazo do
+# worker começa depois do preparo da chamada, então worker vivo passa do prazo do
+# slot. Com a regra de "tomável", a task viva desaparecia da tela.
+rm -f "$DELEGATE_GATE_DIR"/slot.*
+TIDV="implement-vivo"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TIDV"
+printf 'estado=em curso\ntask=implement\nbalde=codex\nbranch=delegate/%s\n' "$TIDV" \
+  > "$DELEGATE_GATE_DIR/tasks/$TIDV/meta"
+printf 'pid=%s\nid=%s\nprazo=1\nbalde=codex\n' "$$" "$TIDV" > "$DELEGATE_GATE_DIR/slot.codex"
+vivo=$(bash "$DELEGATE" --tasks 2>&1)
+assert_contains "dono vivo com prazo vencido continua na listagem" "$vivo" "$TIDV"
+# E o inverso segue valendo: dono morto sai, senão a tela encheria de fantasma.
+printf 'pid=999999\nid=%s\nprazo=%s\nbalde=codex\n' "$TIDV" "$(( $(date +%s) + 300 ))" \
+  > "$DELEGATE_GATE_DIR/slot.codex"
+morto=$(bash "$DELEGATE" --tasks 2>&1)
+grep -q "$TIDV" <<<"$morto" && fail "dono morto apareceu como task em curso" \
+  || ok "dono morto sai da listagem mesmo dentro do prazo"
+rm -f "$DELEGATE_GATE_DIR"/slot.*; rm -rf "$DELEGATE_GATE_DIR/tasks/$TIDV"
+
+echo "T: o meta é publicado inteiro, nunca pela metade"
+# Truncar e depois escrever deixava janela: o leitor pegava o arquivo no meio e
+# imprimia campo vazio. Este assert é guarda, não reprodução: a janela é de
+# microssegundos, e o que ele cobra é que nenhuma leitura concorrente veja linha
+# sem tipo de task.
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+mock_codex
+TIDA="implement-atomico"
+mkdir -p "$DELEGATE_GATE_DIR/tasks/$TIDA"
+printf 'pid=%s\nid=%s\nprazo=%s\nbalde=codex\n' "$$" "$TIDA" "$(( $(date +%s) + 300 ))" \
+  > "$DELEGATE_GATE_DIR/slot.codex"
+( for _i in $(seq 1 120); do
+    printf 'estado=em curso\ntask=implement\nbalde=codex\nbranch=delegate/%s\ncomecou=x\n' "$TIDA" \
+      > "$DELEGATE_GATE_DIR/tasks/$TIDA/meta.novo"
+    mv "$DELEGATE_GATE_DIR/tasks/$TIDA/meta.novo" "$DELEGATE_GATE_DIR/tasks/$TIDA/meta"
+  done ) &
+_escritor=$!
+parciais=0
+for _i in $(seq 1 60); do
+  linha=$(bash "$DELEGATE" --tasks 2>/dev/null | grep "$TIDA" || true)
+  [[ -z "$linha" ]] && continue
+  grep -qE "$TIDA +codex +implement +delegate/$TIDA" <<<"$linha" || parciais=$(( parciais + 1 ))
+done
+wait "$_escritor"
+assert_eq "nenhuma leitura concorrente viu meta pela metade" "$parciais" "0"
+[[ -f "$DELEGATE_GATE_DIR/tasks/$TIDA/meta.novo" ]] && fail "o temporário do meta ficou pra trás" \
+  || ok "a publicação não deixa temporário"
+rm -f "$DELEGATE_GATE_DIR"/slot.*; rm -rf "$DELEGATE_GATE_DIR/tasks/$TIDA"
+
+echo "T: cascata esgotada não anuncia branch que a limpeza já apagou"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+REPO_D="$TMP/repo-branch-morta"; rm -rf "$REPO_D"; mkdir -p "$REPO_D"
+git -C "$REPO_D" init -q -b main; echo x > "$REPO_D/f.txt"
+git -C "$REPO_D" add f.txt; git -C "$REPO_D" -c user.email=t@t -c user.name=t commit -qm base
+MOCK_CODEX=fail MOCK_AGY=fail MOCK_CLAUDE=fail run --task _probe --worktree "$REPO_D" - >/dev/null 2>&1
+id_morta=$(ls -t "$DELEGATE_GATE_DIR/tasks" | head -1)
+consulta=$(bash "$DELEGATE" --status "$id_morta" 2>&1)
+grep -q '^branch:' <<<"$consulta" && fail "o meta aponta pra branch que a limpeza apagou: $consulta" \
+  || ok "branch apagada não fica no meta"
+git -C "$REPO_D" branch --list 'delegate/*' | grep -q . && fail "a branch do worker sobrou no repo" \
+  || ok "a limpeza apagou a branch de verdade"
+rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
+
+echo "T: o leitor de tasks não cria nem toca em nada no gate"
+# A revisão do codex reproduziu: antes do desvio da flag o script fazia mkdir no
+# gate, touch no log e mktemp da policy fundida. Num pane lendo a cada 2s isso é
+# um temporário novo por leitura. O assert de antes preparava o gate primeiro,
+# então media conteúdo e nunca criação.
+virgem="$TMP/gate-virgem"
+rm -rf "$virgem"
+saida=$(DELEGATE_GATE_DIR="$virgem" bash "$DELEGATE" --tasks 2>&1); rc=$?
+assert_eq "gate inexistente: a leitura sai 0" "$rc" "0"
+# Mudou com o AC-08: gate que não dá pra ler não é "nada em curso", é não saber.
+# Sair vazio nos dois casos foi o que deixou a camada morta por um dia inteiro
+# sem ninguém notar.
+assert_contains "e diz que não conseguiu ler" "$saida" "estado ilegível"
+[[ -e "$virgem" ]] && fail "a leitura criou o gate que não existia" \
+  || ok "a leitura não criou o gate"
+# Log intocado: mtime é o que um laço de 2s mexeria, e conteúdo não pega isso.
+touch -t 202001010000 "$DELEGATE_GATE_DIR/delegate.log"
+antes_mtime=$(stat -f %m "$DELEGATE_GATE_DIR/delegate.log" 2>/dev/null || stat -c %Y "$DELEGATE_GATE_DIR/delegate.log")
+bash "$DELEGATE" --tasks >/dev/null 2>&1
+depois_mtime=$(stat -f %m "$DELEGATE_GATE_DIR/delegate.log" 2>/dev/null || stat -c %Y "$DELEGATE_GATE_DIR/delegate.log")
+assert_eq "a leitura não toca o mtime do log" "$depois_mtime" "$antes_mtime"
+# Policy local presente: a fusão nasce de um mktemp por chamada, e leitura não
+# tem por que criar nenhum.
+cp "$DELEGATE_POLICY" "$TMP/policy-backup.json"
+echo '{"budgets":{"window_mins":300}}' > "${DELEGATE_POLICY%.json}.local.json"
+tmp_antes=$(ls -1 "${TMPDIR:-/tmp}" 2>/dev/null | wc -l | tr -d ' ')
+bash "$DELEGATE" --tasks >/dev/null 2>&1
+tmp_depois=$(ls -1 "${TMPDIR:-/tmp}" 2>/dev/null | wc -l | tr -d ' ')
+assert_eq "a leitura não deixa temporário de policy fundida" "$tmp_depois" "$tmp_antes"
+rm -f "${DELEGATE_POLICY%.json}.local.json"
+
+echo "T: flag que consome argumento e não recebe sai com erro de uso, não unbound variable"
+# O script roda com `set -u`, então `"$2"` sem valor estourava antes de qualquer
+# die: `delegate.sh --gc` sozinho era crash, não erro de uso. A guarda é uma só,
+# e este laço é o que impede a próxima flag de nascer sem ela.
+for flag in --task --tier --model --worktree --status --continue --timeout --gc --base --question --reference --expect-lines --expect-regex; do
+  out=$(echo x | bash "$DELEGATE" "$flag" 2>&1); rc=$?
+  assert_eq "$flag sem valor: exit 1" "$rc" "1"
+  # `grep -qF --` porque o padrão começa com dois hífens: sem isso o grep leria
+  # `--task` como opção dele, e o assert passaria verde provando nada.
+  grep -qF -- "$flag" <<<"$out" && ok "$flag sem valor: mensagem nomeia a flag" || fail "$flag sem valor: mensagem nomeia a flag (não contém '$flag')"
+  grep -q "unbound variable" <<<"$out" && fail "$flag sem valor: vazou unbound variable" || ok "$flag sem valor: não crasha"
+done
+
+echo "T: apurador lê histórico sem invocar worker"
+APURADOR="$HERE/../skills/delegate/scripts/apura_log.py"
+APURA_LOG="$TMP/apura.log"
+APURA_POLICY="$TMP/apura-policy.json"
+cat > "$APURA_LOG" <<'EOF'
+{"ts":"2026-09-20T00:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":10}
+{"ts":"2026-09-20T01:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":12}
+{"ts":"2026-09-20T06:01:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":9}
+{"ts":"2026-09-20T02:00:00Z","task":"scan","backend":"agy","status":"ok","detail":"model=gm","pool":"agy:gemini","bytes_in":1,"bytes_out":1,"dur_s":8}
+{"ts":"2026-09-20T02:01:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:02:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:03:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:04:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:05:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:06:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:07:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:08:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-20T02:09:00Z","task":"review","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":20}
+{"ts":"2026-09-19T00:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T01:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T02:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T03:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T04:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-19T05:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":4}
+{"ts":"2026-09-20T02:10:00Z","task":"scan","backend":"agy","status":"unavailable","detail":"model=fantasma","pool":"agy:gemini","bytes_in":1,"bytes_out":0,"dur_s":1}
+{"ts":"2026-09-20T04:00:00Z","task":"implement","backend":"claude","status":"ok","detail":"model=cl","pool":"claude","bytes_in":1,"bytes_out":1,"dur_s":15}
+{"ts":"2026-09-20T04:30:00Z","task":"implement","backend":"claude","status":"ok","detail":"model=cl","pool":"claude","bytes_in":1,"bytes_out":1,"dur_s":15}
+EOF
+cat > "$APURA_POLICY" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":11},"agy:gemini":{"max_calls":1},"agy:claude_gpt":{"status":"sem_amostra"},"claude":{"status":"sem_amostra"}}},"timeouts":{"scan":24,"review":600},"tasks":{"scan":[{"backend":"codex","model":"m1"},{"backend":"agy","model":"fantasma"}],"review":[{"backend":"codex","model":"m1"}]},"tiers":{"implement":{"amplo":[{"backend":"claude","model":"ausente"}]}}}
+EOF
+apurado=$(python3 "$APURADOR" --log "$APURA_LOG" --policy "$APURA_POLICY")
+assert_eq "apurador sai 0" "$?" "0"
+jq -e '.budgets.pools.codex.max_calls == 11 and .timeouts.scan.seconds == 24 and .timeouts.scan.status == "medido" and .timeouts.review.status == "estimativa"' <<<"$apurado" >/dev/null \
+  && ok "pico e teto medido, revisão estimada" || fail "pico, teto ou estimativa incorretos: $apurado"
+assert_contains "lista modelo nunca invocado" "$apurado" "fantasma"
+assert_contains "lista degrau de tier nunca invocado" "$apurado" "ausente"
+python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$APURA_POLICY" >/dev/null
+assert_eq "--check aceita policy apurada" "$?" "0"
+# A régua não pode só apertar. O gate bloqueia em `gastas >= teto`, então o pico
+# observado NUNCA passa do teto declarado: se o `--check` cobrasse igualdade, cada
+# linha que sai da janela de 30 dias baixaria a régua, e ela desceria pra sempre
+# sem nunca subir. Pico é piso de capacidade provada, então só é divergência
+# quando a policy declara MENOS do que o balde já provou aguentar.
+cat > "$TMP/apura-folga.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":20}}},"timeouts":{"scan":24},"tasks":{"scan":[{"backend":"codex","model":"m1"}]}}
+EOF
+python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$TMP/apura-folga.json" >/dev/null 2>&1
+assert_eq "régua acima do pico provado não é divergência" "$?" "0"
+cat > "$TMP/apura-aperto.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":5}}},"timeouts":{"scan":24},"tasks":{"scan":[{"backend":"codex","model":"m1"}]}}
+EOF
+python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$TMP/apura-aperto.json" >/dev/null 2>&1
+assert_eq "régua abaixo do pico provado é divergência" "$?" "1"
+
+echo "T: o apurador conta a mesma população que o gate cobra"
+# Gate e apurador leem o mesmo log, e a régua só vale se os dois contarem igual:
+# apurar só o que fechou declararia capacidade que o gate não reconhece, e a régua
+# é o que decide se a fila pode virar.
+# A data sai do relógio, não do literal: fixture com dia cravado envelhece pra
+# fora da janela de 30 dias do apurador e o assert passa a medir outra coisa.
+_apura_hoje() { date -u +%Y-%m-%d; }
+HOJE=$(_apura_hoje)
+cat > "$TMP/apura-falha.log" <<EOF
+{"ts":"${HOJE}T00:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":10}
+{"ts":"${HOJE}T00:01:00Z","task":"scan","backend":"codex","status":"limited","detail":"classe=rate_limit rc=1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":2}
+{"ts":"${HOJE}T00:02:00Z","task":"scan","backend":"codex","status":"error","detail":"rc=1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":2}
+{"ts":"${HOJE}T00:03:00Z","task":"scan","backend":"codex","status":"unavailable","detail":"cascata esgotada","pool":"","bytes_in":0,"bytes_out":0,"dur_s":0}
+EOF
+cat > "$TMP/apura-falha.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":3}}},"timeouts":{},"tasks":{}}
+EOF
+# Nome próprio: `$apurado` é do bloco anterior e ainda é lido depois daqui;
+# reaproveitar a variável apagava o valor que aqueles asserts medem.
+apurado_pop=$(python3 "$APURADOR" --log "$TMP/apura-falha.log" --policy "$TMP/apura-falha.json")
+jq -e '.budgets.pools.codex.max_calls == 3' <<<"$apurado_pop" >/dev/null \
+  && ok "as três chamadas com balde entram no pico, e não só a que fechou" \
+  || fail "apurador contou população diferente do gate: $apurado_pop"
+# Falha não prova degrau: a entrada só sai de "não provada" quando alguma chamada
+# fechou. Contar falha como prova mandaria a fila subir um degrau que nunca deu certo.
+cat > "$TMP/apura-so-falha.log" <<EOF
+{"ts":"${HOJE}T00:01:00Z","task":"scan","backend":"codex","status":"error","detail":"model=m9 rc=1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":2}
+EOF
+cat > "$TMP/apura-so-falha.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":1}}},"timeouts":{},"tasks":{"scan":[{"backend":"codex","model":"m9"}]}}
+EOF
+so_falha=$(python3 "$APURADOR" --log "$TMP/apura-so-falha.log" --policy "$TMP/apura-so-falha.json")
+assert_contains "degrau que só falhou continua não provado" "$so_falha" "m9"
+
+# Pico medido é piso de uso, não teto de cota: duas chamadas num balde não são
+# régua, e cobrar esse número estrangularia o balde que ninguém gastou ainda. A
+# policy recusa a régua de propósito, e o apurador respeita sem perder o dado.
+jq -e '.budgets.pools.claude.observado == 2' <<<"$apurado" >/dev/null \
+  && ok "o pico observado do balde sem régua fica no relatório" \
+  || fail "o pico observado do balde sem régua se perdeu: $(jq -c .budgets.pools.claude <<<"$apurado")"
+jq -e '.budgets.pools.codex.max_calls == 11' <<<"$apurado" >/dev/null \
+  && ok "balde com régua declarada continua sendo apurado" || fail "a régua declarada deixou de ser apurada"
+
+# O detail de verdade não é só "model=X": em modo worktree ele carrega branch, e
+# desde o gate de saldo carrega saldo também. Fixture com a forma curta deixa o
+# extrator de modelo passar verde provando nada, e aí degrau JÁ provado aparece
+# como buraco, que é o pior erro possível pra quem vai virar a ordem da fila.
+APURA_LOG2="$TMP/apura-real.log"
+cat > "$APURA_LOG2" <<'EOF'
+{"ts":"2026-09-20T03:00:00Z","task":"implement","backend":"codex","status":"ok","detail":"model=m1 branch=delegate/implement-123 saldo=8","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":30}
+{"ts":"2026-09-20T03:10:00Z","task":"implement","backend":"codex","status":"empty_diff","detail":"model=m1 branch=delegate/implement-124 base=main saldo=7","pool":"codex","bytes_in":1,"bytes_out":0,"dur_s":99999}
+EOF
+cat > "$TMP/apura-policy2.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":2}}},"timeouts":{"implement":60},"tasks":{"implement":[{"backend":"codex","model":"m1"}]}}
+EOF
+apurado2=$(python3 "$APURADOR" --log "$APURA_LOG2" --policy "$TMP/apura-policy2.json")
+grep -q '"model": "m1"' <<<"$apurado2" \
+  && fail "degrau já invocado apareceu como não provado: o extrator de modelo engoliu o resto do detail" \
+  || ok "detail com branch e saldo ainda prova o degrau"
+jq -e '[.unproven_entries[]] | length == 0' <<<"$apurado2" >/dev/null \
+  && ok "nenhum degrau provado entra na lista de não provados" \
+  || fail "lista de não provados tem entrada provada: $apurado2"
+jq -e '.timeouts.implement.calls == 1' <<<"$apurado2" >/dev/null \
+  && ok "chamada de diff vazio não entra na amostra de duração" \
+  || fail "empty_diff contado como chamada que terminou bem: $(jq -c .timeouts <<<"$apurado2")"
+
+jq '.budgets.pools.codex.max_calls = 9' "$APURA_POLICY" > "$TMP/apura-policy-divergente.json"
+python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$TMP/apura-policy-divergente.json" >/dev/null 2>&1; rc=$?
+assert_eq "--check falha com policy divergente" "$rc" "1"
 
 echo ""
 echo "== $PASS passed, $FAIL failed =="

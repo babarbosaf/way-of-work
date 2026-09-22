@@ -21,14 +21,15 @@ memória durável entre sessões.
 | `AGENTS.md` | Instrução viva, agnóstica, lida por Codex, Cursor e qualquer harness que siga o padrão. `CLAUDE.md` só aponta pra ele. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
 | `skills/` | Uma skill por fase do ciclo (taxonomia abaixo). O conteúdo é doutrina em markdown, então serve de leitura pra qualquer agente; o dispatch por `/comando` é do Claude Code. |
 | `docs/` | Doutrina: `skill-authoring.md` (régua de autoria de skill, aplicada por `scripts/check-skill.py`), `doc-standard.md` (régua dos docs de raiz, aplicada por `scripts/check-docs.py`), `evolve-over-create.md` e `adversarial-evaluator.md` (segunda opinião opcional). |
-| `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`. |
-| `tests/` | Dez suítes, 456 asserts, sem rede e sem CLI real: despacho de modelo, review adversarial, os cinco hooks de enforcement, manifesto de plugins, linter de escrita, lint de spec, ticket e da corrente PRD, spec, ticket, lint de doc de estado, do grafo de domínios e do ciclo de vida das decisões, lint de skill, resolvedor de contexto do `/execute`, agnosticismo do repo e link markdown morto. |
+| `scripts/` | Ferramenta em bash, roda em qualquer terminal: `peer-review.sh` (review adversarial), `delegate.sh` (despacho pra worker externo), `statusline.sh`, e os quatro scripts da camada de sessões (`abre-`, `dirige-`, `fecha-sessao.sh` e o adaptador do multiplexer). |
+| `tests/` | Onze suítes, 848 asserts, sem rede e sem CLI real: despacho de modelo, camada de sessões, review adversarial, seis dos sete hooks de enforcement, manifesto de plugins, linter de escrita, lint de spec, ticket e da corrente PRD, spec, ticket, lint de doc de estado, do grafo de domínios e do ciclo de vida das decisões, lint de skill, resolvedor de contexto do `/execute`, agnosticismo do repo e link markdown morto. |
 | `*.example.md` | Molde de todo artefato de raiz que o método usa e o git não versiona: `INBOX.example.md` (degrau 0, captura crua), `TODOS.example.md` (degrau 1, backlog aceito) e `FEEDBACK.example.md` (buffer de correção). Cada um explica o formato, o teto e a regra de promoção, e traz entradas de exemplo. Copie pro projeto sem o `.example`. |
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
 | `config/plugins.json` | Manifesto de plugins e de servidores MCP, com o porquê de cada um, aplicado por `scripts/bootstrap-plugins.sh`. Todos opcionais. |
 | `config/rtk.json` | Contrato do `rtk`: versão mínima e o que sai do rewrite, aplicado por `scripts/bootstrap-rtk.sh`. Opcional. |
-| `hooks/` | **Claude Code.** Cinco hooks de enforcement em runtime: grep-first em read grande, no-op bloqueado, lembrete de doc atualizada, append obrigatório no log de memória e guarda de tamanho do `CLAUDE.md`. A mensagem de bloqueio diz o que fazer no lugar, e cada um tem kill switch (ver Pré-requisitos). |
-| `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. |
+| `hooks/` | **Claude Code.** Seis hooks de enforcement em runtime, todos ligados pelo `settings.json` versionado: grep-first em read grande (por `Read` e por shell), no-op bloqueado, lembrete de doc atualizada, append obrigatório no log de memória e guarda de tamanho do `CLAUDE.md`. A mensagem de bloqueio diz o que fazer no lugar, e cada um tem kill switch (ver Pré-requisitos). Hook que carrega topologia local de máquina fica no disco e não sobe: nome de projeto e caminho de trabalho não são doutrina transferível. |
+| `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. É o único arquivo que cada perfil copia em vez de linkar, e por isso o que mais deriva. |
+| `scripts/perfis.sh` | Diagnostica a deriva entre os perfis de configuração da máquina e este repo: link que falta, hook do baseline que o perfil não liga. Sem flag não escreve nada; `--aplicar` conserta. |
 
 Histórico de release em [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -40,7 +41,7 @@ Convenções estruturais:
   no diff de PR, coisas que o symlink não garante.
 - **`.gitignore` é allowlist:** ignora tudo (`*`), libera com `!`. O que é pessoal (scope pago, paths, roteamento) vive em `config/*.local.json`, gitignored, deep-merge em runtime.
 - **Artefato gitignored sobe como molde, nunca como conteúdo.** `INBOX.md`, `TODOS.md` e `FEEDBACK.md` são contexto de um projeto só, então o repo versiona o `.example.md` de mesmo nome e o real fica de fora. A regra vale pra tudo que o método usa e o git não guarda: se a doutrina manda escrever num arquivo, o molde desse arquivo está aqui, senão quem clona lê uma instrução que aponta pro nada.
-- **Este repo não tem PRD.** O `PRD.md` é do projeto que o método instancia, não do método: aqui o `README.md` descreve, o `AGENTS.md` manda e `docs/` carrega o detalhe. O `--grafo` do `check-docs.py` roda nos projetos, não na raiz deste.
+- **O método também é um produto, e tem PRD.** [`PRD.md`](PRD.md) descreve o que o modelo de trabalho promete, domínio por domínio, e [`CONVENTIONS.md`](CONVENTIONS.md) carrega o como. Os dois se somam à divisão de sempre: o `README.md` descreve pra quem chega de fora, o `AGENTS.md` manda em quem já está dentro, e `docs/` guarda o detalhe de cada doutrina.
 - **Memória (`memory/`) não é versionada.** É comportamento do agente, específico da máquina.
 - **Instrução viva, não changelog.** Docs de start-up não guardam histórico (→ `CHANGELOG.md`, ADR, memória).
 
@@ -174,7 +175,14 @@ Verificação pós-instalação:
 ls ~/.claude/skills                                            # skills presentes
 git -C ~/.claude check-ignore config/model-policy.local.json   # override é ignorado
 scripts/model-policy-effective.sh config/model-policy.json | jq .backends
+scripts/perfis.sh                                              # deriva entre perfis
 ```
+
+Numa máquina com mais de um perfil (`CLAUDE_CONFIG_DIR`), tudo que o perfil usa é
+link pra este repo, então `git pull` atualiza todos de uma vez. O `settings.json`
+é a exceção, porque carrega preferência pessoal e decide quais hooks rodam:
+`scripts/perfis.sh` mostra qual perfil ficou sem qual trava, e `--aplicar`
+conserta sem tocar no resto da preferência.
 
 ### 2. Cloud multi-source
 

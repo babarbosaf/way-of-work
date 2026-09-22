@@ -243,6 +243,15 @@ RISCADO = re.compile(r"~~[^~\n]+~~")
 # Heading numerado ("## 14. Decisões registradas") é o caso comum no PRD:
 # a numeração ia à frente e desancorava o casamento.
 NUMERACAO = re.compile(r"^\s*\d+[.)]\s*")
+# Bloco de pergunta aberta empilhada no fim da seção, o padrão 35 do catálogo de
+# escrita. Some da vista e apodrece, porque item sem dono e sem prazo não é
+# cobrado por ninguém. O lugar dele é o backlog, que decai, ou a célula exata da
+# tabela onde quem for implementar esbarra.
+HEADING_ABERTO = re.compile(
+    r"^(pontos?\s+(a\s+definir|em\s+aberto)|quest(õ|o)es\s+em\s+aberto"
+    r"|a\s+definir|d[úu]vidas\s+em\s+aberto|tbd|open\s+questions)\b",
+    re.I,
+)
 
 
 def check_estado(path: Path, ach: Achados) -> None:
@@ -259,6 +268,8 @@ def check_estado(path: Path, ach: Achados) -> None:
             ach.add(nome, linha, f"data em heading ({titulo[:44]!r}); doc de estado não data seção")
         if HEADING_LOG.match(NUMERACAO.sub("", titulo).strip()):
             ach.add(nome, linha, f"seção de log ({titulo[:44]!r}); histórico mora no git e no CHANGELOG")
+        if HEADING_ABERTO.match(NUMERACAO.sub("", titulo).strip()):
+            ach.add(nome, linha, f"seção de pontos em aberto ({titulo[:44]!r}); item sem dono apodrece: vai pro backlog, ou vira 'a definir' na célula")
 
     for n, ln in enumerate(texto.splitlines(), 1):
         if m := RISCADO.search(ln):

@@ -89,7 +89,11 @@ echo "== ponteiro morto =="
 # CHANGELOG registra o que já saiu, então cita nome de arquivo removido por
 # desenho, e fixture de lint cita ponteiro morto de propósito. A guarda vale pro
 # resto, e o [Unreleased] tem assert próprio abaixo.
-MORTO='RUNBOOK\.md|templates/VOZ|docs/research/escrita\.md|CONTEXT\.md|ADR-000|specs/done/'  # guard-regex
+# `ADR-000` saiu da lista quando a árvore de decisão passou a existir: o termo
+# barrava a citação de ADR que não existia aqui, e quem faz isso agora é o
+# `check-docs.py --ciclo`, que confere se o número resolve pra arquivo em vez de
+# proibir a faixa inteira.
+MORTO='RUNBOOK\.md|templates/VOZ|docs/research/escrita\.md|CONTEXT\.md|specs/done/'  # guard-regex
 SALVO='^(CHANGELOG\.md|tests/fixtures/)'  # guard-regex
 regra    "ponteiro pra arquivo removido" "$MORTO" "$SALVO"  # guard-regex
 plantado "ponteiro pra arquivo removido" "$MORTO" "Ver RUNBOOK.md para o passo a passo." "$SALVO"  # guard-regex
@@ -103,7 +107,7 @@ echo "== plano e conta do dono =="
 # é doutrina: é a intimidade dele. O repo diz QUE existe hierarquia de modelos e
 # COMO ela se declara, nunca de quem é a fatura. Nome de modelo fica, porque é o
 # dado que a policy roteia; nome de plano comercial e preço, não.
-PLANO='chatgpt|\$[0-9]+ ?/ ?m[êe]s|\$[0-9]+/m|r\$ ?[0-9]|(assinatura|plano|cota) (j[áa] )?pag[oa]|dono (j[áa] )?paga|que o dono paga|nesta conta|setad[ao] neste ambiente|conectado em (jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)'  # guard-regex
+PLANO='chatgpt|\$[0-9]+ ?/ ?m[êe]s|\$[0-9]+ ?/ ?m\b|r\$ ?[0-9]|(assinatura|plano|cota) (j[áa] )?pag[oa]|dono (j[áa] )?paga|que o dono paga|nesta conta|setad[ao] neste ambiente|conectado em (jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)'  # guard-regex
 regra    "plano ou preço do dono" "$PLANO"  # guard-regex
 plantado "plano ou preço do dono" "$PLANO" "O codex é ChatGPT Plus (\$20/mês), custo marginal zero."  # guard-regex
 

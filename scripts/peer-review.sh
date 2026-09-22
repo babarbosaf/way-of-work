@@ -12,7 +12,9 @@
 #   codex → gemini → exit 2 (a sessão assume via subagente adversarial / inline)
 #
 # Cada modelo tem cooldown próprio em ~/.claude/gate/cooldown.<model>. Cooldown de
-# um não bloqueia o outro. Override de duração: PEER_COOLDOWN_MINS (default 60).
+# um não bloqueia o outro. A duração não é override de ambiente: mora em
+# `cooldowns` na model-policy.json, com prazo próprio por classe de limite (rate
+# limit por minuto, cota de tier até o reset, tropeço de provider).
 #
 # Política:
 #   - Pula XS/S sem input externo

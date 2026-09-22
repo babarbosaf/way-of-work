@@ -10,6 +10,8 @@
 !README.md
 !LICENSE
 !CONTRIBUTING.md
+!PRD.md
+!CONVENTIONS.md
 !FEEDBACK.example.md
 !TODOS.example.md
 !INBOX.example.md
@@ -50,6 +52,11 @@ docs/_archive/
 # elas decidem vira instrução em docs/ e skills/, e o resto mora no git local.
 docs/research/
 specs/
+# fixture de lint precisa de uma spec de mentira pra provar a corrente de IDs, e
+# o `specs/` de cima a engolia: o arquivo novo não aparecia no status e o teste
+# passava só nesta máquina.
+!skills/to-spec/fixtures/**/specs/
+!skills/to-spec/fixtures/**/specs/**
 hooks/__pycache__/
 **/__pycache__/
 **/*.log

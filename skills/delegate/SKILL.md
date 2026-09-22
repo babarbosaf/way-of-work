@@ -87,6 +87,11 @@ Montagem do prompt do worker, ele não tem o contexto da sessão, então inclua:
 Exit codes: `0` ok (resposta no stdout) · `2` cascata esgotada → **você assume
 a tarefa inline** e segue; nunca re-tente em loop.
 
+`--async` despacha e devolve o identificador na hora, em vez de segurar a sessão
+pelo tempo do worker; `--status <id>` consulta depois, e mostra o estado, o
+código de saída e o caminho do material que o worker produziu. Vale nos dois
+modos, e quem quer ver tudo o que está correndo agora usa `--tasks`.
+
 ## Modo bulk, o script monta o prompt
 
 Pergunta sobre arquivo grande não precisa de heredoc, e não deve precisar: a
@@ -165,6 +170,12 @@ quebraria em runtime. Por isso o `delegate.sh` faz três coisas juntas: `cd` na
 worktree, `--add-dir {worktree}` no comando, e o caminho absoluto escrito no
 começo do prompt. Nenhuma das três sozinha resolve.
 
+**No modo worktree o worker do plano roda comando, e no modo sem escrita não.**
+Sem isso o bloco de verificação do report dele é promessa: o harness recusa todo
+binário fora de um allowlist mínimo, a sessão é headless e não tem quem aprove,
+então `bash tests/...` voltava negado. A permissão vale só onde existe árvore
+isolada pra estragar, e a confinação continua sendo a worktree.
+
 **Protocolo de integração (obrigatório, nunca pular):**
 0. `git status` na **árvore principal**. Worker que escapou aparece aqui, e
    descobrir isso depois de rodar teste custa muito mais.
@@ -174,7 +185,9 @@ começo do prompt. Nenhuma das três sozinha resolve.
 3. Verde e no escopo → integrar (merge/cherry-pick conforme o fluxo do repo),
    marcando a task como delegada nas notas da spec.
 4. Limpar: `git worktree remove <worktree>` e `git branch -d delegate/<slug>`.
-   Órfãs: `delegate.sh --gc <repo-dir>`.
+   Órfãs: `delegate.sh --gc <repo-dir>`, que na mesma passada fecha a aba de
+   sessão dirigida parada além do prazo, gravando a tela antes. Sem sessão
+   registrada ele não chega a varrer nada.
 5. Ruim mas recuperável → re-delegar com feedback no prompt (1 retry máx);
    ruim de novo → assumir a task inline.
 6. **Report de fechamento (tech-lead, sucinto).** Pós-integração, emitir
@@ -201,6 +214,14 @@ Slug inexistente → erro claro (nunca cria uma nova silenciosamente). Uma
 worktree reaproveitada via `--continue` nunca é apagada automaticamente pelo
 script, mesmo se a cascata esgotar nessa chamada, limpeza continua manual
 (passo 4) ou via `--gc`.
+
+## Ver as tasks em curso
+
+`delegate.sh --tasks` lista o que está rodando agora, uma linha por task, com
+identificador, balde de cota, tipo de task e branch. É leitura pura: nenhum
+caminho dela toca policy, cota ou worker. Um pane do herdr rodando isso em laço
+é a camada de terminal, e o passo a passo dela está em
+`references/camada-terminal.md`.
 
 ## Delegação interna, subagentes Claude (tier `session`)
 
@@ -276,7 +297,11 @@ cai pra fallback interno mais barato (nunca opus/fable sem pedido explícito).
   um scan do repo inteiro, com o mesmo número de chamadas.
 - Log de uso (metadados): `~/.claude/gate/delegate.log`, com `bytes_in`/`bytes_out`
   por chamada. É com ele que o degrau do `.shunt` se calibra; sem tamanho, o
-  threshold é palpite.
+  threshold é palpite. Cada linha traz também `material`, o caminho do que o
+  worker deixou no disco: o transcript da sessão dele quando ele grava uma, e o
+  output capturado quando não grava. Caminho, nunca conteúdo, então diagnosticar
+  uma falha é abrir o arquivo que a linha aponta, sem caçar entre mil sessões de
+  nome opaco.
 - **Eval de conformidade real** (sem mock, contra os CLIs de verdade):
   `scripts/smoke_backends.sh [--task <type>]`, sonda cada modelo/pool
   habilitado na policy com prompt trivial, confirma resposta não-vazia, e já

@@ -1,0 +1,53 @@
+# Receita de sidebar da camada de sessões, para o herdr.
+#
+# Este arquivo é EXEMPLO versionado, não config ativa: a config real mora em
+# `~/.config/herdr/config.toml`, fora do repo. Quem quer a camada copia os blocos
+# daqui; quem não quer não copia nada, e o despacho segue igual.
+#
+# Validar antes de aplicar, sem tocar na config real:
+#   HERDR_CONFIG_PATH=config/herdr.example.toml herdr config check
+#
+# Medido em 22/set/2026, contra o herdr 0.9.1:
+# - Token literal solto numa linha é REJEITADO pelo parser, então marcador não se
+#   escreve na config: ele vem do nome da aba, que o despachante escolhe, e a
+#   config só o estiliza.
+# - `report-metadata` publica token de WORKSPACE, não de agente. `$nome` na linha
+#   de agente mostraria o mesmo valor para todos os agentes do espaço, então ele
+#   não serve para distinguir uma sessão das outras. Serve para o espaço.
+
+[ui.sidebar.agents]
+# A sessão que dirige é a que o dono abriu, e ela não carrega prefixo. Toda
+# sessão que ela despacha nasce com o nome prefixado por "» ", e a regra abaixo
+# apaga essas linhas. Sobra uma linha em destaque, que é quem manda.
+#
+# A distinção é por contraste, e não por caractere, porque o parser não aceita
+# literal. Efeito é o mesmo: uma olhada na lista diz quem dirige.
+rows = [
+  ["state_icon", { token = "tab", rules = [
+    { starts_with = "» ", dim = true },
+  ] }],
+  ["agent"],
+]
+
+[ui.sidebar.spaces]
+# O espaço é o grupo do projeto: cada projeto com trabalho aberto ganha um grupo
+# com o nome dele, e a aba de um trabalho nasce dentro do grupo do projeto dela.
+# Sem isso, três projetos ao mesmo tempo produzem uma lista achatada onde nada
+# diz de onde cada linha veio. Quem escolhe o grupo é o abridor, pelo cwd do
+# trabalho; a config só desenha a linha.
+#
+# O espaço mostra o que o adaptador publicar em `report-metadata`. Enquanto
+# ninguém publica, o token some e a linha fica como era.
+rows = [
+  ["workspace", "$camada"],
+]
+
+[ui]
+# O leitor de trabalhos em curso, que é a superfície padrão e continua sendo.
+# Trocar <HOME> pelo caminho real antes de aplicar, e ABSOLUTO de propósito: `~`
+# não expande em comando rodado pelo daemon, e a falha é indistinguível de não
+# ter trabalho nenhum. Custou um dia inteiro de barra morta sem sinal.
+tab_bar_right = [
+  { type = "command", command = "<HOME>/.claude/scripts/delegate.sh --tasks --oneline", interval_seconds = 5, timeout_seconds = 2 },
+]
+tab_bar_right_separator = " · "

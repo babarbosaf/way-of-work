@@ -1,6 +1,6 @@
 01 [XS] derivar no DTR
 
-closes:     AC-09
+closes:     AC-09, AC-01
 
 files:      src/ingest/dtr.py
 blocked_by: nenhum

@@ -16,7 +16,11 @@
       "notes": "Plano de tarifa fixa: custo marginal zero, e o recurso escasso é a JANELA DE USO, não o dinheiro. Modelo se configura em ~/.codex/config.toml. Equivalência com os modelos Claude e esforço sugerido, decididos pelo dono e checados contra benchmark (Artificial Analysis Intelligence Index, Terminal-Bench, SWE-bench Pro, DeepSWE): gpt-6-astra ~ Fable 5.1, low ou medium e nunca acima (AA Intelligence 61 contra 66 do Fable 5.1 max). gpt-5.6-sol ~ Opus 5, high (Terminal-Bench 2.1 empata, 88,8 contra 89,1, e o Opus 5 abre 79,2 contra 64,6 em SWE-bench Pro, que é review de repositório: a equivalência vale no nível do modelo, e o Opus ganha em multi-arquivo). gpt-5.6-terra ~ Sonnet, medium. gpt-5.6-luna ~ Haiku, low. gpt-5.5 fica fora: legado, e o luna cobre o tier dele por menos. Terra é dominado em Pareto pelo par luna/sol (AA: pra qualquer esforço do terra existe um esforço de luna ou de sol mais inteligente pelo mesmo custo, ou igual por menos), então terra só aparece onde a classe Sonnet é o alvo, nunca como degrau de volume. Este backend OSCILA por janela de tempo, e não por nome de modelo, diretório ou plano: medido em 07/set/2026, o mesmo `codex exec --model gpt-5.5` respondeu às 19h06 e devolveu 404 \"does not exist or you do not have access\" às 19h31, mesmo ambiente e mesmo cwd. O dispatcher trata como transiente (cooldown curto, ver is_transient no delegate.sh) e o backend segue habilitado. NÃO escreva aqui que o Codex 'não funciona neste ambiente' com base em sondagem: a sondagem mede a janela em que ela rodou. `enabled: false` é pra decisão (custo, segurança, política de uso com fonte), nunca pra falha observada.",
       "default_model": "gpt-5.6-terra",
       "model_flag": "-m",
-      "effort_config": "model_reasoning_effort"
+      "effort_config": "model_reasoning_effort",
+      "sessions": {
+        "path": "~/.codex/sessions",
+        "grep": "\"cwd\":\"{cwd}\""
+      }
     },
     "agy": {
       "enabled": true,
@@ -75,7 +79,7 @@
         "worktree"
       ],
       "invoke": "claude -p",
-      "worktree_invoke": "claude -p --add-dir {worktree} --permission-mode acceptEdits",
+      "worktree_invoke": "claude -p --add-dir {worktree} --allowedTools Bash --permission-mode acceptEdits",
       "prompt_via": "stdin",
       "bin": "claude",
       "model_flag": "--model",
@@ -85,7 +89,10 @@
         "claude-opus-5",
         "claude-sonnet-5"
       ],
-      "notes": "Último degrau antes do master, em TODA cascata: é o mesmo plano da sessão master, e a queda pro master deixa de ser o único fallback. MESMO plano da sessão master, então quando o balde seca os dois falham juntos, e este degrau compra contexto isolado, não resiliência de cota. `env -u ANTHROPIC_API_KEY` não é opcional: a variável pode chegar setada no ambiente, e sem removê-la o `claude -p` cobra da API em vez do plano, o que ressuscita o backend de API que saiu da policy. A guarda é estrutural, aplicada a toda invocação de backend no delegate.sh, e não um detalhe deste bloco. Esforço vai por FLAG (`--effort`), não por `-c chave=valor` como no codex, e é por isso que existe effort_flag. Medido em 21/set/2026: `claude -p --model claude-sonnet-5 --effort low --add-dir <dir> --permission-mode acceptEdits` escreveu arquivo na pasta passada, rc=0, 10s. A alternativa a este backend é o Agent tool (tier session da SKILL.md), que preserva o harness completo mas fica invisível pro delegate.log."
+      "notes": "Último degrau antes do master, em TODA cascata: é o mesmo plano da sessão master, e a queda pro master deixa de ser o único fallback. MESMO plano da sessão master, então quando o balde seca os dois falham juntos, e este degrau compra contexto isolado, não resiliência de cota. `env -u ANTHROPIC_API_KEY` não é opcional: a variável pode chegar setada no ambiente, e sem removê-la o `claude -p` cobra da API em vez do plano, o que ressuscita o backend de API que saiu da policy. A guarda é estrutural, aplicada a toda invocação de backend no delegate.sh, e não um detalhe deste bloco. Esforço vai por FLAG (`--effort`), não por `-c chave=valor` como no codex, e é por isso que existe effort_flag. Medido em 21/set/2026: `claude -p --model claude-sonnet-5 --effort low --add-dir <dir> --permission-mode acceptEdits` escreveu arquivo na pasta passada, rc=0, 10s. A alternativa a este backend é o Agent tool (tier session da SKILL.md), que preserva o harness completo mas fica invisível pro delegate.log.",
+      "sessions": {
+        "path": "$CLAUDE_CONFIG_DIR/projects/{cwd_flat}"
+      }
     }
   },
   "tasks": {
@@ -114,6 +121,11 @@
     ],
     "implement": [
       {
+        "backend": "claude",
+        "model": "claude-sonnet-5",
+        "effort": "medium"
+      },
+      {
         "backend": "codex",
         "model": "gpt-5.6-terra",
         "effort": "medium"
@@ -121,11 +133,6 @@
       {
         "backend": "agy",
         "model": "Gemini 3.1 Pro (High)"
-      },
-      {
-        "backend": "claude",
-        "model": "claude-sonnet-5",
-        "effort": "medium"
       }
     ],
     "scan": [
@@ -247,6 +254,32 @@
     "prompt_warn_bytes": 100000,
     "prompt_max_bytes": 250000
   },
+  "budgets": {
+    "$comment": "Régua por balde: pico de chamadas que chegaram a worker em janela móvel de 300 minutos, apurado do gate/delegate.log em 21/set/2026. `unavailable` não conta, porque a cascata esgotou antes de alcançar worker. window_mins é escolha declarada, a forma da janela dos planos, e não medição. Balde sem régua vale como livre, igual a log ilegível. Quem recalcula isto é o apura_log.py, e o --check dele falha na divergência, menos onde a régua foi recusada de propósito.",
+    "window_mins": 300,
+    "pools": {
+      "codex": {
+        "max_calls": 10
+      },
+      "agy:gemini": {
+        "max_calls": 4
+      },
+      "agy:claude_gpt": {
+        "max_calls": 2
+      },
+      "claude": {
+        "status": "sem_regua",
+        "porque": "o pico medido aqui é piso de uso, não teto de cota, e este balde lidera a fila de implementação: régua tirada de um punhado de chamadas o estrangularia. Sem régua vale como livre, pelo D-02."
+      }
+    }
+  },
+  "cooldowns": {
+    "$comment": "Minutos por classe de limite. Tier sem reset legível cai em tier_fallback_mins.",
+    "rate_limit_mins": 1,
+    "tier_fallback_mins": 60,
+    "transient_mins": 10,
+    "silent_fail_mins": 60
+  },
   "timeouts": {
     "$comment": "Segundos por task-type; --timeout só pra override pontual, e nenhum consumidor crava número próprio. review=600 é ESTIMATIVA, não medição: o 300 anterior foi cronometrado à mão no Gemini 3.1 Pro (High), que saiu da cascata de review, e o peer-review.sh manda diff de até 2000 linhas contra as 1432 que levaram 170s naquele modelo. O log agora grava dur_s por chamada, então isso se recalibra com dado depois de ~10 chamadas reais. implement=1800 medido: um ticket de 9 arquivos com testes RED estourou os 600 do Codex com a task pela metade, 18/set/2026.",
     "scan": 600,
@@ -285,6 +318,67 @@
       "repo_alvo": "same",
       "delega": null,
       "state": "needs-triage"
+    }
+  },
+  "visivel": {
+    "$comment": "Elegibilidade do MODO VISÍVEL como dado, uma entrada por backend configurado. Ver o worker exige o modo conversacional, que troca modelo, flags e a forma como a resposta volta, e a spec recusa presumir que os três sobrevivam à troca. Cada veredito carrega a data e o motivo da medição. Lido só por lib-visivel.sh; nunca hardcode em script. Veredito ausente conta como não elegível.",
+    "backends": {
+      "codex": {
+        "elegivel": true,
+        "medido_em": "2026-09-22",
+        "invoke": "codex -m {model} -c model_reasoning_effort={effort}",
+        "porque": "vira agente detectado, aceita prompt pelo canal da camada e a resposta é lida da tela; uma revisão inteira de spec rodou assim",
+        "telas_de_abertura": [
+          {
+            "padrao": "Update available!",
+            "teclas": [
+              "down",
+              "enter"
+            ],
+            "porque": "escolhe Skip. O item pré-selecionado é `Update now`, que roda npm install -g no meio do despacho"
+          }
+        ],
+        "atencao": "não pede para confiar na pasta: medido em pasta nova, vai direto ao prompt. A tela que atrapalha é a de atualização, e ela some quando a versão está em dia."
+      },
+      "claude": {
+        "elegivel": true,
+        "medido_em": "2026-09-22",
+        "invoke": "claude --model {model}",
+        "porque": "vira agente detectado e devolveu pela tela a transformação exata de um valor exclusivo, distinta do eco do prompt",
+        "atencao": "ao abrir um cwd novo, a TUI para num pedido de confiar na pasta, e a detecção marca `unknown` em vez de `blocked`. O item selecionado por padrão é o NÃO, que sai do programa: enter cego mata a sessão. Confirmar é descer um item e então confirmar. O agy faz o oposto, com o SIM já selecionado, então não existe tecla única que sirva para os dois.",
+        "telas_de_abertura": [
+          {
+            "padrao": "Is this a project you created or one you trust",
+            "teclas": [
+              "down",
+              "enter"
+            ],
+            "porque": "escolhe `Yes, I trust this folder`. O pré-selecionado é `No, exit`, e enter cego encerra a sessão"
+          }
+        ]
+      },
+      "agy": {
+        "elegivel": true,
+        "medido_em": "2026-09-22",
+        "invoke": "agy --model {model}",
+        "porque": "vira agente detectado e devolveu pela tela uma transformação do valor exclusivo, distinta do eco do prompt, com Claude Sonnet 4.6",
+        "atencao": "o modelo vai pelo ID da CLI (claude-sonnet-4-6), nunca pelo nome de exibição: o nome tem parênteses e o comando chega ao shell sem aspas. A tela só sai em --source visible. E a pasta nova pede confiança com o SIM já selecionado, ao contrário do claude.",
+        "pool_sem_cota": "o pool gemini estava esgotado na medição (reset em 31h) e o pool claude_gpt respondeu em 6s: cota do agy é por provider, então esgotamento de um pool não é veredito sobre o backend",
+        "telas_de_abertura": [
+          {
+            "padrao": "Do you trust the contents of this project",
+            "teclas": [
+              "enter"
+            ],
+            "porque": "o pré-selecionado já é `Yes, I trust this folder`, ao contrário do claude"
+          }
+        ]
+      }
+    },
+    "$comment_telas": "`telas_de_abertura` é a lista de telas que cada worker mostra ANTES de aceitar prompt, medidas em 22/set/2026 abrindo cada um numa pasta nova. Cada uma nomeia o padrão que a identifica e as teclas que a respondem. Existe porque o item pré-selecionado difere entre workers e entre telas, e tecla cega faz estrago: no claude o default sai do programa, no codex o default roda `npm install -g`. O abridor casa o padrão na tela antes de mandar tecla, nunca manda no escuro.",
+    "ciclo": {
+      "prazo_ocioso_min": 30,
+      "porque": "aba parada além disso já foi integrada ou abandonada; o prazo só é aceitável porque a tela vira arquivo antes de a aba sumir, e porque aba órfã fica fora dele. Curto demais mata trabalho em curso, longo demais devolve a lista entupida que a camada existe pra desentupir."
     }
   }
 }
