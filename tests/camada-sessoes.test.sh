@@ -180,6 +180,12 @@ case "$1 $2" in
     cat "$HERDR_TELA" 2>/dev/null ;;
   "tab list")
     cat "$HERDR_TABS" 2>/dev/null ;;
+  "pane get")
+    printf '{"result":{"pane":{"pane_id":"%s","agent_status":"%s"}}}\n' \
+      "$3" "$(cat "$HERDR_ESTADO" 2>/dev/null || echo idle)" ;;
+  "pane process-info")
+    printf '{"result":{"process_info":{"shell_pid":%s}}}\n' \
+      "$(cat "$HERDR_PID" 2>/dev/null || echo 4242)" ;;
   *) echo '{"result":{"type":"ok"}}' ;;
 esac
 SH
@@ -190,7 +196,10 @@ fixture_policy
 mkdir -p "$TMP/vazio"
 export HERDR_CHAMADAS="$TMP/chamadas.txt"
 export HERDR_TELA="$TMP/tela.txt"
+export HERDR_ESTADO="$TMP/estado.txt"
+export HERDR_PID="$TMP/pid.txt"
 : > "$HERDR_CHAMADAS"; : > "$HERDR_TELA"
+echo idle > "$HERDR_ESTADO"; echo 4242 > "$HERDR_PID"
 
 # Worker não elegível não pode nem chegar a criar aba: recusar depois de abrir
 # deixa aba órfã na cara do dono, que é o defeito que a camada existe pra evitar.
@@ -413,6 +422,79 @@ echo '{"result":{"tabs":[{"tab_id":"w1:t1","label":"1","agent_status":"idle","wo
 HERDR_TABS="$TMP/tabs-sem.json" sincroniza
 if [[ ! -f "$reg" ]]; then ok "sessão morta apaga o registro"
 else fail "o registro sobreviveu à morte da sessão"; fi
+unset DELEGATE_ADAPTADOR
+
+echo "== dirigir, ler e assumir =="
+DIRIGE="$ROOT/scripts/dirige-sessao.sh"
+if [[ -x "$DIRIGE" ]]; then ok "dirige-sessao.sh existe e é executável"
+else fail "dirige-sessao.sh não existe ou não é executável"; fi
+
+export DELEGATE_ADAPTADOR="$ADAPT"
+MARCA="ECO-$$-$RANDOM"
+
+# A instrução sai pelo canal da camada. Teclar caractere a caractere numa TUI
+# perde texto quando a tela redesenha no meio, e foi por isso que o canal de
+# prompt existe.
+: > "$HERDR_CHAMADAS"; echo idle > "$HERDR_ESTADO"
+printf 'nada aqui\n' > "$HERDR_TELA"
+PATH="$TMP/bin:$PATH" DIRIGE_PRAZO_PARTIDA_S=1 DIRIGE_PRAZO_S=2 \
+  bash "$DIRIGE" instruir w1:pZ "transforme $MARCA" >/dev/null 2>&1
+if grep -qF "agent prompt w1:pZ transforme $MARCA" "$HERDR_CHAMADAS"; then
+  ok "a instrução sai pelo canal de prompt, com o valor inteiro"
+else fail "a instrução não saiu pelo canal (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+
+# Espera embutida da ferramenta já pendurou além de dois minutos com o worker já
+# tendo respondido. A sincronização é por consulta, com prazo deste lado.
+if ! grep -qE 'agent (wait|prompt .*--wait)' "$HERDR_CHAMADAS"; then
+  ok "a sincronização não usa a espera embutida da ferramenta"
+else fail "o script pendurou na espera embutida"; fi
+if grep -q 'pane get' "$HERDR_CHAMADAS"; then ok "o estado é consultado, não esperado"
+else fail "o script não consultou o estado"; fi
+
+# Prazo próprio: worker que não volta não pendura a sessão principal pra sempre.
+: > "$HERDR_CHAMADAS"; echo working > "$HERDR_ESTADO"
+PATH="$TMP/bin:$PATH" DIRIGE_PRAZO_PARTIDA_S=1 DIRIGE_PRAZO_S=2 \
+  bash "$DIRIGE" instruir w1:pZ "trava" >/dev/null 2>&1; rc=$?
+if (( rc != 0 )); then ok "worker que não volta estoura o prazo em vez de pendurar"
+else fail "instruir aprovou com o worker ainda trabalhando"; fi
+echo idle > "$HERDR_ESTADO"
+
+# A leitura é da TELA, e é isso que o aceite cobra: o valor que veio por arquivo
+# não conta, porque o caminho antigo de captura é exatamente o que a camada
+# substitui.
+: > "$HERDR_CHAMADAS"
+printf 'saida: %s-INVERTIDO\n' "$MARCA" > "$HERDR_TELA"
+echo "$MARCA-DE-ARQUIVO" > "$TMP/resposta-falsa.txt"
+tela=$(PATH="$TMP/bin:$PATH" bash "$DIRIGE" ler w1:pZ 2>/dev/null)
+if grep -qF "$MARCA-INVERTIDO" <<<"$tela"; then
+  ok "a leitura devolve a transformação exata que está na tela"
+else fail "a leitura não trouxe a tela (veio: '$tela')"; fi
+if ! grep -qF "DE-ARQUIVO" <<<"$tela"; then ok "e não traz o que veio por arquivo"
+else fail "a leitura misturou arquivo com tela"; fi
+if grep -q 'pane read' "$HERDR_CHAMADAS"; then ok "a leitura passa pelo canal da camada"
+else fail "a leitura não usou o canal da camada"; fi
+# Caminho antigo de captura e área de transferência não podem nem estar escritos
+# no script: o assert acima só mede a chamada que este teste provocou.
+proibidos=$(grep -oE 'pbpaste|pbcopy|out\.txt|resposta\.txt' "$DIRIGE" | sort -u | tr '\n' ' ')
+if [[ -z "$proibidos" ]]; then ok "o script não conhece arquivo nem área de transferência"
+else fail "o script lê pelo caminho antigo: $proibidos"; fi
+
+# Assumir é entregar o volante, não recomeçar: painel novo perderia a conversa
+# inteira, que é o custo que a camada existe pra eliminar.
+: > "$HERDR_CHAMADAS"
+antes=$(PATH="$TMP/bin:$PATH" bash "$DIRIGE" processo w1:pZ 2>/dev/null)
+PATH="$TMP/bin:$PATH" bash "$DIRIGE" assumir w1:pZ >/dev/null 2>&1; rc=$?
+depois=$(PATH="$TMP/bin:$PATH" bash "$DIRIGE" processo w1:pZ 2>/dev/null)
+if (( rc == 0 )); then ok "assumir sai zero"; else fail "assumir falhou (rc=$rc)"; fi
+if grep -q 'agent focus w1:pZ' "$HERDR_CHAMADAS"; then
+  ok "assumir foca o painel que já existe"
+else fail "assumir não focou o painel (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+if [[ -n "$antes" && "$antes" == "$depois" ]]; then
+  ok "a sessão assumida segue no mesmo processo"
+else fail "o processo mudou ao assumir ('$antes' → '$depois')"; fi
+if ! grep -qE 'tab create|pane split|agent start' "$HERDR_CHAMADAS"; then
+  ok "e no mesmo painel, sem abrir nada novo"
+else fail "assumir criou painel ou sessão nova"; fi
 unset DELEGATE_ADAPTADOR
 
 echo "== o modo no despachante =="

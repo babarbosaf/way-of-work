@@ -11,6 +11,10 @@
 #   teclar <pane> <tecla>      manda uma tecla
 #   listar                     "tab_id<TAB>rotulo<TAB>estado", uma aba por linha
 #   rotular <tab> <rotulo>     renomeia a aba
+#   instruir <pane> <texto>    submete um prompt à sessão
+#   estado <pane>              devolve o estado que a ferramenta observa
+#   processo <pane>            devolve o pid do processo da sessão
+#   focar <pane>               entrega o foco ao dono
 #
 # O adaptador traduz verbo em chamada, e só. Política de estado, de nome e de
 # fechamento mora na lib do modo visível: adaptador que decide é adaptador que
@@ -62,6 +66,30 @@ case "$VERBO" in
         [[ $# -ge 2 ]] || die "adaptador: rotular precisa de aba e rótulo"
         "$FERRAMENTA" tab rename "$1" "$2" >/dev/null 2>&1 \
             || die "adaptador: renomear a aba $1 falhou"
+        ;;
+    instruir)
+        [[ $# -ge 2 ]] || die "adaptador: instruir precisa de painel e texto"
+        # Sem `--wait`: a espera embutida já pendurou além de dois minutos com o
+        # worker já tendo respondido, e quem sincroniza é quem chama.
+        "$FERRAMENTA" agent prompt "$1" "$2" >/dev/null 2>&1 \
+            || die "adaptador: a instrução não entrou no painel $1"
+        ;;
+    estado)
+        [[ $# -ge 1 ]] || die "adaptador: estado precisa do painel"
+        "$FERRAMENTA" pane get "$1" 2>/dev/null \
+            | jq -r '.result.pane.agent_status // "unknown"' 2>/dev/null
+        ;;
+    processo)
+        [[ $# -ge 1 ]] || die "adaptador: processo precisa do painel"
+        # O shell do painel é o que sobrevive ao worker e ao foco: é ele que
+        # prova que a sessão não trocou de processo no meio do caminho.
+        "$FERRAMENTA" pane process-info --pane "$1" 2>/dev/null \
+            | jq -r '.result.process_info.shell_pid // empty' 2>/dev/null
+        ;;
+    focar)
+        [[ $# -ge 1 ]] || die "adaptador: focar precisa do painel"
+        "$FERRAMENTA" agent focus "$1" >/dev/null 2>&1 \
+            || die "adaptador: focar o painel $1 falhou"
         ;;
     *) die "adaptador: verbo desconhecido: '$VERBO'" ;;
 esac
