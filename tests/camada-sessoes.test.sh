@@ -116,6 +116,35 @@ else fail "a cascata padrão consulta a lista de elegíveis"; fi
 if [[ -z "${DELEGATE_VISIVEL:-}" ]]; then ok "o modo visível nasce desligado"
 else fail "o modo visível nasce ligado (DELEGATE_VISIVEL=${DELEGATE_VISIVEL})"; fi
 
+echo "== a receita de sidebar =="
+EXEMPLO="$ROOT/config/herdr.example.toml"
+if [[ -f "$EXEMPLO" ]]; then ok "herdr.example.toml está versionado"
+else fail "herdr.example.toml não existe"; fi
+
+# O marcador de quem dirige não pode ser literal na config: o parser recusa, e
+# medir isso é o que impede alguém reescrever a receita de um jeito que não sobe.
+if grep -q 'starts_with' "$EXEMPLO" 2>/dev/null; then ok "a distinção é por regra condicional"
+else fail "a receita não traz regra condicional"; fi
+
+# `~` em comando de daemon morre calado, e foi um dia inteiro de barra morta.
+if ! grep -qE 'command\s*=\s*"~' "$EXEMPLO" 2>/dev/null; then ok "nenhum comando começa com til"
+else fail "comando com til na receita: o daemon não expande"; fi
+# O repo é público: o exemplo pede o caminho, e não carrega o da máquina de quem
+# escreveu. `tests/agnostico.test.sh` cobra isso no repo inteiro.
+if grep -q '<HOME>' "$EXEMPLO" 2>/dev/null; then ok "o caminho é placeholder, não o da máquina"
+else fail "a receita não usa placeholder de caminho"; fi
+
+if command -v herdr >/dev/null 2>&1; then
+  if HERDR_CONFIG_PATH="$EXEMPLO" herdr config check 2>&1 | grep -q '^config: ok'; then
+    ok "o verificador do herdr aceita a receita"
+  else
+    fail "o verificador do herdr recusa a receita"
+  fi
+else
+  # Pulo declarado, nunca calado: verde sem herdr não pode passar por prova.
+  echo "  ~ pulado: herdr não está nesta máquina, a receita não foi verificada"
+fi
+
 echo
 echo "== $PASS passed, $FAIL failed =="
 (( FAIL == 0 ))
