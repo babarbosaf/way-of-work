@@ -11,8 +11,8 @@ Um modelo de trabalho com agentes, versionado, que transforma pedido em código
 entregue com rastro. Quem usa é uma pessoa que trabalha com agentes em muitos
 projetos ao mesmo tempo, e os próprios agentes, que leem daqui o que fazer.
 
-O produto não é a ferramenta: é o conjunto de regras, fases e travas que faz o
-trabalho de agente ser auditável depois. Quatro pilares:
+O produto é o conjunto de regras, fases e travas que torna o trabalho de agente
+auditável depois, e não a ferramenta que o executa. Quatro pilares:
 
 - **Uma instrução, muitos harnesses.** O `AGENTS.md` é a fonte, e qualquer
   ferramenta que leia o padrão consome sem tradução. Nada do núcleo depende de
@@ -22,8 +22,8 @@ trabalho de agente ser auditável depois. Quatro pilares:
   trabalho, e o que não virou arquivo morre com ela.
 - **Trabalho mecânico sai da sessão.** O que não precisa do contexto vivo vai
   pra um worker externo, com cota, prazo e protocolo de integração.
-- **Promessa não vale, trava vale.** Toda regra que importa nomeia o hook, o
-  lint ou o teste que a cobra. Regra sem quem cobre é texto.
+- **Toda regra nomeia quem a cobra.** Hook que bloqueia em runtime, lint que roda
+  antes do commit, ou assert na suíte. Regra sem nenhum dos três não entra.
 
 Os domínios abaixo são numerados na ordem em que aparecem num dia de trabalho.
 
@@ -77,11 +77,6 @@ produz 25 linhas de análise antes de alguém decidir que o item importa.
 - **Achado colateral se resolve na sessão** quando tem a ver com o trabalho em
   curso, ou quando não tem mas bloqueia. Só o resto desce pro backlog.
 
-### Pontos a definir
-
-- Não existe registro de fluxo por spec (tamanho, se precisou de handoff, o que
-  travou), então o escape hatch da regra de uma spec por sessão não gera insumo
-  de melhoria.
 
 ## 3. Delegação e orquestração de workers
 
@@ -145,19 +140,13 @@ duração.
   diretório, a árvore interna deixa o degrau sem como rodar.
 - **Finding do worker vira issue**, nunca some no report.
 
-### Pontos a definir
-
-- O pool `agy:gemini` está sem medição válida desde o esgotamento de 22/set/2026.
-  Remedir depois do reset.
-- O estado do gate (castigo, slot, tasks, log) não tem primitiva única, e o
-  quarto gate volta a espalhar a limpeza por dezenas de pontos de chamada.
 
 ## 4. Camada de sessões
 
 ### Modelo
 
-Worker invisível não tem nome, não tem estado e não tem porta de entrada: worker
-parado esperando resposta é idêntico a worker trabalhando, e a diferença só
+Um worker despachado às cegas não tem nome nem estado visível, então worker
+parado esperando resposta fica idêntico a worker trabalhando. A diferença só
 aparece no prazo estourado, com a cota já gasta.
 
 O modo visível resolve isso colocando o worker numa aba nomeada do multiplexer,
@@ -204,11 +193,6 @@ de multiplexer é reescrever esse arquivo, não caçar o nome espalhado.
 - **O que a aba devolve é o buffer da tela, não um arquivo**, então fechar sem
   gravar apaga o material que o dono quer ler depois.
 
-### Pontos a definir
-
-- Quatro cenários de tela seguem sem veredito humano: contraste de quem dirige,
-  grupos por projeto, a barra que diz que não sabe, e o prazo com relógio real.
-  Lista em `docs/specs/camada-de-sessoes/tickets/12-qa-manual.md`.
 
 ## 5. Memória e continuidade
 
@@ -304,10 +288,11 @@ detalhamento nunca é duplicado dos dois lados.
 
 ### Modelo
 
-Regra que depende de o agente lembrar não é regra. O que importa vira hook que
-bloqueia em runtime, lint que roda antes do commit, ou teste na suíte. A mensagem
-de bloqueio diz o que fazer no lugar, e todo hook tem kill switch, porque
-enforcement que não se desliga vira obstáculo quando erra.
+Toda regra que importa vira hook que bloqueia em runtime, lint que roda antes do
+commit, ou assert na suíte. A que depende de o agente lembrar não sobrevive à
+primeira sessão com pressa. A mensagem de bloqueio diz o que fazer no lugar, e
+todo hook tem kill switch por variável de ambiente, porque enforcement que não se
+desliga vira obstáculo quando erra.
 
 ### Estrutura
 
@@ -340,19 +325,11 @@ repo público.
 - **Assert que passa de primeira pode ser vacuoso.** RED se prova por mutação, e
   três asserts desta base nasceram assim: passavam porque o script morria antes,
   ou porque o fixture tornava a condição sempre verdadeira.
-- **Verde que mente é a família de falha mais cara**, e o caso conhecido é
-  encadear a suíte com um filtro de saída: o filtro devolve zero mesmo com a
-  suíte vermelha.
+- **A suíte encadeada a um filtro de saída informa sucesso mesmo vermelha**,
+  porque o rc que chega é o do filtro. Um commit desta base passou assim.
 - **Lint novo roda contra o repo antes do commit**, porque fixture e repo real
   divergem calados.
 
-### Pontos a definir
-
-- Sete hooks existem no repo e o `settings.json` versionado liga quatro.
-  `bash_read_guard`, `context7_reminder` e `wiki_push_guard` dependem de wiring
-  que cada máquina escreve, então quem clona não herda três das sete travas.
-- `wiki_push_guard` é o único hook sem cobertura na suíte, e é o que mais depende
-  do estado da máquina de quem roda.
 
 ## 8. Restrições invioláveis
 
@@ -372,11 +349,11 @@ repo público.
 
 ## 9. Escrita
 
-Fragmento vale mais que frase, e bom português vale mais que os dois. O que o
-linter pega é mecânico: travessão, aspa curva, vocabulário de modelo, frase de
-enchimento, hedging empilhado, emoji decorativo em título e densidade de
-exclamação. O julgamento fica na doutrina da skill, e no linter só entra regra
-sem falso positivo.
+Fragmento ganha de frase inteira em instrução densa, e ortografia correta não se
+negocia em nenhum dos dois. O linter pega o que é mecânico: travessão, aspa
+curva, vocabulário de modelo, frase de enchimento, hedging empilhado, emoji
+decorativo em título e densidade de exclamação. O julgamento fica na doutrina da
+skill, e no linter só entra regra sem falso positivo.
 
 Texto que outra pessoa vai ler passa pelo `check-writing.py` antes do commit.
 

@@ -18,13 +18,13 @@ prd: PRD.md#1-visão-geral
 | Dado estruturado | `jq` | fusão de policy e leitura de saída de ferramenta |
 | Testes | bash puro, sem framework | a suíte roda em qualquer terminal, sem instalar nada |
 
-Só `python3` e `jq` são de fato necessários. O resto do que o repositório declara
+Só `python3` e `jq` são necessários. O resto do que o repositório declara
 (`context7`, `rtk`, plugins) é opcional, e a ausência de cada um tem consequência
 escrita na tabela de pré-requisitos do README.
 
 **Segredo nunca é versionado.** O `.gitignore` é allowlist: ignora tudo (`*`) e
 libera por `!` arquivo a arquivo. Arquivo novo que precisa subir entra nessa
-lista no mesmo commit, senão ele simplesmente não existe pra quem clona.
+lista no mesmo commit, senão ele não existe pra quem clona.
 
 ## 2. Regras do projeto
 
@@ -36,8 +36,8 @@ lista no mesmo commit, senão ele simplesmente não existe pra quem clona.
   número próprio diverge do outro ponto de chamada sem ninguém ver, e a suíte
   cobra a ausência de duração cravada.
 - **Override pessoal funde, não substitui.** `config/*.local.json` é gitignored e
-  entra por `jq -s '.[0] * .[1]'`. Todo consumidor lê a policy **fundida**: ler a
-  base onde o veredito mora no override faz os dois lados discordarem calados.
+  entra por `jq -s '.[0] * .[1]'`. Todo consumidor lê a policy fundida. Quem lê a
+  base onde o veredito mora no override discorda do outro lado sem avisar.
 - **Estado de fora se lê com três resultados, não dois.** Vazio, cheio e
   ilegível. Tratar ilegível como vazio já apagou todos os registros de sessão
   numa varredura, e o gêmeo do mesmo bug criava grupo duplicado a cada abertura.
@@ -67,7 +67,7 @@ lista no mesmo commit, senão ele simplesmente não existe pra quem clona.
 ## 4. Testes
 
 A suíte são 11 arquivos `tests/*.test.sh` mais o verificador de links, rodados
-por `tests/run-all.sh`. Nenhum toca a rede ou uma CLI real: o que precisa de
+por `tests/run-all.sh`. Nenhum toca a rede ou uma CLI real. O que precisa de
 binário externo usa stub no `PATH`, e o único cenário que abre sessão de verdade
 declara como se pula.
 
@@ -82,7 +82,7 @@ Padrão de arquivo: `TMP=$(mktemp -d)` com `trap` de limpeza, contadores `PASS` 
 - **Fixture não pode tornar a condição sempre verdadeira.** Um fixture que parte
   do epoch faz qualquer prazo finito vencer, e o assert do prazo deixa de medir o
   prazo.
-- **Espiar o componente certo.** Assert que observa uma peça que fica calada de
+- **O assert espia a peça que a guarda muda.** Observar uma que fica calada de
   qualquer jeito não separa a guarda existir da guarda não existir.
 
 ## 5. Camada de sessões
@@ -124,9 +124,9 @@ Antes de propor commit:
 - [ ] Mensagem que explica o porquê. O diff já mostra o quê.
 - [ ] Parar antes do push.
 
-Commit de correção se revisa dobrado, e se procura o gêmeo: numa revisão
-adversarial de três rodadas, todo achado alto estava no que tinha acabado de ser
-tocado.
+Commit de correção se revisa dobrado, e se procura o gêmeo. Numa revisão
+adversarial de três rodadas desta base, todo achado alto estava no que tinha
+acabado de ser tocado.
 
 ## 7. Índice de ADRs
 
