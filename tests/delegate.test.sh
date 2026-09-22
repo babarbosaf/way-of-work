@@ -906,6 +906,79 @@ done
 rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
 policy_fresh
 
+echo "T: degrau que alcançou o worker e falhou entra no saldo do balde"
+# O log só gravava chamada que fechou. Rate limit, tropeço de provider e rc≠0 do
+# worker chegaram ao provider, gastaram cota e não deixavam linha: o gate de saldo
+# e o apurador leem o mesmo log, então os dois subcontavam, e numa janela ruim
+# passava mais chamada do que a régua permite.
+# A fila é a `_probe`, e não uma task real: estes asserts medem MECÂNICA de
+# cobrança, e amarrá-los à ordem concreta de `tasks.scan` faria um reordenamento
+# por medição apagar a cobertura em silêncio.
+linhas_do_balde() { jq -r --arg p "$1" 'select(.pool == $p) | .status' "$DELEGATE_GATE_DIR/delegate.log" 2>/dev/null | grep -c . ; }
+# Cobrança é POR DEGRAU, não por cascata: `fail` é rc≠0 não classificado, que não
+# arma castigo, então todo degrau de codex da fila é alcançado e cada um gasta uma
+# chamada. Contar "alguma linha" deixaria passar uma implementação que cobra uma
+# vez só e subconta o resto, que é exatamente o bug deste ticket.
+N_CODEX=$(jq '[.tasks._probe[] | select(.backend == "codex")] | length' "$DELEGATE_POLICY")
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+MOCK_CODEX=fail run --task _probe - >/dev/null
+assert_eq "cada degrau de codex alcançado deixa a sua linha" "$(linhas_do_balde codex)" "$N_CODEX"
+
+for modo in fail ratelimit timeout notfound; do
+  rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+  MOCK_CODEX=$modo run --task _probe - >/dev/null
+  (( $(linhas_do_balde codex) > 0 )) && ok "falha '$modo' do worker deixa linha no balde codex" \
+    || fail "falha '$modo' do worker não deixou linha no balde codex"
+done
+
+# rc=0 que não é resposta gastou a chamada igual: o provider atendeu. Aqui a
+# cascata inteira falha, então dois baldes DIFERENTES têm que sair cobrados na
+# mesma chamada — é o que separa "cobra por degrau" de "cobra uma vez".
+for modo in empty desculpa; do
+  rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+  MOCK_CODEX=fail MOCK_AGY=$modo run --task _probe - >/dev/null
+  agy_cobrado=$(jq -r 'select(.pool | startswith("agy:")) | .pool' "$DELEGATE_GATE_DIR/delegate.log" | sort -u | head -1)
+  [[ -n "$agy_cobrado" ]] && ok "falha silenciosa '$modo' cobra o balde $agy_cobrado" \
+    || fail "falha silenciosa '$modo' não cobrou balde nenhum do agy"
+  (( $(linhas_do_balde codex) > 0 )) && ok "e o codex do mesmo despacho segue cobrado ('$modo')" \
+    || fail "o codex do mesmo despacho não foi cobrado ('$modo')"
+done
+
+# A linha da falha carrega o que entrou e o que voltou: sem isso, calibrar o
+# threshold do shunt mede só a população que deu certo.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+MOCK_CODEX=fail run --task _probe - >/dev/null
+jq -e 'select(.pool == "codex") | .bytes_in > 0' "$DELEGATE_GATE_DIR/delegate.log" >/dev/null \
+  && ok "a linha da falha grava os bytes que entraram" || fail "a linha da falha grava bytes_in=0"
+
+echo "T: o saldo da janela cobra a chamada que falhou"
+# O assert nomeia o BALDE: "não respondeu" e "sem saldo" solto passariam também
+# por castigo armado ou por outro balde estourado, e aí o verde não prova nada.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+jq '.budgets.pools.codex.max_calls = 1' "$DELEGATE_POLICY" > "$TMP/pol-falha.json" \
+  && mv "$TMP/pol-falha.json" "$DELEGATE_POLICY"
+MOCK_CODEX=fail run --task _probe - >/dev/null
+[[ -f "$DELEGATE_GATE_DIR/cooldown.codex" ]] \
+  && fail "rc≠0 não classificado armou castigo: o pulo seguinte não prova saldo" \
+  || ok "nenhum castigo armado no codex, então o pulo seguinte só pode ser saldo"
+out=$(run --task _probe -)
+grep -q "codex-resposta" <<<"$out" && fail "o balde do codex não cobrou a chamada que falhou" \
+  || ok "a chamada que falhou gastou o balde, e o degrau de baixo assumiu"
+assert_contains "o pulo nomeia o balde codex e o motivo saldo" "$(cat "$TMP/err")" "codex sem saldo"
+policy_fresh
+
+echo "T: cascata esgotada, que não alcançou worker nenhum, continua não contando"
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+jq '.budgets.pools |= with_entries(.value.max_calls = 0)' "$DELEGATE_POLICY" > "$TMP/pol-zero.json" \
+  && mv "$TMP/pol-zero.json" "$DELEGATE_POLICY"
+rc=0; run --task _probe - >/dev/null || rc=$?
+assert_eq "exit 2 de fila esgotada" "$rc" "2"
+com_balde=$(jq -r 'select(.pool != "") | .pool' "$DELEGATE_GATE_DIR/delegate.log")
+[[ -z "$com_balde" ]] && ok "nenhum balde cobrado: nenhum worker foi alcançado" \
+  || fail "cascata esgotada cobrou o balde '$com_balde' sem alcançar worker"
+policy_fresh
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+
 echo "T: o classificador ancora no vocabulário de limite, e não em palavra solta"
 # Worker que falha imprimindo comando de git levava 60min de castigo num balde
 # são: o regex de cota casava a palavra "reset" em qualquer contexto. Achado na
@@ -1355,6 +1428,40 @@ cat > "$TMP/apura-aperto.json" <<'EOF'
 EOF
 python3 "$APURADOR" --check --log "$APURA_LOG" --policy "$TMP/apura-aperto.json" >/dev/null 2>&1
 assert_eq "régua abaixo do pico provado é divergência" "$?" "1"
+
+echo "T: o apurador conta a mesma população que o gate cobra"
+# Gate e apurador leem o mesmo log, e a régua só vale se os dois contarem igual:
+# apurar só o que fechou declararia capacidade que o gate não reconhece, e a régua
+# é o que decide se a fila pode virar.
+# A data sai do relógio, não do literal: fixture com dia cravado envelhece pra
+# fora da janela de 30 dias do apurador e o assert passa a medir outra coisa.
+_apura_hoje() { date -u +%Y-%m-%d; }
+HOJE=$(_apura_hoje)
+cat > "$TMP/apura-falha.log" <<EOF
+{"ts":"${HOJE}T00:00:00Z","task":"scan","backend":"codex","status":"ok","detail":"model=m1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":10}
+{"ts":"${HOJE}T00:01:00Z","task":"scan","backend":"codex","status":"limited","detail":"classe=rate_limit rc=1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":2}
+{"ts":"${HOJE}T00:02:00Z","task":"scan","backend":"codex","status":"error","detail":"rc=1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":2}
+{"ts":"${HOJE}T00:03:00Z","task":"scan","backend":"codex","status":"unavailable","detail":"cascata esgotada","pool":"","bytes_in":0,"bytes_out":0,"dur_s":0}
+EOF
+cat > "$TMP/apura-falha.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":3}}},"timeouts":{},"tasks":{}}
+EOF
+# Nome próprio: `$apurado` é do bloco anterior e ainda é lido depois daqui;
+# reaproveitar a variável apagava o valor que aqueles asserts medem.
+apurado_pop=$(python3 "$APURADOR" --log "$TMP/apura-falha.log" --policy "$TMP/apura-falha.json")
+jq -e '.budgets.pools.codex.max_calls == 3' <<<"$apurado_pop" >/dev/null \
+  && ok "as três chamadas com balde entram no pico, e não só a que fechou" \
+  || fail "apurador contou população diferente do gate: $apurado_pop"
+# Falha não prova degrau: a entrada só sai de "não provada" quando alguma chamada
+# fechou. Contar falha como prova mandaria a fila subir um degrau que nunca deu certo.
+cat > "$TMP/apura-so-falha.log" <<EOF
+{"ts":"${HOJE}T00:01:00Z","task":"scan","backend":"codex","status":"error","detail":"model=m9 rc=1","pool":"codex","bytes_in":1,"bytes_out":1,"dur_s":2}
+EOF
+cat > "$TMP/apura-so-falha.json" <<'EOF'
+{"budgets":{"window_mins":300,"pools":{"codex":{"max_calls":1}}},"timeouts":{},"tasks":{"scan":[{"backend":"codex","model":"m9"}]}}
+EOF
+so_falha=$(python3 "$APURADOR" --log "$TMP/apura-so-falha.log" --policy "$TMP/apura-so-falha.json")
+assert_contains "degrau que só falhou continua não provado" "$so_falha" "m9"
 
 # Pico medido é piso de uso, não teto de cota: duas chamadas num balde não são
 # régua, e cobrar esse número estrangularia o balde que ninguém gastou ainda. A

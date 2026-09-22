@@ -114,6 +114,17 @@ log_usage() { # task backend status detail pool [bytes_in] [bytes_out] [dur_s]
         '{ts:$ts,task:$task,backend:$backend,status:$status,detail:$detail,pool:$pool,material:$material,bytes_in:$bytes_in,bytes_out:$bytes_out,dur_s:$dur_s}' >> "$LOG"
 }
 
+# Chamada que alcançou o worker e voltou em falha gastou cota igual à que fechou.
+# Até aqui só o caminho de sucesso deixava linha, e como o gate de saldo e o
+# apurador leem esse mesmo log, os dois subcontavam: numa janela ruim passava mais
+# chamada do que a régua permite. Só entra aqui o que chegou ao worker — pulo por
+# castigo, por saldo, por slot ocupado ou por backend ausente não gastou nada e
+# continua fora, que é o que mantém `unavailable` significando cascata esgotada.
+log_falha_gasta() { # backend status detail pool dur_s
+    log_usage "$TASK" "$1" "$2" "$3" "$4" \
+        "$(wc -c < "$PROMPT_FILE")" "$(wc -c < "$TMP_OUT")" "$5"
+}
+
 # --- pool: só rótulo pro log de auditoria; prioridade real vem da ordem da cascata na policy ---
 pool_key() { # backend model → chave de bolsão ("backend" ou "backend:pool")
     local p=""
@@ -567,7 +578,7 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     # claude pede esforço por flag; codex por -c chave=valor. Backend sem os dois ignora.
     [[ -n "$effort" && -n "$effort_flag" ]] && extra+=("$effort_flag" "$effort")
 
-    local rc
+    local rc t0=$SECONDS
     if [[ "$prompt_via" == "stdin" ]]; then
         # o `-` final do invoke é "prompt por stdin"; as flags entram antes dele
         local head="${cmd% -}" tail=""
@@ -588,10 +599,12 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     # o despachante não armava nada aqui, o mesmo rc=124 castigava num invocador
     # e passava batido no outro: dois comportamentos pro mesmo sinal.
     local resposta; resposta=$(resposta_pura)
+    local dur=$(( SECONDS - t0 ))
 
     if [[ $rc -eq 124 ]]; then
         HOUVE_PRAZO=1
         armar_limite "$pkey" "$resposta" "$rc" >/dev/null
+        log_falha_gasta "$backend" "timeout" "rc=124 limite=${TIMEOUT}s" "$pkey" "$dur"
         echo "⚠️  $backend timeout (${TIMEOUT}s), cooldown de tropeço armado pela policy" >&2
         return 3
     fi
@@ -599,9 +612,11 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
         local limite; limite=$(classificar_limite "$resposta")
         if [[ "$limite" != desconhecido ]]; then
             armar_limite "$pkey" "$resposta" >/dev/null
+            log_falha_gasta "$backend" "limited" "classe=$limite rc=$rc" "$pkey" "$dur"
             echo "⚠️  $pkey em limite $limite, cooldown armado pela policy" >&2
             return 3
         fi
+        log_falha_gasta "$backend" "error" "rc=$rc" "$pkey" "$dur"
         echo "⚠️  $backend falhou (rc=$rc):" >&2; cat "$TMP_OUT" >&2
         return 1
     fi
@@ -615,12 +630,14 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     # expirar, sem precisar de intervenção manual.
     if [[ -z "$WORKTREE" ]] && ! grep -qE '[^[:space:]]' "$resposta"; then
         arm_cooldown_longo "$pkey"
+        log_falha_gasta "$backend" "empty_out" "rc=0 sem resposta" "$pkey" "$dur"
         echo "⚠️  $pkey devolveu vazio (rc=0, falha silenciosa), cooldown armado pela policy" >&2
         return 3
     fi
 
     if [[ -z "$WORKTREE" ]] && is_sem_resposta "$resposta"; then
         arm_cooldown_longo "$pkey"
+        log_falha_gasta "$backend" "no_answer" "rc=0 desculpa em vez de resposta" "$pkey" "$dur"
         echo "⚠️  $pkey devolveu desculpa em vez de resposta (rc=0), cooldown armado pela policy" >&2
         return 3
     fi
@@ -631,11 +648,13 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     if [[ -z "$WORKTREE" && -n "$EXPECT_LINES" ]]; then
         local linhas; linhas=$(grep -cE '[^[:space:]]' "$TMP_OUT" || true)
         if (( linhas < EXPECT_LINES )); then
+            log_falha_gasta "$backend" "bad_shape" "linhas=$linhas esperado>=$EXPECT_LINES" "$pkey" "$dur"
             echo "⚠️  $backend devolveu $linhas linha(s); esperava >= $EXPECT_LINES linhas — cascata desce" >&2
             return 1
         fi
     fi
     if [[ -z "$WORKTREE" && -n "$EXPECT_REGEX" ]] && ! grep -qE "$EXPECT_REGEX" "$TMP_OUT"; then
+        log_falha_gasta "$backend" "bad_shape" "não casa --expect-regex" "$pkey" "$dur"
         echo "⚠️  $backend devolveu resposta que não casa com --expect-regex — cascata desce" >&2
         return 1
     fi
