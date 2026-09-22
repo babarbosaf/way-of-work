@@ -91,7 +91,9 @@ do PRD-alvo.
 4. **Edge cases.** O que acontece fora do fluxo feliz? Provocar ativamente: e se for anulado,
    adiado, empatar, o usuário esquecer, o dado não chegar, dois eventos colidirem, a janela
    fechar no meio? Um PRD forte lista esses casos por feature.
-5. **Pontos a definir.** O que ainda não foi decidido e precisa ser antes do desenvolvimento?
+5. **Lacunas.** O que ainda não foi decidido e precisa ser antes do desenvolvimento? A
+   resposta não vira bloco no fim da seção: vira `a definir` na célula da tabela que a
+   lacuna afeta, ou item no backlog. Bloco sem dono nem prazo some da vista.
 
 Repetir o loop para cada feature. Fechar cada uma com o mini-resumo antes de ir pra próxima.
 

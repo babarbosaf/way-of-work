@@ -22,3 +22,7 @@ Escolha e racional de cada virada.
 ## Escopo
 
 O ~~antigo mural~~ virou feed.
+
+## Pontos a definir
+
+- quem decide o formato do relatório

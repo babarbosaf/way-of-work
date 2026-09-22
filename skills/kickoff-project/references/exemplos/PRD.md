@@ -209,10 +209,10 @@ Usuário pode sair do grupo a qualquer momento via `/grupo/info`. Ao sair:
 - Histórico de palpites do usuário permanece (palpite é compartilhado entre grupos)
 - Reentrada no mesmo grupo só é possível com novo convite do admin
 
-### Pontos a definir antes do desenvolvimento
-
-- Cenário de uso dos grupos admin-only (oficial nacional, afinidade, sob demanda, teste)
-- Limite de tamanho do grupo (a definir conforme cenário de uso)
+| Regra | Valor |
+|---|---|
+| Cenário de uso dos grupos admin-only | a definir (oficial nacional, afinidade, sob demanda, teste) |
+| Limite de tamanho do grupo | a definir, conforme o cenário acima |
 
 ## 7. Liga do grupo
 
@@ -482,11 +482,11 @@ Entrega via **Web Push API**, com o app instalado como PWA. Camada de *entrega* 
 
 > Infra de entrega (tabelas, RPC, edge function, service worker): CONVENTIONS.md, seção 4.
 
-### Pontos a definir
-
-- Agrupamento de múltiplos eventos num único push (digest), hoje é 1 push por evento.
-- Fallback via WhatsApp para usuários sem push habilitado.
-- Eventos adicionais (mudança de ranking, marcos de streak) numa 2ª rodada.
+| Comportamento | Hoje |
+|---|---|
+| Agrupamento de eventos num push | não existe, é 1 push por evento |
+| Canal alternativo para quem não habilitou push | a definir |
+| Eventos de ranking e de marco de streak | fora da 1ª rodada |
 
 ## 16. Dados e sincronização (BallDontLie)
 

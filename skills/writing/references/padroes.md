@@ -1,7 +1,9 @@
 # Catálogo de padrões
 
 O que o linter não pega. Cada item traz o tell e o substituto, porque padrão banido sem
-alternativa vira paralisia.
+alternativa vira paralisia. Todo padrão saiu de uma revisão real, em que alguém
+reescreveu à mão o que um agente tinha produzido; nenhum veio de intuição sobre o que
+soa bem.
 
 Exemplos ruins vão em `código` de propósito: o linter ignora trecho de código, então o
 catálogo não se acusa.
@@ -107,9 +109,8 @@ catálogo não se acusa.
 
 ## Documento normativo (PRD, spec, guideline)
 
-Padrões que só aparecem em doc que manda alguém fazer alguma coisa. Todos saíram de uma
-revisão do dono num sub-doc de PRD (BIP, 04/set/2026), em que o corte tirou 40% das
-linhas e o doc ficou mais completo.
+Padrões que só aparecem em doc que manda alguém fazer alguma coisa. O corte que os
+produziu tirou 40% das linhas de um sub-doc de PRD e o deixou mais completo.
 
 32. **Justificativa colada na regra.** O tell é a cauda que defende o que a frase acabou
     de afirmar: `e isso é requisito, não gentileza`, `de propósito`, `a consequência é
@@ -174,9 +175,9 @@ linhas e o doc ficou mais completo.
 
 ## Anúncio de trabalho próprio
 
-Padrões que saíram da revisão de uma mensagem de canal interno em 2026-08-31, quando o
-dono reescreveu à mão o anúncio que o agente tinha redigido em nome dele. Valem pra
-mensagem, comentário de PR e release note em que quem escreve é também quem fez.
+Valem pra mensagem de canal, comentário de PR e release note em que quem escreve é
+também quem fez. Saíram de um anúncio redigido por agente em nome de uma pessoa, e
+reescrito à mão por ela.
 
 43. **Crédito abre, não fecha.** Trabalho que partiu do trabalho de outra pessoa nomeia
     essa pessoa na primeira frase. Crédito no penúltimo parágrafo lê como nota de rodapé, e

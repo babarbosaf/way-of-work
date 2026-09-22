@@ -47,9 +47,8 @@ Os dois crons de 1 min têm **guard em SQL**: o `net.http_post` só dispara se e
 
 Agendamento via `pg_cron` + `pg_net`. A função legada `sync-balldontlie` (sync completo num job só) permanece apenas como utilitário de backfill manual.
 
-### Pontos a definir
-
-- Hardening: exigir um shared-secret header nas edge functions de sync (hoje protegidas só pelo `verify_jwt` com anon key pública).
+As edge functions de sync são protegidas só pelo `verify_jwt` com anon key pública. O
+shared-secret header no lugar disso está `a definir` na tabela de hardening.
 
 ## 4. Notificações (infra de entrega)
 

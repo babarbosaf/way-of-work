@@ -61,6 +61,9 @@ esperado_pega "data em heading"       "data em heading"     --estado ruim-estado
 esperado_pega "heading de historico"  "Histórico"           --estado ruim-estado/PRD.md
 esperado_pega "heading de decisoes"   "Decisões"            --estado ruim-estado/PRD.md
 esperado_pega "texto riscado"         "riscado"             --estado ruim-estado/PRD.md
+# Bloco de pontos a definir some da vista e apodrece: o item em aberto vive no
+# backlog, onde decai, ou vira "a definir" na célula exata da tabela.
+esperado_pega "secao de pontos em aberto" "em aberto"       --estado ruim-estado/PRD.md
 
 echo "ciclo de vida limpo"
 esperado_limpo "arvore de decisoes boa passa" --ciclo bom
