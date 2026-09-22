@@ -589,10 +589,9 @@ mock_codex; mock_agy
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.*
 
 echo "T: o log liga cada chamada ao material do worker que a atendeu"
-# Os transcripts existem e não rotacionam (712 do worker de código desde
-# fevereiro, mais 547 do Claude, medido em 21/set/2026), mas são mais de mil
-# arquivos de nome opaco e nada ligava uma task ao material dela: diagnóstico
-# começava por uma caçada.
+# Os transcripts existem e não rotacionam, e medido em 21/set/2026 eram mais de
+# mil arquivos de nome opaco desde fevereiro, sem nada que ligasse uma task ao
+# material dela: diagnóstico começava por uma caçada.
 rm -f "$DELEGATE_GATE_DIR"/slot.* "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
 mock_codex
 run --task _probe --model codex - >/dev/null
