@@ -304,7 +304,10 @@ desliga vira obstáculo quando erra.
 | `claude_md_size_guard` | o arquivo de instrução passar do teto | `CLAUDE_MD_GUARD_DISABLED` |
 | `memory_log_append` | escrita em memória sem registro | `MEMORY_HOOK_DISABLED` |
 | `context7_reminder` | fixar assinatura de lib sem consultar a doc | `CONTEXT7_REMINDER_DISABLED` |
-| `wiki_push_guard` | trabalho parado sumir de vista | `WIKI_PUSH_GUARD_DISABLED` |
+
+Hook que depende da topologia da máquina, como o que varre repositórios locais
+atrás de commit sem push, fica no disco e não entra no template: nome de projeto,
+caminho de trabalho e histórico de incidente não são doutrina transferível.
 
 Os lints cobram o que hook nenhum alcança: `check-docs.py` (estado, grafo, ciclo,
 decaimento, estágio), `check-spec.py` (spec, tickets, corrente), `check-skill.py`,
