@@ -319,5 +319,29 @@
       "delega": null,
       "state": "needs-triage"
     }
+  },
+  "visivel": {
+    "$comment": "Elegibilidade do MODO VISÍVEL como dado, uma entrada por backend configurado. Ver o worker exige o modo conversacional, que troca modelo, flags e a forma como a resposta volta, e a spec recusa presumir que os três sobrevivam à troca. Cada veredito carrega a data e o motivo da medição. Lido só por lib-visivel.sh; nunca hardcode em script. Veredito ausente conta como não elegível.",
+    "backends": {
+      "codex": {
+        "elegivel": true,
+        "medido_em": "2026-09-22",
+        "invoke": "codex -m {model} -c model_reasoning_effort={effort}",
+        "porque": "vira agente detectado, aceita prompt pelo canal da camada e a resposta é lida da tela; uma revisão inteira de spec rodou assim"
+      },
+      "claude": {
+        "elegivel": true,
+        "medido_em": "2026-09-22",
+        "invoke": "claude --model {model}",
+        "porque": "vira agente detectado e devolveu pela tela a transformação exata de um valor exclusivo, distinta do eco do prompt",
+        "atencao": "ao abrir um cwd novo, a TUI para num pedido de confiar na pasta, e a detecção marca `unknown` em vez de `blocked`: quem abrir precisa confirmar antes de instruir"
+      },
+      "agy": {
+        "elegivel": false,
+        "medido_em": "2026-09-22",
+        "porque": "cota individual esgotada na hora da medição, com reset declarado em 31h, então a resposta nunca voltou; detecção e entrega de prompt funcionaram",
+        "remedir": "a medição é parcial e não é veredito sobre o modo interativo: refazer depois do reset de cota antes de tratar como incompatível"
+      }
+    }
   }
 }
