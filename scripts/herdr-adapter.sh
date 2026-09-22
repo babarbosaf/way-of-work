@@ -85,10 +85,18 @@ case "$VERBO" in
         ;;
     instruir)
         [[ $# -ge 2 ]] || die "adaptador: instruir precisa de painel e texto"
-        # Sem `--wait`: a espera embutida já pendurou além de dois minutos com o
-        # worker já tendo respondido, e quem sincroniza é quem chama.
-        "$FERRAMENTA" agent prompt "$1" "$2" >/dev/null 2>&1 \
+        # Texto literal, e não o canal de prompt da ferramenta. Medido em
+        # 22/set/2026: `agent prompt` entrega instrução longa como conteúdo
+        # colado, e o worker a recusa como tentativa de injeção, respondendo "não
+        # executei nada". O mesmo texto digitado foi obedecido na hora.
+        #
+        # Sem `--wait` em lugar nenhum: a espera embutida já pendurou além de
+        # dois minutos com o worker já tendo respondido, e quem sincroniza é quem
+        # chama.
+        "$FERRAMENTA" pane send-text "$1" "$2" >/dev/null 2>&1 \
             || die "adaptador: a instrução não entrou no painel $1"
+        "$FERRAMENTA" agent send-keys "$1" enter >/dev/null 2>&1 \
+            || die "adaptador: a instrução ficou na linha sem ser submetida em $1"
         ;;
     estado)
         [[ $# -ge 1 ]] || die "adaptador: estado precisa do painel"

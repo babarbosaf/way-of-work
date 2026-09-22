@@ -442,16 +442,26 @@ else fail "dirige-sessao.sh não existe ou não é executável"; fi
 export DELEGATE_ADAPTADOR="$ADAPT"
 MARCA="ECO-$$-$RANDOM"
 
-# A instrução sai pelo canal da camada. Teclar caractere a caractere numa TUI
-# perde texto quando a tela redesenha no meio, e foi por isso que o canal de
-# prompt existe.
+# A instrução vai como texto literal, e é medição que mandou: o canal de prompt
+# da ferramenta entrega instrução longa como conteúdo colado, e o worker a recusa
+# como tentativa de injeção. Digitado, o mesmo texto foi obedecido na hora.
 : > "$HERDR_CHAMADAS"; echo idle > "$HERDR_ESTADO"
 printf 'nada aqui\n' > "$HERDR_TELA"
 PATH="$TMP/bin:$PATH" DIRIGE_PRAZO_PARTIDA_S=1 DIRIGE_PRAZO_S=2 \
   bash "$DIRIGE" instruir w1:pZ "transforme $MARCA" >/dev/null 2>&1
-if grep -qF "agent prompt w1:pZ transforme $MARCA" "$HERDR_CHAMADAS"; then
-  ok "a instrução sai pelo canal de prompt, com o valor inteiro"
-else fail "a instrução não saiu pelo canal (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+if grep -qF "pane send-text w1:pZ transforme $MARCA" "$HERDR_CHAMADAS"; then
+  ok "a instrução vai como texto literal, com o valor inteiro"
+else fail "a instrução não foi digitada (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+# Texto sem enter fica na linha de entrada e o worker nunca vê: a sessão
+# principal esperaria uma resposta que ninguém pediu.
+if grep -qF 'send-keys w1:pZ enter' "$HERDR_CHAMADAS"; then
+  ok "e é submetida, não deixada na linha"
+else fail "a instrução ficou na linha sem enter"; fi
+# Recusar como injeção é o que o canal de prompt provocou, e o assert existe pra
+# essa escolha não voltar por descuido.
+if ! grep -q 'agent prompt' "$HERDR_CHAMADAS"; then
+  ok "e não passa pelo canal que vira colagem"
+else fail "a instrução voltou a ir pelo canal de colagem"; fi
 
 # Espera embutida da ferramenta já pendurou além de dois minutos com o worker já
 # tendo respondido. A sincronização é por consulta, com prazo deste lado.
