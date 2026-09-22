@@ -144,7 +144,7 @@ pool_key() { # backend model → chave de bolsão ("backend" ou "backend:pool")
 # 320.985 bytes entraram, 56 voltaram ("warning: run ended with no output and no
 # recorded error"), e a chamada foi gravada como ok. Desculpa é falha do pool,
 # tratada como o vazio: cooldown e cascata desce.
-is_sem_resposta() { grep -qiE "(run ended with no output|no recorded error|no output (was )?(produced|generated)|i (was |am )?(unable|not able) to (process|complete|read)|context (length|window) exceeded|prompt is too long|input too large)" "$1"; }
+is_sem_resposta() { [[ "$(classificar_limite "$1")" == silent_fail ]]; }
 
 # --- args ---
 TASK="" TIER="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
@@ -299,7 +299,7 @@ if ! jq -e . "$POLICY" >/dev/null 2>&1; then
               "worktree_invoke": "agy --dangerously-skip-permissions --add-dir {worktree} --print-timeout 30m -p"}
   },
   "tasks": {"_any": [{"backend": "codex"}, {"backend": "agy"}]},
-  "cooldowns": {"rate_limit_mins": 1, "tier_fallback_mins": 60, "transient_mins": 10},
+  "cooldowns": {"rate_limit_mins": 1, "tier_fallback_mins": 60, "transient_mins": 10, "silent_fail_mins": 60},
   "budgets": {"window_mins": 300, "pools": {}}
 }
 JSON
@@ -629,14 +629,14 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     # semanal), cooldown reativo já revalida sozinho na próxima chamada após
     # expirar, sem precisar de intervenção manual.
     if [[ -z "$WORKTREE" ]] && ! grep -qE '[^[:space:]]' "$resposta"; then
-        arm_cooldown_longo "$pkey"
+        limites_armar_classe "$pkey" silent_fail
         log_falha_gasta "$backend" "empty_out" "rc=0 sem resposta" "$pkey" "$dur"
         echo "⚠️  $pkey devolveu vazio (rc=0, falha silenciosa), cooldown armado pela policy" >&2
         return 3
     fi
 
     if [[ -z "$WORKTREE" ]] && is_sem_resposta "$resposta"; then
-        arm_cooldown_longo "$pkey"
+        limites_armar_classe "$pkey" silent_fail
         log_falha_gasta "$backend" "no_answer" "rc=0 desculpa em vez de resposta" "$pkey" "$dur"
         echo "⚠️  $pkey devolveu desculpa em vez de resposta (rc=0), cooldown armado pela policy" >&2
         return 3

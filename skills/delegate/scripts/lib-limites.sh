@@ -8,10 +8,11 @@ limites_configurar() { # policy gate_dir
     # diferente faz teste com policy própria medir o número do repo sem avisar.
     # Três escalares do mesmo arquivo numa leitura: três forks de jq custavam
     # 12,9ms contra 3,9ms, medido, e isso é pago em todo despacho.
-    IFS=$'\t' read -r RATE_LIMIT_MINS TIER_FALLBACK_MINS TRANSIENT_COOLDOWN_MINS < <(
-        jq -r '[.cooldowns.rate_limit_mins // "", .cooldowns.tier_fallback_mins // "", .cooldowns.transient_mins // ""] | @tsv' \
+    IFS=$'\t' read -r RATE_LIMIT_MINS TIER_FALLBACK_MINS TRANSIENT_COOLDOWN_MINS SILENT_FAIL_MINS < <(
+        jq -r '[.cooldowns.rate_limit_mins // "", .cooldowns.tier_fallback_mins // "", .cooldowns.transient_mins // "", .cooldowns.silent_fail_mins // ""] | @tsv' \
             "$LIMITES_POLICY" 2>/dev/null)
-    [[ "$RATE_LIMIT_MINS" =~ ^[0-9]+$ && "$TIER_FALLBACK_MINS" =~ ^[0-9]+$ && "$TRANSIENT_COOLDOWN_MINS" =~ ^[0-9]+$ ]]
+    [[ "$RATE_LIMIT_MINS" =~ ^[0-9]+$ && "$TIER_FALLBACK_MINS" =~ ^[0-9]+$ \
+        && "$TRANSIENT_COOLDOWN_MINS" =~ ^[0-9]+$ && "$SILENT_FAIL_MINS" =~ ^[0-9]+$ ]]
 }
 
 cooldown_remaining() { # pool → 0 + segundos restantes se ativo; 1 se livre
@@ -40,9 +41,21 @@ limites_armar_por_minutos() { # pool minutos
 }
 
 arm_cooldown_longo() { limites_armar_por_minutos "$1" "$TIER_FALLBACK_MINS"; }
+
+# Quem sabe a classe não precisa saber o prazo. É o que separa "calibrar a falha
+# silenciosa" de "calibrar a cota de tier": antes as duas eram o mesmo número,
+# então mexer numa movia a outra calada.
+limites_armar_classe() { # pool classe
+    case "$2" in
+        rate_limit)  limites_armar_por_minutos "$1" "$RATE_LIMIT_MINS" ;;
+        transiente)  limites_armar_por_minutos "$1" "$TRANSIENT_COOLDOWN_MINS" ;;
+        silent_fail) limites_armar_por_minutos "$1" "$SILENT_FAIL_MINS" ;;
+        *)           arm_cooldown_longo "$1" ;;
+    esac
+}
 clear_cooldown() { rm -f "$LIMITES_GATE_DIR/cooldown.$1"; }
 
-classificar_limite() { # arquivo de saída → rate_limit|tier_quota|transiente|desconhecido
+classificar_limite() { # arquivo de saída → rate_limit|tier_quota|transiente|silent_fail|desconhecido
     # Ordem: do castigo mais longo pro mais curto. Mensagem ambígua tem que cair
     # no prazo longo, porque errar pra curto faz a cascata voltar a bater numa
     # cota que já acabou, e é justamente a chamada perdida que o gate evita.
@@ -57,6 +70,14 @@ classificar_limite() { # arquivo de saída → rate_limit|tier_quota|transiente|
         echo rate_limit
     elif grep -qiE '(does not exist or you do not have access|model .* not (found|supported)|status 404|502 bad gateway|503 service unavailable|504 gateway timeout|overloaded_error|temporarily unavailable)' "$out"; then
         echo transiente
+    elif grep -qiE '(run ended with no output|no recorded error|no output (was )?(produced|generated)|i (was |am )?(unable|not able) to (process|complete|read)|context (length|window) exceeded|prompt is too long|input too large)' "$out"; then
+        # Worker que desistiu e disse isso numa desculpa curta, com rc=0. É falha
+        # do pool como as outras, e o prazo dela é o da policy — não mais o da cota
+        # de tier, que era o que ela tomava emprestado.
+        # Saída VAZIA não entra aqui de propósito: quem lê o vazio é o despachante,
+        # que só o trata como falha silenciosa no rc=0. Classificar vazio aqui faria
+        # todo rc≠0 mudo virar castigo de balde, e hoje ele desce a cascata limpo.
+        echo silent_fail
     else echo desconhecido
     fi
 }
@@ -82,14 +103,10 @@ armar_limite() { # pool arquivo [rc] → classe aplicada
     if [[ "${3:-}" == 124 ]]; then classe=transiente
     else classe=$(classificar_limite "$2")
     fi
-    case "$classe" in
-        rate_limit) limites_armar_por_minutos "$1" "$RATE_LIMIT_MINS" ;;
-        transiente) limites_armar_por_minutos "$1" "$TRANSIENT_COOLDOWN_MINS" ;;
-        tier_quota)
-            if reset=$(limites_reset_epoch "$2"); then limites_armar_em "$1" "$reset"
-            else arm_cooldown_longo "$1"; fi
-            ;;
-        desconhecido) arm_cooldown_longo "$1" ;;
-    esac
+    if [[ "$classe" == tier_quota ]] && reset=$(limites_reset_epoch "$2"); then
+        limites_armar_em "$1" "$reset"
+    else
+        limites_armar_classe "$1" "$classe"
+    fi
     echo "$classe"
 }

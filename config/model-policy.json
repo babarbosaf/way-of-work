@@ -277,7 +277,8 @@
     "$comment": "Minutos por classe de limite. Tier sem reset legível cai em tier_fallback_mins.",
     "rate_limit_mins": 1,
     "tier_fallback_mins": 60,
-    "transient_mins": 10
+    "transient_mins": 10,
+    "silent_fail_mins": 60
   },
   "timeouts": {
     "$comment": "Segundos por task-type; --timeout só pra override pontual, e nenhum consumidor crava número próprio. review=600 é ESTIMATIVA, não medição: o 300 anterior foi cronometrado à mão no Gemini 3.1 Pro (High), que saiu da cascata de review, e o peer-review.sh manda diff de até 2000 linhas contra as 1432 que levaram 170s naquele modelo. O log agora grava dur_s por chamada, então isso se recalibra com dado depois de ~10 chamadas reais. implement=1800 medido: um ticket de 9 arquivos com testes RED estourou os 600 do Codex com a task pela metade, 18/set/2026.",

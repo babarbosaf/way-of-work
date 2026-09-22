@@ -998,6 +998,63 @@ classe_de() { local f="$TMP/classe.txt"; printf '%s\n' "$1" > "$f"; classificar_
 [[ "$(classe_de '5-hour limit reached; resets at 2026-09-21T23:00:00Z')" == tier_quota ]] \
   && ok "limite com hora de reset é cota de tier" || fail "limite com reset não é cota"
 
+
+echo "T: falha silenciosa é classe de limite própria, com prazo declarado na policy"
+# Devolução vazia e desculpa em vez de resposta armavam castigo chamando a duração
+# longa direto, por fora do classificador. Isso amarrava as duas à cota de tier:
+# calibrar uma movia a outra sem aviso, e a tabela de castigos da policy não
+# declarava esse prazo em lugar nenhum.
+source "$LIMITES"; limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
+[[ "$(classe_de 'warning: run ended with no output and no recorded error')" == silent_fail ]] \
+  && ok "desculpa do worker tem classe própria no classificador" \
+  || fail "desculpa virou $(classe_de 'warning: run ended with no output and no recorded error')"
+# As três classes que já existiam não mudam de prazo: este ticket separa o botão,
+# não recalibra nada.
+[[ "$(classe_de '429 too many requests: rate limit')" == rate_limit ]] \
+  && ok "rate_limit segue rate_limit" || fail "rate_limit foi reclassificado"
+[[ "$(classe_de 'usage limit reached')" == tier_quota ]] \
+  && ok "tier_quota segue tier_quota" || fail "tier_quota foi reclassificado"
+[[ "$(classe_de 'status 404: model does not exist or you do not have access')" == transiente ]] \
+  && ok "transiente segue transiente" || fail "transiente foi reclassificado"
+[[ "$(classe_de 'erro interno qualquer')" == desconhecido ]] \
+  && ok "output sem vocabulário de limite segue desconhecido" \
+  || fail "desconhecido virou $(classe_de 'erro interno qualquer')"
+# Regressão: rc≠0 sem nada impresso é falha comum, não falha silenciosa. Tratar o
+# vazio como classe aqui faria todo worker que morre mudo castigar o balde por
+# 60min, quando o certo é a cascata descer limpa e o degrau de baixo assumir.
+[[ "$(classe_de '')" == desconhecido ]] \
+  && ok "saída vazia não é classificada: quem lê vazio é o despachante, e só no rc=0" \
+  || fail "saída vazia virou $(classe_de '') no classificador"
+
+echo "T: o prazo da falha silenciosa é dado na policy, e nenhum ponto de chamada escolhe duração"
+grep -n 'arm_cooldown_longo' "$DELEGATE" \
+  && fail "o despachante ainda escolhe a duração do castigo no ponto de chamada" \
+  || ok "nenhum ponto de chamada do despachante escolhe duração"
+echo '{"cooldowns":{"rate_limit_mins":1,"tier_fallback_mins":60,"transient_mins":10}}' > "$TMP/pol-sem-silent.json"
+( limites_configurar "$TMP/pol-sem-silent.json" "$DELEGATE_GATE_DIR" ) \
+  && fail "policy sem silent_fail_mins passou, e o prazo veio de outro lugar" \
+  || ok "policy sem silent_fail_mins não passa"
+limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
+
+echo "T: falha silenciosa no despacho usa o prazo dela, e não o da cota de tier"
+# Os dois prazos são iguais no repo hoje, então medi-los com o mesmo número não
+# provaria separação nenhuma: o teste afasta os dois de propósito.
+rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+jq '.cooldowns.silent_fail_mins = 7 | .cooldowns.tier_fallback_mins = 600' "$DELEGATE_POLICY" \
+  > "$TMP/pol-silent.json" && mv "$TMP/pol-silent.json" "$DELEGATE_POLICY"
+silent_secs=$(( $(jq -r '.cooldowns.silent_fail_mins' "$DELEGATE_POLICY") * 60 ))
+for modo in empty desculpa; do
+  rm -f "$DELEGATE_GATE_DIR"/cooldown.*
+  MOCK_AGY=$modo run --task scan - >/dev/null 2>&1
+  armado=$(cat "$DELEGATE_GATE_DIR/cooldown.agy:gemini" 2>/dev/null || echo "expiry:0")
+  rem=$(( ${armado#expiry:} - $(date +%s) ))
+  [[ $rem -gt 0 && $rem -le $silent_secs ]] \
+    && ok "'$modo' arma o prazo da classe silent_fail (${rem}s <= ${silent_secs}s)" \
+    || fail "'$modo' não usou o prazo de silent_fail (rem=${rem}s, esperado <= ${silent_secs}s)"
+done
+policy_fresh
+rm -f "$DELEGATE_GATE_DIR"/cooldown.* "$DELEGATE_GATE_DIR/delegate.log"
+limites_configurar "$DELEGATE_POLICY" "$DELEGATE_GATE_DIR"
 echo "T: policy sem cooldowns falha alto, nunca cai calada em outra policy"
 # Rede de segurança que lê OUTRO arquivo faz todo teste com policy própria medir
 # o número do repo sem avisar: o assert fica verde provando nada.
