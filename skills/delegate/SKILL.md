@@ -252,7 +252,9 @@ pela D-01 entra DEPOIS dos workers grátis. Use quando:
   externos não têm;
 - a cascata externa esgotou (exit 2) mas a tarefa merece mais qualidade ou
   contexto isolado do que "assumir inline";
-- review adversarial de contexto fresco (o fallback do peer-review já faz isso).
+- review adversarial de contexto fresco, e **só depois que o `peer-review.sh`
+  devolveu exit 2**: ele é o degrau 3 da cascata, e começar por ele troca um
+  reviewer independente por um que carrega o viés da sessão.
 
 Calibre o modelo à tarefa como faria na policy: mecânico → haiku/sonnet low;
 denso → sonnet medium; crítico → opus high. Nunca subagente caro pra tarefa

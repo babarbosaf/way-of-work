@@ -58,6 +58,16 @@ assert_tem "mostra o uso" "uso:"
 PR_ARGS=(banana "$SPEC_GRANDE"); run_pr; assert_rc "modo inválido: rc=1" 1
 assert_tem "diz qual modo usar" "modo inválido"
 
+echo "== doc é sinônimo de spec =="
+# A sessão que precisava de gate adversarial num doc de design leu os dois modos,
+# concluiu que nenhum servia e foi de subagente, pulando codex e gemini de pé.
+# O modo aceita qualquer markdown; o nome dele é que dizia outra coisa.
+PR_ARGS=(doc "$SPEC_GRANDE"); run_pr MOCK_OK=1 MOCK_WORKER=codex
+assert_rc "doc de design roda o gate: rc=0" 0
+assert_tem "doc despacha reviewer de verdade" "worker: codex"
+PR_ARGS=(); run_pr
+assert_tem "o uso anuncia o modo doc" "doc"
+
 echo "== política de porte =="
 PR_ARGS=(spec "$SPEC_PEQUENA"); run_pr
 assert_rc "spec pequena: rc=0" 0

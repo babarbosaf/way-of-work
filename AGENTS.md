@@ -33,11 +33,11 @@ que está aqui.
 | Decisão cara de reverter | ADR em `docs/adrs/` ou `docs/conventions/`, viva enquanto o `Status:` é vivo (`docs/doc-standard.md`) |
 | Correção do projeto | uma linha no `FEEDBACK.md` com o gatilho embutido. Teto 10; virou norma, promove ao doc permanente e apaga |
 | Lição cross-projeto | memória atômica indexada, via `capture-lessons` (`docs/auto-memoria.md`) |
-| Trabalho mecânico | `delegate` |
+| Trabalho mecânico, ou pesquisa externa | `delegate` |
 | Texto que outra pessoa vai ler | skill `writing`, e `check-writing.py` antes do commit |
 | Doc de raiz novo ou editado | `docs/doc-standard.md` e os lints que ele nomeia (`scripts/check-docs.py`) |
 | Compactação iminente com trabalho aberto | `/handoff` |
-| Diff que toca prod | `peer-review.sh diff`, opcional e recomendado (`docs/adversarial-evaluator.md`) |
+| Segunda opinião pedida, ou diff que toca prod | `peer-review.sh diff`, ou `doc <path.md>` pra qualquer markdown. Subagente Claude é o degrau 3 da cascata, nunca o primeiro (`docs/adversarial-evaluator.md`) |
 | Autonomia além do turn | `/goal`, `/loop`, `/schedule`, e só com turn cap e stop-condition que seja **comando runnable**, tipo `verify_cmd` ou suíte verde, nunca o juízo do agente. Sem comando de aceite, não abre loop. E `/schedule` roda na nuvem, então consome cota de plano e não alcança estado local |
 
 `INBOX.md`, `TODOS.md` e `FEEDBACK.md` são arquivos de raiz gitignored, um por

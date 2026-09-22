@@ -2,8 +2,15 @@
 # peer-review.sh — Adversarial Evaluator: segunda opinião via reviewer LLM-agnóstico
 #
 # Uso:
-#   peer-review.sh spec <path-to-spec.md> [--findings <path|->] [--model auto|codex|gemini]
+#   peer-review.sh spec <path.md> [--findings <path|->] [--model auto|codex|gemini]
+#   peer-review.sh doc  <path.md>   sinônimo de spec
 #   peer-review.sh diff [git-ref] [--findings <path|->] [--spec <spec.md>] [--model ...]
+#
+#   O modo de documento aceita QUALQUER markdown: spec, PRD, doc de design, RFC,
+#   proposta. Não há validação de que o alvo seja uma spec de `docs/specs/`, e o
+#   corte é de porte (>=100 linhas ou >=5 headers `##`). O nome `spec` já fez uma
+#   sessão concluir que um doc de design não servia e ir de subagente adversarial,
+#   que é o degrau 3 da cascata, com codex e gemini de pé.
 #
 #   Findings vão pro stdout (sem sidecar em disco). Registro durável = §5 da spec /
 #   comentário da PR. Round 2: `--findings -` lê os findings anteriores do stdin.
@@ -53,9 +60,12 @@ log_usage() {
 # Circuit-breaker per-model vive no delegate.sh —
 # a invocação de workers externos é toda dele; aqui fica só gating + prompts.
 
-[[ $# -ge 1 ]] || die "uso: $0 <spec|diff> [alvo] [--findings <path|->] [--spec <path>] [--model auto|codex|gemini]"
+[[ $# -ge 1 ]] || die "uso: $0 <spec|doc|diff> [alvo] [--findings <path|->] [--spec <path>] [--model auto|codex|gemini]"
 MODE="$1"
 shift
+# `doc` e `spec` são o mesmo caminho: o gating é de porte, não de tipo de arquivo.
+# Normalizar aqui em vez de espalhar o sinônimo pelos cinco pontos que leem MODE.
+[[ "$MODE" == "doc" ]] && MODE="spec"
 
 TARGET=""
 PREV_FINDINGS=""
@@ -190,8 +200,8 @@ should_skip=false
 skip_reason=""
 case "$MODE" in
     spec)
-        [[ -n "$TARGET" ]] || die "uso: $0 spec <path-to-spec.md>"
-        [[ -f "$TARGET" ]] || die "spec não encontrada: $TARGET"
+        [[ -n "$TARGET" ]] || die "uso: $0 spec|doc <path.md>"
+        [[ -f "$TARGET" ]] || die "documento não encontrado: $TARGET"
         if ! is_ml_spec "$TARGET" && ! has_external_input "$TARGET"; then
             should_skip=true
             skip_reason="spec XS/S sem input externo"
@@ -205,7 +215,7 @@ case "$MODE" in
         fi
         ;;
     *)
-        die "modo inválido: $MODE (use spec ou diff)"
+        die "modo inválido: $MODE (use spec, doc ou diff)"
         ;;
 esac
 
