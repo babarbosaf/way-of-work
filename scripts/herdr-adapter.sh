@@ -86,8 +86,12 @@ case "$VERBO" in
             || die "adaptador: fechar a aba $1 falhou"
         ;;
     espacos)
+        # Mesmo motivo do `listar`: lista muda faria quem procura o grupo do
+        # projeto criar um segundo com o mesmo nome, a cada abertura.
         "$FERRAMENTA" workspace list 2>/dev/null \
-            | jq -r '.result.workspaces // [] | .[] | [.workspace_id, .label] | @tsv' 2>/dev/null
+            | jq -er '.result.workspaces | .[] | [.workspace_id, .label] | @tsv' 2>/dev/null
+        rc=$?
+        (( rc == 0 || rc == 1 )) || die "adaptador: não consegui ler a lista de grupos"
         ;;
     criar-espaco)
         [[ $# -ge 2 ]] || die "adaptador: criar-espaco precisa de cwd e nome"

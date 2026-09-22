@@ -135,8 +135,14 @@ visivel_espaco() { # cwd → grupo do projeto, criando se ainda não houver
     [[ -x "$adaptador" ]] || return 1
     # Reusar antes de criar: dois grupos com o mesmo nome espalhariam as abas do
     # mesmo projeto por dois lugares, que é o contrário do que a lista quer.
-    local achado
-    achado=$("$adaptador" espacos | awk -F'\t' -v n="$nome" '$2==n{print $1; exit}')
+    local achado lista
+    # Lista que não deu pra ler não autoriza criar: criar às cegas põe um grupo
+    # novo com o mesmo nome a cada abertura, e espalha as abas do projeto.
+    lista=$("$adaptador" espacos) || return 1
+    # Vazio também não autoriza: a ferramenta sempre tem pelo menos o grupo em
+    # que ela está, então lista sem nenhum é leitura que não deu certo.
+    [[ -n "$lista" ]] || return 1
+    achado=$(awk -F'\t' -v n="$nome" '$2==n{print $1; exit}' <<<"$lista")
     [[ -n "$achado" ]] && { printf '%s\n' "$achado"; return 0; }
     "$adaptador" criar-espaco "$cwd" "$nome"
 }

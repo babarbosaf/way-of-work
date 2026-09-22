@@ -960,6 +960,12 @@ DELEGATE_GATE_DIR="$REVG" DELEGATE_ADAPTADOR="$TMP/bin/adapt-mudo" \
 if [[ "$(ls "$REVG/sessoes" | wc -l | tr -d ' ')" == 3 ]]; then
   ok "lista que não dá pra ler não apaga registro nenhum"
 else fail "a varredura apagou registro de sessão viva com a lista muda"; fi
+# Gêmeo do mesmo defeito: lista de grupos muda faria o abridor criar um grupo
+# novo com o mesmo nome a cada abertura, espalhando as abas do projeto.
+saida=$(DELEGATE_ADAPTADOR="$TMP/bin/adapt-mudo" \
+  bash -c 'source "'"$LIB"'"; visivel_espaco /qualquer/projeto-x' 2>&1); rc=$?
+if (( rc != 0 )) && [[ -z "$saida" ]]; then ok "lista de grupos ilegível não cria grupo"
+else fail "criou grupo com a lista muda (veio: '$saida')"; fi
 DELEGATE_ADAPTADOR="$ADAPT"
 
 # 5. Instruir que sai zero sem a instrução ter sido absorvida faz a sessão
