@@ -138,6 +138,11 @@ em `visivel.ciclo`, e nenhum ponto de chamada escolhe duração.
 Aba órfã, cuja sessão que a despachou morreu, fica de fora do prazo: ela aparece
 na lista marcada com `?` e espera decisão de gente.
 
+Quem chama a varredura é o `--gc` do despachante, no mesmo lugar em que a
+worktree do worker já morre. A guarda é existir registro em `<gate>/sessoes/`,
+não existir a ferramenta instalada: máquina que nunca pediu o modo visível não
+tem registro nenhum e o `--gc` dela segue idêntico ao de antes.
+
 Os nomes da ferramenta moram em `scripts/herdr-adapter.sh`, e em nenhum outro
 arquivo. Trocar de multiplexer é reescrever esse arquivo.
 

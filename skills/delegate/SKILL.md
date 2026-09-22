@@ -185,7 +185,9 @@ isolada pra estragar, e a confinação continua sendo a worktree.
 3. Verde e no escopo → integrar (merge/cherry-pick conforme o fluxo do repo),
    marcando a task como delegada nas notas da spec.
 4. Limpar: `git worktree remove <worktree>` e `git branch -d delegate/<slug>`.
-   Órfãs: `delegate.sh --gc <repo-dir>`.
+   Órfãs: `delegate.sh --gc <repo-dir>`, que na mesma passada fecha a aba de
+   sessão dirigida parada além do prazo, gravando a tela antes. Sem sessão
+   registrada ele não chega a varrer nada.
 5. Ruim mas recuperável → re-delegar com feedback no prompt (1 retry máx);
    ruim de novo → assumir a task inline.
 6. **Report de fechamento (tech-lead, sucinto).** Pós-integração, emitir

@@ -251,6 +251,23 @@ if [[ -n "$GC" ]]; then
         [[ -f "$_s" ]] || continue
         grep -qxF "$(sed -n 's/^balde=//p' "$_s")" <<<"$_ocupados" || rm -f "$_s"
     done
+    # A aba de sessão dirigida morre aqui, no mesmo lugar em que a worktree do
+    # worker morre: a varredura por prazo precisava de quem a chamasse, e este é
+    # o único gancho que já roda depois da integração. A guarda é ter REGISTRO de
+    # sessão, não ter a ferramenta instalada: máquina que nunca pediu o modo
+    # visível não tem registro nenhum, não chega a tocar o adaptador, e o caminho
+    # padrão segue byte a byte o de antes.
+    if compgen -G "$GATE_DIR/sessoes/*.json" >/dev/null 2>&1; then
+        _fechador="${DELEGATE_FECHADOR:-$LIMITES_DIR/../../../scripts/fecha-sessao.sh}"
+        if [[ -x "$_fechador" ]]; then
+            # A policy FUNDIDA, nunca a base: o prazo pode morar no override
+            # local, e ler a base aqui faria os dois lados divergirem calados.
+            policy_efetiva
+            DELEGATE_POLICY="$POLICY" "$_fechador" --ociosas \
+                || echo "delegate: a varredura de sessões ociosas não completou" >&2
+            rm -f ${_EFF:+"$_EFF"}
+        fi
+    fi
     git -C "$GC" worktree prune
     git -C "$GC" worktree list | grep 'delegate/' || echo "nenhuma worktree delegate/ ativa"
     exit 0

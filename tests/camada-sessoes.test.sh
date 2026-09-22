@@ -893,6 +893,62 @@ visivel_configurar "$POLICY" 2>/dev/null
 if [[ "$(visivel_prazo_ocioso)" =~ ^[0-9]+$ ]]; then
   ok "a policy do repo declara o prazo de ociosidade"
 else fail "a policy do repo não declara prazo: a varredura não roda aqui"; fi
+
+# A varredura precisava de quem a chamasse, e o gancho é o `--gc` do despachante,
+# onde a worktree do worker já morre. A guarda não é ter a ferramenta, é ter
+# registro de sessão: máquina que nunca abriu aba nenhuma não tem o que varrer, e
+# por isso não chega a tocar o adaptador. É o que mantém a D-01 de pé no `--gc`.
+GCREPO="$TMP/gc-repo"
+git init -q "$GCREPO" 2>/dev/null
+reg=$(sessao_fixture "$$" 0)
+: > "$HERDR_CHAMADAS"
+printf 'tela da sessao ociosa\n' > "$HERDR_TELA"
+saida=$(PATH="$TMP/bin:$PATH" DELEGATE_GATE_DIR="$CICLO" HERDR_TABS="$TMP/tabs-ciclo.json" \
+  DELEGATE_POLICY="$TMP/policy-ciclo-agora.json" DELEGATE_ADAPTADOR="$ADAPT" \
+  bash "$DELEG" --gc "$GCREPO" 2>&1); rc=$?
+if (( rc == 0 )); then ok "--gc com sessão registrada sai zero"
+else fail "--gc falhou (rc=$rc): $saida"; fi
+if grep -q 'tab close w1:tZ' "$HERDR_CHAMADAS"; then
+  ok "e fecha a aba que passou do prazo"
+else fail "o --gc não varreu as ociosas (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+
+# O prazo pode morar no override local, e o `--gc` roda ANTES da fusão de policy
+# do despacho comum. A polaridade do assert é deliberada: a BASE manda fechar
+# agora e o OVERRIDE manda esperar. Quem lê só a base fecha uma aba que o dono
+# mandou deixar de pé, e a prova disso é a aba continuar aberta.
+cat > "$TMP/policy-gc.json" <<'JSON'
+{ "backends": { "bom": { "enabled": true } },
+  "visivel": { "ciclo": { "prazo_ocioso_min": 0 },
+    "backends": { "bom": { "elegivel": true, "medido_em": "2026-09-22",
+      "invoke": "bom --interativo", "porque": "medido" } } } }
+JSON
+printf '{"visivel":{"ciclo":{"prazo_ocioso_min":99999999}}}\n' > "$TMP/policy-gc.local.json"
+reg=$(sessao_fixture "$$" 0)
+: > "$HERDR_CHAMADAS"
+printf 'tela sob override\n' > "$HERDR_TELA"
+PATH="$TMP/bin:$PATH" DELEGATE_GATE_DIR="$CICLO" HERDR_TABS="$TMP/tabs-ciclo.json" \
+  DELEGATE_POLICY="$TMP/policy-gc.json" DELEGATE_ADAPTADOR="$ADAPT" \
+  bash "$DELEG" --gc "$GCREPO" >/dev/null 2>&1
+if ! grep -q 'tab close w1:tZ' "$HERDR_CHAMADAS"; then
+  ok "--gc lê o prazo da policy fundida, não da base"
+else fail "o --gc fechou pela base e ignorou o override local do prazo"; fi
+rm -f "$TMP/policy-gc.local.json" "$reg"
+
+# Sem registro nenhum, que é toda máquina que nunca pediu o modo visível, o
+# caminho padrão não pode nem descobrir que a camada existe. O espião aqui é o
+# FECHADOR, não o adaptador: o fechador sozinho já sai calado com a pasta vazia,
+# então medir o adaptador não separaria a guarda existir de a guarda não existir.
+rm -rf "$CICLO/sessoes"
+: > "$ESPIAO_CHAMADAS"
+saida=$(PATH="$TMP/bin3:/usr/bin:/bin" DELEGATE_GATE_DIR="$CICLO" \
+  DELEGATE_POLICY="$TMP/policy-ciclo-agora.json" \
+  DELEGATE_FECHADOR="$TMP/bin3/espiao.sh" \
+  bash "$DELEG" --gc "$GCREPO" 2>&1); rc=$?
+if (( rc == 0 )); then ok "--gc sem sessão nenhuma completa igual"
+else fail "--gc quebrou sem sessão registrada (rc=$rc): $saida"; fi
+if [[ ! -s "$ESPIAO_CHAMADAS" ]]; then ok "e não chega a chamar a varredura"
+else fail "o --gc varreu sem ter sessão: $(cat "$ESPIAO_CHAMADAS")"; fi
+
 unset DELEGATE_ADAPTADOR
 
 echo "== achados da revisão adversarial =="
