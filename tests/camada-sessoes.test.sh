@@ -87,6 +87,12 @@ semporque=$(jq -r '[ .visivel.backends // {} | to_entries[]
   | select((.value.porque // "") == "") | .key ] | join(" ")' "$POLICY" 2>/dev/null)
 if [[ -z "$semporque" ]]; then ok "todo veredito carrega o porquê"
 else fail "veredito sem porquê: $semporque"; fi
+# Elegível sem comando é veredito que não abre nada: a lib devolve vazio e quem
+# chamou descobre na hora de rodar, não na hora de escolher.
+seminvoke=$(jq -r '[ .visivel.backends // {} | to_entries[]
+  | select(.value.elegivel == true and (.value.invoke // "") == "") | .key ] | join(" ")' "$POLICY" 2>/dev/null)
+if [[ -z "$seminvoke" ]]; then ok "todo elegível carrega o comando que o abre"
+else fail "elegível sem comando interativo: $seminvoke"; fi
 
 echo "== a lista mora num lugar só =="
 # Qualquer outro script que leia `.visivel.backends` seria uma segunda cópia da

@@ -334,13 +334,15 @@
         "medido_em": "2026-09-22",
         "invoke": "claude --model {model}",
         "porque": "vira agente detectado e devolveu pela tela a transformação exata de um valor exclusivo, distinta do eco do prompt",
-        "atencao": "ao abrir um cwd novo, a TUI para num pedido de confiar na pasta, e a detecção marca `unknown` em vez de `blocked`: quem abrir precisa confirmar antes de instruir"
+        "atencao": "ao abrir um cwd novo, a TUI para num pedido de confiar na pasta, e a detecção marca `unknown` em vez de `blocked`. O item selecionado por padrão é o NÃO, que sai do programa: enter cego mata a sessão. Confirmar é descer um item e então confirmar. O agy faz o oposto, com o SIM já selecionado, então não existe tecla única que sirva para os dois."
       },
       "agy": {
-        "elegivel": false,
+        "elegivel": true,
         "medido_em": "2026-09-22",
-        "porque": "cota individual esgotada na hora da medição, com reset declarado em 31h, então a resposta nunca voltou; detecção e entrega de prompt funcionaram",
-        "remedir": "a medição é parcial e não é veredito sobre o modo interativo: refazer depois do reset de cota antes de tratar como incompatível"
+        "invoke": "agy --model {model}",
+        "porque": "vira agente detectado e devolveu pela tela uma transformação do valor exclusivo, distinta do eco do prompt, com Claude Sonnet 4.6",
+        "atencao": "o modelo vai pelo ID da CLI (claude-sonnet-4-6), nunca pelo nome de exibição: o nome tem parênteses e o comando chega ao shell sem aspas. A tela só sai em --source visible. E a pasta nova pede confiança com o SIM já selecionado, ao contrário do claude.",
+        "pool_sem_cota": "o pool gemini estava esgotado na medição (reset em 31h) e o pool claude_gpt respondeu em 6s: cota do agy é por provider, então esgotamento de um pool não é veredito sobre o backend"
       }
     }
   }
