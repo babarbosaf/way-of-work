@@ -27,8 +27,9 @@ memória durável entre sessões.
 | `config/model-policy.json` | Roteamento de modelos por task-type (base pública genérica, override privado via `*.local.json` gitignored). |
 | `config/plugins.json` | Manifesto de plugins e de servidores MCP, com o porquê de cada um, aplicado por `scripts/bootstrap-plugins.sh`. Todos opcionais. |
 | `config/rtk.json` | Contrato do `rtk`: versão mínima e o que sai do rewrite, aplicado por `scripts/bootstrap-rtk.sh`. Opcional. |
-| `hooks/` | **Claude Code.** Sete hooks de enforcement em runtime: grep-first em read grande (por `Read` e por shell), no-op bloqueado, lembrete de doc atualizada, append obrigatório no log de memória, guarda de tamanho do `CLAUDE.md` e aviso de trabalho parado sem push. A mensagem de bloqueio diz o que fazer no lugar, e cada um tem kill switch (ver Pré-requisitos). O `settings.json` versionado liga quatro deles; os outros três dependem de wiring de cada máquina. |
-| `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. |
+| `hooks/` | **Claude Code.** Sete hooks de enforcement em runtime: grep-first em read grande (por `Read` e por shell), no-op bloqueado, lembrete de doc atualizada, append obrigatório no log de memória, guarda de tamanho do `CLAUDE.md` e aviso de trabalho parado sem push. A mensagem de bloqueio diz o que fazer no lugar, e cada um tem kill switch (ver Pré-requisitos). O `settings.json` versionado liga seis; o `wiki_push_guard` depende de wiring de cada perfil, e `scripts/perfis.sh` mostra a diferença. |
+| `settings.json` | **Claude Code.** Só o mínimo que faz o repo funcionar. Preferência pessoal fica no `settings.example.json`. É o único arquivo que cada perfil copia em vez de linkar, e por isso o que mais deriva. |
+| `scripts/perfis.sh` | Diagnostica a deriva entre os perfis de configuração da máquina e este repo: link que falta, hook do baseline que o perfil não liga. Sem flag não escreve nada; `--aplicar` conserta. |
 
 Histórico de release em [`CHANGELOG.md`](CHANGELOG.md).
 
@@ -174,7 +175,14 @@ Verificação pós-instalação:
 ls ~/.claude/skills                                            # skills presentes
 git -C ~/.claude check-ignore config/model-policy.local.json   # override é ignorado
 scripts/model-policy-effective.sh config/model-policy.json | jq .backends
+scripts/perfis.sh                                              # deriva entre perfis
 ```
+
+Numa máquina com mais de um perfil (`CLAUDE_CONFIG_DIR`), tudo que o perfil usa é
+link pra este repo, então `git pull` atualiza todos de uma vez. O `settings.json`
+é a exceção, porque carrega preferência pessoal e decide quais hooks rodam:
+`scripts/perfis.sh` mostra qual perfil ficou sem qual trava, e `--aplicar`
+conserta sem tocar no resto da preferência.
 
 ### 2. Cloud multi-source
 
