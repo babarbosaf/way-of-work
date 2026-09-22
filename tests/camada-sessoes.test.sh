@@ -11,6 +11,9 @@ LIB="$ROOT/skills/delegate/scripts/lib-visivel.sh"
 POLICY="$ROOT/config/model-policy.json"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
+# A suíte varre e apaga registro de sessão: sem isso ela mexeria no estado real
+# de quem roda os testes, e o dono perderia o quadro das sessões dele.
+export DELEGATE_GATE_DIR="$TMP/gate"
 
 PASS=0; FAIL=0
 ok()   { PASS=$((PASS+1)); echo "  ✓ $1"; }
@@ -175,6 +178,8 @@ case "$1 $2" in
     echo '{"result":{"root_pane":{"pane_id":"w1:pZ"},"tab":{"tab_id":"w1:tZ"}}}' ;;
   "pane read")
     cat "$HERDR_TELA" 2>/dev/null ;;
+  "tab list")
+    cat "$HERDR_TABS" 2>/dev/null ;;
   *) echo '{"result":{"type":"ok"}}' ;;
 esac
 SH
@@ -182,6 +187,7 @@ SH
 }
 fixture_herdr
 fixture_policy
+mkdir -p "$TMP/vazio"
 export HERDR_CHAMADAS="$TMP/chamadas.txt"
 export HERDR_TELA="$TMP/tela.txt"
 : > "$HERDR_CHAMADAS"; : > "$HERDR_TELA"
@@ -207,7 +213,7 @@ if (( rc == 0 )); then ok "worker elegível abre: rc=0"
 else fail "worker elegível não abriu (rc=$rc)"; fi
 if [[ "$pane" == "w1:pZ" ]]; then ok "o abridor devolve o endereço do painel"
 else fail "o abridor não devolveu o painel (veio: '$pane')"; fi
-if grep -q -- '--label revisa-spec-sessoes' "$HERDR_CHAMADAS"; then
+if grep -qF -- '--label » revisa-spec-sessoes' "$HERDR_CHAMADAS"; then
   ok "a aba nasce com o nome do trabalho"
 else fail "a aba não levou o nome do trabalho"; fi
 # Contador de aba é o que a D-07 recusa: nome tem que vir do trabalho.
@@ -284,6 +290,130 @@ quebrada=$(jq -r '[ .visivel.backends // {} | to_entries[]
   | unique | join(" ")' "$POLICY" 2>/dev/null)
 if [[ -z "$quebrada" ]]; then ok "toda tela de abertura tem padrão e teclas"
 else fail "tela de abertura sem padrão ou sem teclas: $quebrada"; fi
+
+echo "== o adaptador da ferramenta de terminal =="
+ADAPT="$ROOT/scripts/herdr-adapter.sh"
+if [[ -x "$ADAPT" ]]; then ok "herdr-adapter.sh existe e é executável"
+else fail "herdr-adapter.sh não existe ou não é executável"; fi
+
+# Aceite do ticket: o adaptador é o único que sabe o nome da ferramenta. O dia em
+# que a camada trocar de ferramenta, é um arquivo que muda, e o grep é o que
+# prova isso hoje em vez de prometer.
+# O que se proíbe é CHAMAR a ferramenta: apontar para o adaptador pelo nome dele
+# é o contrário de vazamento, é o que faz a troca de ferramenta caber num arquivo.
+vazados=$(grep -o 'herdr[A-Za-z0-9_.-]*' \
+  "$ROOT"/scripts/*.sh "$ROOT"/skills/delegate/scripts/*.sh 2>/dev/null \
+  | grep -v '/herdr-adapter\.sh:' | grep -vE ':herdr-adapter(\.sh)?$' | tr '\n' ' ')
+if [[ -z "$vazados" ]]; then ok "nenhum script fora do adaptador nomeia a ferramenta"
+else fail "a ferramenta é nomeada fora do adaptador: $vazados"; fi
+
+: > "$HERDR_CHAMADAS"
+saida=$(PATH="$TMP/bin:$PATH" bash "$ADAPT" abrir /tmp/x trabalho-y 2>/dev/null)
+if [[ "$saida" == $'w1:pZ\tw1:tZ' ]]; then ok "abrir devolve painel e aba"
+else fail "abrir não devolveu painel e aba (veio: '$saida')"; fi
+
+# A ferramenta ausente é o caso comum de outra máquina, e não pode virar erro
+# ilegível vindo do shell: o adaptador responde por ela.
+saida=$(PATH="$TMP/vazio" bash "$ADAPT" disponivel 2>&1); rc=$?
+if (( rc != 0 )); then ok "sem a ferramenta no PATH, disponivel reprova"
+else fail "disponivel aprovou sem a ferramenta instalada"; fi
+
+cat > "$TMP/tabs.json" <<'JSON'
+{"result":{"tabs":[
+ {"tab_id":"w1:t1","label":"1","agent_status":"working","workspace_id":"w1"},
+ {"tab_id":"w1:tZ","label":"» revisa-spec","agent_status":"idle","workspace_id":"w1"}
+]}}
+JSON
+export HERDR_TABS="$TMP/tabs.json"
+linhas=$(PATH="$TMP/bin:$PATH" bash "$ADAPT" listar 2>/dev/null)
+if [[ "$(grep -c . <<<"$linhas")" == 2 ]]; then ok "listar devolve uma linha por aba"
+else fail "listar não devolveu duas linhas (veio: '$linhas')"; fi
+if grep -qF $'w1:tZ\t» revisa-spec\tidle' <<<"$linhas"; then
+  ok "a linha carrega aba, nome e estado da ferramenta"
+else fail "a linha não tem aba/nome/estado (veio: '$linhas')"; fi
+
+: > "$HERDR_CHAMADAS"
+PATH="$TMP/bin:$PATH" bash "$ADAPT" rotular w1:tZ 'novo nome' >/dev/null 2>&1
+if grep -qF 'tab rename w1:tZ novo nome' "$HERDR_CHAMADAS"; then
+  ok "rotular renomeia a aba pela ferramenta"
+else fail "rotular não renomeou (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+
+echo "== estado da sessão na lista =="
+export DELEGATE_ADAPTADOR="$ADAPT"
+SESSOES="$TMP/gate/sessoes"
+
+# O abridor é quem sabe quem é o dono, e é aqui que a linha ganha vida própria: o
+# registro amarra a sessão ao processo que a despachou, que é o que separa órfã
+# de viva depois.
+: > "$HERDR_CHAMADAS"
+printf 'Ask anything\n' > "$HERDR_TELA"
+PATH="$TMP/bin:$PATH" DELEGATE_POLICY="$TMP/policy.json" ABRE_PRAZO_TELA_S=1 \
+  bash "$ABRE" --nome revisa-spec --backend bom >/dev/null 2>&1
+reg=$(ls "$SESSOES"/*.json 2>/dev/null | head -1)
+if [[ -n "$reg" ]]; then ok "o abridor registra a sessão que abriu"
+else fail "o abridor não deixou registro em $SESSOES"; fi
+if [[ "$(jq -r '.nome' "$reg" 2>/dev/null)" == "revisa-spec" ]]; then
+  ok "o registro carrega o trabalho, não só o worker"
+else fail "o registro não carrega o nome do trabalho"; fi
+if [[ "$(jq -r '.dono' "$reg" 2>/dev/null)" =~ ^[0-9]+$ ]]; then
+  ok "o registro carrega o dono do despacho"
+else fail "o registro não carrega o dono"; fi
+# Prefixo do marcador da fatia 01: é ele que a receita de sidebar apaga pra
+# sobrar em destaque a linha de quem dirige. Aba dirigida sem prefixo deixa a
+# receita sem nada pra distinguir.
+if grep -qF -- '--label » revisa-spec' "$HERDR_CHAMADAS"; then
+  ok "a aba dirigida nasce com o marcador de quem é dirigido"
+else fail "a aba nasceu sem o marcador (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+
+# shellcheck disable=SC1090
+source "$LIB" 2>/dev/null
+if declare -f visivel_sincronizar >/dev/null; then ok "visivel_sincronizar exportada"
+else fail "visivel_sincronizar não existe"; fi
+
+sincroniza() { PATH="$TMP/bin:$PATH" visivel_sincronizar >/dev/null 2>&1; }
+
+# Dono vivo: a linha fica como está. Renomear a cada varredura faria a lista
+# piscar e encheria o log de mudança que não mudou nada.
+: > "$HERDR_CHAMADAS"
+jq --arg p "$$" '.dono = ($p|tonumber)' "$reg" > "$reg.tmp" && mv "$reg.tmp" "$reg"
+sincroniza
+if ! grep -q 'tab rename' "$HERDR_CHAMADAS"; then ok "dono vivo não mexe na linha"
+else fail "sincronizar renomeou a aba de dono vivo"; fi
+if [[ -f "$reg" ]]; then ok "e o registro continua de pé"
+else fail "sincronizar apagou o registro de sessão viva"; fi
+
+# Dono morto com sessão viva é o caso que a D-09 protege: some da lista e ninguém
+# descobre que sobrou worker gastando cota.
+: > "$HERDR_CHAMADAS"
+jq '.dono = 999999' "$reg" > "$reg.tmp" && mv "$reg.tmp" "$reg"
+sincroniza
+if grep -q 'tab rename w1:tZ' "$HERDR_CHAMADAS"; then ok "despachante morto marca a linha"
+else fail "despachante morto não marcou a linha"; fi
+if grep -qF 'tab rename w1:tZ » revisa-spec ?' "$HERDR_CHAMADAS"; then
+  ok "a marca diz que o estado é desconhecido"
+else fail "a marca não diz desconhecido (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+if ! grep -q 'tab close' "$HERDR_CHAMADAS"; then ok "e a aba órfã continua aberta"
+else fail "sincronizar fechou a aba órfã"; fi
+if [[ -f "$reg" ]]; then ok "e o registro da órfã continua de pé"
+else fail "sincronizar apagou o registro da órfã"; fi
+
+# Marca que se empilha vira "» x ? ? ?" na terceira varredura, e a lista fica
+# ilegível justo no caso que ela existe pra mostrar.
+: > "$HERDR_CHAMADAS"
+jq -r '.result.tabs[1].label = "» revisa-spec ?"' "$TMP/tabs.json" > "$TMP/tabs2.json"
+HERDR_TABS="$TMP/tabs2.json" sincroniza
+if ! grep -q 'tab rename' "$HERDR_CHAMADAS"; then ok "a marca de órfã não se empilha"
+else fail "sincronizar remarcou uma linha já marcada"; fi
+
+# Sessão morta apaga a linha, e o registro vai junto: registro sobrevivente
+# ressuscitaria a aba na próxima varredura.
+: > "$HERDR_CHAMADAS"
+echo '{"result":{"tabs":[{"tab_id":"w1:t1","label":"1","agent_status":"idle","workspace_id":"w1"}]}}' \
+  > "$TMP/tabs-sem.json"
+HERDR_TABS="$TMP/tabs-sem.json" sincroniza
+if [[ ! -f "$reg" ]]; then ok "sessão morta apaga o registro"
+else fail "o registro sobreviveu à morte da sessão"; fi
+unset DELEGATE_ADAPTADOR
 
 echo "== o modo no despachante =="
 DELEG="$ROOT/skills/delegate/scripts/delegate.sh"

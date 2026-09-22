@@ -6,7 +6,9 @@
 # Saída: o pane_id em stdout. Recusa nomeando o worker quando ele não é elegível.
 #
 # O que este script NÃO faz: não escolhe worker, não mexe na cascata, não
-# recupera sessão morta. Quem decide elegibilidade é a policy, via lib-visivel.
+# recupera sessão morta, e não fala com a ferramenta de terminal direto. Quem
+# decide elegibilidade é a policy, via lib-visivel; quem sabe o nome da
+# ferramenta é o adaptador.
 set -uo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -40,10 +42,26 @@ visivel_configurar "$POLICY" || die "abre-sessao: policy ilegível em $POLICY"
 # Recusa ANTES de criar aba: recusar depois deixaria aba órfã na tela do dono.
 visivel_exigir "$BACKEND" || exit 1
 
-resposta=$(herdr tab create --cwd "$CWD" --label "$NOME" --no-focus 2>&1) \
-    || die "abre-sessao: herdr tab create falhou: $resposta"
-PANE=$(jq -r '.result.root_pane.pane_id // empty' <<<"$resposta" 2>/dev/null)
-[[ -n "$PANE" ]] || die "abre-sessao: herdr não devolveu o painel: $resposta"
+ADAPTADOR=$(visivel_adaptador)
+[[ -x "$ADAPTADOR" ]] || die "abre-sessao: adaptador não encontrado em $ADAPTADOR"
+"$ADAPTADOR" disponivel || exit 1
+
+# Varredura antes de somar mais uma: o quadro que o dono vai olhar daqui a pouco
+# inclui as sessões que ele abriu antes, e registro velho de sessão morta é o
+# que faz a lista mentir.
+visivel_sincronizar || true
+
+# Prefixo do marcador: aba dirigida se distingue da que dirige pelo nome, e a
+# receita de sidebar é quem transforma isso em contraste na tela.
+linha=$("$ADAPTADOR" abrir "$CWD" "$VISIVEL_MARCA_DIRIGIDA$NOME") || exit 1
+IFS=$'\t' read -r PANE TAB <<<"$linha"
+[[ -n "$PANE" ]] || die "abre-sessao: o adaptador não devolveu o painel"
+
+# O dono é quem PEDIU o despacho, não este script, que morre em segundos. Com
+# `exec` vindo do despachante, o pai é a sessão que mandou abrir, e é a morte
+# dela que torna esta sessão órfã.
+visivel_registrar "$PANE" "$TAB" "$NOME" "${DELEGATE_DONO_PID:-$PPID}" \
+    || die "abre-sessao: não consegui registrar a sessão"
 
 cmd=$(visivel_invoke "$BACKEND")
 [[ -n "$cmd" ]] || die "abre-sessao: $BACKEND é elegível e não declara comando interativo"
@@ -55,8 +73,8 @@ cmd="${cmd//\{effort\}/\'$EFFORT\'}"
 # Marcador que sobrou é pior que erro: o worker sobe e roda com outra coisa.
 [[ "$cmd" != *"{"*"}"* ]] || die "abre-sessao: o comando de $BACKEND ficou com marcador por preencher: $cmd"
 # A API nunca entra em worker nenhum, e o modo visível não é exceção.
-herdr pane run "$PANE" "env -u ANTHROPIC_API_KEY $cmd" >/dev/null 2>&1 \
-    || die "abre-sessao: herdr pane run falhou no painel $PANE"
+"$ADAPTADOR" rodar "$PANE" "env -u ANTHROPIC_API_KEY $cmd" \
+    || die "abre-sessao: o worker não subiu no painel $PANE"
 
 # Tela de abertura: o worker pede algo antes de aceitar prompt, e o item
 # pré-selecionado difere entre workers. Tecla no escuro encerra a sessão num e
@@ -65,14 +83,14 @@ telas=$(visivel_telas "$BACKEND")
 if [[ -n "$telas" ]]; then
     fim=$(( SECONDS + PRAZO ))
     while (( SECONDS < fim )); do
-        tela=$(herdr pane read "$PANE" --source visible --lines 60 2>/dev/null)
+        tela=$("$ADAPTADOR" ler "$PANE" 60)
         casou=0
         while IFS= read -r t; do
             [[ -n "$t" ]] || continue
             padrao=$(jq -r '.padrao' <<<"$t")
             if grep -qiF "$padrao" <<<"$tela"; then
                 while IFS= read -r tecla; do
-                    herdr agent send-keys "$PANE" "$tecla" >/dev/null 2>&1
+                    "$ADAPTADOR" teclar "$PANE" "$tecla"
                 done < <(jq -r '.teclas[]' <<<"$t")
                 casou=1
             fi

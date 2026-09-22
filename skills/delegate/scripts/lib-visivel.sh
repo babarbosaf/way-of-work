@@ -56,3 +56,66 @@ visivel_exigir() { # backend → rc 0, ou rc 1 com a causa no stderr
     printf 'modo visível: %s não é elegível (%s)\n' "$b" "$porque" >&2
     return 1
 }
+
+# --- estado da sessão dirigida ---------------------------------------------
+#
+# A linha de uma sessão vive enquanto a SESSÃO vive, nunca enquanto o
+# despachante vive. A API de metadados da ferramenta expira por prazo, e prazo
+# aqui é o mecanismo errado: despachante que morre com worker vivo apagaria a
+# linha e esconderia exatamente a sessão que precisa de intervenção (D-09).
+# Então o estado mora em duas coisas que não expiram: o rótulo da aba, que morre
+# com a aba, e um registro em disco, que esta lib varre.
+
+# Marcador da fatia 01: aba dirigida nasce prefixada, e a receita de sidebar
+# apaga essas linhas pra sobrar em destaque a linha de quem dirige.
+VISIVEL_MARCA_DIRIGIDA="» "
+# Estado desconhecido, e não "morto": a sessão pode estar trabalhando muito bem,
+# o que se perdeu foi quem sabia o que ela estava fazendo.
+VISIVEL_MARCA_ORFA=" ?"
+
+visivel_sessoes_dir() { # → onde moram os registros de sessão dirigida
+    printf '%s\n' "${DELEGATE_GATE_DIR:-$HOME/.claude/gate}/sessoes"
+}
+
+visivel_adaptador() { # → o caminho do adaptador da ferramenta de terminal
+    local aqui; aqui="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    printf '%s\n' "${DELEGATE_ADAPTADOR:-$aqui/../../../scripts/herdr-adapter.sh}"
+}
+
+visivel_registrar() { # pane tab nome dono
+    local dir arq; dir=$(visivel_sessoes_dir); mkdir -p "$dir" || return 1
+    # Nome do arquivo pela aba: o painel pode mudar de lugar dentro da aba, e a
+    # aba é o que a lista mostra e o que se fecha.
+    arq="$dir/${2//:/-}.json"
+    jq -n --arg p "$1" --arg t "$2" --arg n "$3" --arg d "$4" \
+        '{pane:$p, tab:$t, nome:$n, dono:($d|tonumber), aberto_em:(now|todate)}' \
+        > "$arq"
+}
+
+# Varredura: alinha os registros com o que a ferramenta lista. Não fecha nada e
+# não abre nada, porque fechar é decisão de outra fatia e abrir é do abridor.
+visivel_sincronizar() { # → rc 0
+    local dir adaptador lista arq tab dono rotulo
+    dir=$(visivel_sessoes_dir)
+    [[ -d "$dir" ]] || return 0
+    adaptador=$(visivel_adaptador)
+    [[ -x "$adaptador" ]] || return 1
+    lista=$("$adaptador" listar) || return 1
+    for arq in "$dir"/*.json; do
+        [[ -f "$arq" ]] || continue
+        tab=$(jq -r '.tab // empty' "$arq" 2>/dev/null)
+        dono=$(jq -r '.dono // empty' "$arq" 2>/dev/null)
+        # Sessão que não está mais na lista morreu, e o registro vai junto:
+        # registro sobrevivente ressuscitaria a linha na próxima varredura.
+        if [[ -z "$tab" ]] || ! awk -F'\t' -v t="$tab" '$1==t{f=1} END{exit !f}' <<<"$lista"; then
+            rm -f "$arq"; continue
+        fi
+        [[ -n "$dono" ]] && kill -0 "$dono" 2>/dev/null && continue
+        rotulo=$(awk -F'\t' -v t="$tab" '$1==t{print $2; exit}' <<<"$lista")
+        # Remarcar o que já está marcado encheria a lista de "» x ? ? ?" e o log
+        # de mudança que não mudou nada.
+        [[ "$rotulo" == *"$VISIVEL_MARCA_ORFA" ]] && continue
+        "$adaptador" rotular "$tab" "$rotulo$VISIVEL_MARCA_ORFA" || true
+    done
+    return 0
+}
