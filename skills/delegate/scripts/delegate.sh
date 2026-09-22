@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # delegate.sh — dispatcher multi-modelo
 #
-#   delegate.sh --task <review|implement|scan|boilerplate>
+#   delegate.sh --task <review|implement|scan|boilerplate|pesquisa>
 #   delegate.sh --task implement --tier <padrao|amplo>   # tier troca o ponto de entrada
 #               [--model <backend>] [--worktree <repo-dir>] [--continue <slug>]
 #               [--timeout N] [--gc <repo-dir>] [--async] -
@@ -516,7 +516,14 @@ fi
 # Bulk one-shot não recebe o footer: ele pede 3 seções de relato numa tarefa que
 # não roda verify nem toca arquivo, e output token de worker também custa tempo
 # de leitura aqui. O contrato de saída do bulk é o de bullets, montado acima.
-if [[ "$BULK" != "1" || -n "$WORKTREE" ]]; then
+# Pesquisa não toca arquivo nem roda verify, e o contrato de implementação faz o
+# worker inventar um comando pra ter o que colar: o primeiro despacho real saiu
+# tentando `curl` num sandbox sem DNS, em vez de usar a busca que a fila liga.
+# O que se cobra de uma pesquisa é fonte.
+if [[ "$TASK" == "pesquisa" && -z "$WORKTREE" ]]; then
+    REPORT_FOOTER=$'\n\n---\nContrato de report obrigatório ao final da resposta:\n1. Responda a pergunta, direto.\n2. Cite a URL de cada fonte que sustenta a resposta.\n3. Declare o que não deu pra confirmar, e por quê.\nResposta sem fonte citada é considerada incompleta.'
+    printf '%s' "$REPORT_FOOTER" >> "$PROMPT_FILE"
+elif [[ "$BULK" != "1" || -n "$WORKTREE" ]]; then
     REPORT_FOOTER=$'\n\n---\nContrato de report obrigatório ao final da resposta:\n1. Rode a verificação declarada na task e cole o output (comando + resultado).\n2. Liste os arquivos tocados (paths absolutos).\n3. Declare explicitamente o que NÃO foi feito (escopo cortado, TODO deixado, etc).\nResposta sem essas 3 seções é considerada incompleta.'
     printf '%s' "$REPORT_FOOTER" >> "$PROMPT_FILE"
 fi
@@ -640,6 +647,12 @@ invoke_backend() { # backend model → rc semântico (0 ok, 3 cooldown/ratelimit
     local -a extra=()
     [[ -n "$model" && -n "$model_flag" ]] && extra+=("$model_flag" "$model")
     [[ -n "$effort" && -n "$effort_config" ]] && extra+=(-c "$effort_config=$effort")
+    # Config declarada NA ENTRADA da cascata, pelo mesmo canal do effort. É o que
+    # deixa a fila de pesquisa ligar web no codex sem ligar web em review e scan:
+    # no invoke global, todo worker sairia navegando sem ninguém ter pedido.
+    while IFS=$'\t' read -r ck cv; do
+        [[ -n "$ck" ]] && extra+=(-c "$ck=$cv")
+    done < <(jq -r 'to_entries[] | [.key, (.value|tostring)] | @tsv' <<<"$ENTRY_CONFIG")
     # claude pede esforço por flag; codex por -c chave=valor. Backend sem os dois ignora.
     [[ -n "$effort" && -n "$effort_flag" ]] && extra+=("$effort_flag" "$effort")
 
@@ -805,12 +818,17 @@ fi
 TRILHA=""
 trilha_add() { TRILHA="${TRILHA:+$TRILHA }$1=$2"; }
 
+# Config da entrada em curso da cascata. Global e não `local` porque quem a lê é
+# o invoke_backend, e nasce `{}` porque entrada sem config é o caso comum.
+ENTRY_CONFIG='{}'
+
 run_cascade() {
     local entry backend model effort rc
     while IFS= read -r entry; do
         backend=$(jq -r '.backend' <<<"$entry")
         model=$(jq -r '.model // empty' <<<"$entry")
         effort=$(jq -r '.effort // empty' <<<"$entry")
+        ENTRY_CONFIG=$(jq -c '.config // {}' <<<"$entry")
         if [[ -n "$FORCE_MODEL" && "$backend" != "$FORCE_MODEL" ]]; then
             trilha_add "$(pool_key "$backend" "$model")" "outro_modelo"; continue
         fi

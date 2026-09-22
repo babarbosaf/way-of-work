@@ -93,9 +93,9 @@ O que decide onde a task roda é dado, nunca julgamento na hora:
 
 ### Estrutura
 
-Cinco tipos de task (`boilerplate`, `implement`, `review`, `scan`), três backends
-(`codex`, `agy`, `claude`), e uma cascata por tipo: o despachante desce a fila
-até achar backend elegível, com cota e sem castigo.
+Cinco tipos de task (`boilerplate`, `implement`, `pesquisa`, `review`, `scan`),
+três backends (`codex`, `agy`, `claude`), e uma cascata por tipo: o despachante
+desce a fila até achar backend elegível, com cota e sem castigo.
 
 Cota é por **balde**, e balde não é backend: um provedor com dois pools conta
 separado.

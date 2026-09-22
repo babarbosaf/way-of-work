@@ -96,7 +96,7 @@
     }
   },
   "tasks": {
-    "$comment": "Cascata por task-type, na ordem de tentativa. TODA cascata termina no backend claude, que é o mesmo plano da sessão master, antes de esgotar: o master é o fallback REAL, não o único. `review` cobre spec E código, e não existe mais `second-opinion`. A ordem de review não é fixa, porque review_pairing reordena pela classe da sessão, e o que está declarado aqui é o fallback pra classe desconhecida. `implement` sem --tier resolve esta lista, que é o tier PADRÃO, e o tier AMPLO vive em tiers.implement.amplo. ORDEM PROVISÓRIA em implement: o dono quer o Claude na frente, mas cascata só desce por FALHA, então Claude primeiro sem gate de orçamento por bucket queimaria a cota Claude em todo ticket e o codex nunca seria alcançado. Decisão do dono: manter o codex na frente agora e virar a ordem no MESMO commit que trouxer o gate de bucket. `scan` e `boilerplate` têm a MESMA cascata de propósito, e não são um task-type só porque o boilerplate carrega uma guarda de código que o scan não pode ter: em modo bulk ele exige --reference (delegate.sh, lição do code-write), e o task-type é o único portador dessa intenção, porque --paths mais --question não diz se é varredura ou geração. O timeout menor do boilerplate segue da mesma diferença, porque geração curta falha rápido e varredura lê arquivo grande. tests/delegate.test.sh cobra que as duas cascatas não divirjam. Em implement o agy entra ANTES do degrau Claude, e não depois: o dono pediu o Gemini 3.1 Pro na fila do ticket padrão e pediu que toda cascata termine no plano Claude, então a válvula de excedente fica no meio e o último degrau antes do master é o Claude. Task de volume começa no agy, que é grátis, e só toca o codex no fim, porque a janela de uso do codex é o recurso escasso.",
+    "$comment": "Cascata por task-type, na ordem de tentativa. TODA cascata termina no backend claude, que é o mesmo plano da sessão master, antes de esgotar: o master é o fallback REAL, não o único. `review` cobre spec E código, e não existe mais `second-opinion`. A ordem de review não é fixa, porque review_pairing reordena pela classe da sessão, e o que está declarado aqui é o fallback pra classe desconhecida. `implement` sem --tier resolve esta lista, que é o tier PADRÃO, e o tier AMPLO vive em tiers.implement.amplo. ORDEM PROVISÓRIA em implement: o dono quer o Claude na frente, mas cascata só desce por FALHA, então Claude primeiro sem gate de orçamento por bucket queimaria a cota Claude em todo ticket e o codex nunca seria alcançado. Decisão do dono: manter o codex na frente agora e virar a ordem no MESMO commit que trouxer o gate de bucket. `scan` e `boilerplate` têm a MESMA cascata de propósito, e não são um task-type só porque o boilerplate carrega uma guarda de código que o scan não pode ter: em modo bulk ele exige --reference (delegate.sh, lição do code-write), e o task-type é o único portador dessa intenção, porque --paths mais --question não diz se é varredura ou geração. O timeout menor do boilerplate segue da mesma diferença, porque geração curta falha rápido e varredura lê arquivo grande. tests/delegate.test.sh cobra que as duas cascatas não divirjam. Em implement o agy entra ANTES do degrau Claude, e não depois: o dono pediu o Gemini 3.1 Pro na fila do ticket padrão e pediu que toda cascata termine no plano Claude, então a válvula de excedente fica no meio e o último degrau antes do master é o Claude. Task de volume começa no agy, que é grátis, e só toca o codex no fim, porque a janela de uso do codex é o recurso escasso. pesquisa: busca externa (web, GitHub, docs de produto). A fila so aceita worker com web PROVADA. codex exec recusa --search, e a chave por tras dela funciona: `codex exec -c tools.web_search=true` buscou e citou URL em 2026-09-22. agy nao medido, cota 429 no mesmo dia, remedir depois de 2026-09-23: veredito ausente conta como fora, e 429 e janela, nunca `enabled: false`.",
     "review": [
       {
         "backend": "codex",
@@ -174,6 +174,21 @@
         "model": "claude-sonnet-5",
         "effort": "medium"
       }
+    ],
+    "pesquisa": [
+      {
+        "backend": "codex",
+        "model": "gpt-5.6-terra",
+        "effort": "medium",
+        "config": {
+          "tools.web_search": true
+        }
+      },
+      {
+        "backend": "claude",
+        "model": "claude-sonnet-5",
+        "effort": "medium"
+      }
     ]
   },
   "tiers": {
@@ -194,6 +209,23 @@
           "backend": "claude",
           "model": "claude-sonnet-5",
           "effort": "medium"
+        }
+      ]
+    },
+    "pesquisa": {
+      "amplo": [
+        {
+          "backend": "codex",
+          "model": "gpt-5.6-sol",
+          "effort": "high",
+          "config": {
+            "tools.web_search": true
+          }
+        },
+        {
+          "backend": "claude",
+          "model": "claude-opus-5",
+          "effort": "high"
         }
       ]
     }
@@ -281,11 +313,12 @@
     "silent_fail_mins": 60
   },
   "timeouts": {
-    "$comment": "Segundos por task-type; --timeout só pra override pontual, e nenhum consumidor crava número próprio. review=600 é ESTIMATIVA, não medição: o 300 anterior foi cronometrado à mão no Gemini 3.1 Pro (High), que saiu da cascata de review, e o peer-review.sh manda diff de até 2000 linhas contra as 1432 que levaram 170s naquele modelo. O log agora grava dur_s por chamada, então isso se recalibra com dado depois de ~10 chamadas reais. implement=1800 medido: um ticket de 9 arquivos com testes RED estourou os 600 do Codex com a task pela metade, 18/set/2026.",
+    "$comment": "Segundos por task-type; --timeout só pra override pontual, e nenhum consumidor crava número próprio. review=600 é ESTIMATIVA, não medição: o 300 anterior foi cronometrado à mão no Gemini 3.1 Pro (High), que saiu da cascata de review, e o peer-review.sh manda diff de até 2000 linhas contra as 1432 que levaram 170s naquele modelo. O log agora grava dur_s por chamada, então isso se recalibra com dado depois de ~10 chamadas reais. implement=1800 medido: um ticket de 9 arquivos com testes RED estourou os 600 do Codex com a task pela metade, 18/set/2026. pesquisa=900 e ESTIMATIVA: busca na web mais leitura de varias fontes passa de um scan e nao chega perto de um implement; dur_s do log recalibra.",
     "scan": 600,
     "implement": 1800,
     "boilerplate": 300,
-    "review": 600
+    "review": 600,
+    "pesquisa": 900
   },
   "finding_routing": {
     "$comment": "Finding/bug -> destino. Consumido por triage.md. Um finding vira issue no tracker do repo_alvo, com delega derivando executor da cascata tasks.<delega>. severity vem do gate de ship (Critical->P0, Important->P1, Suggestion->P2).",
