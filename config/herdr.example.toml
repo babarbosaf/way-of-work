@@ -30,6 +30,12 @@ rows = [
 ]
 
 [ui.sidebar.spaces]
+# O espaço é o grupo do projeto: cada projeto com trabalho aberto ganha um grupo
+# com o nome dele, e a aba de um trabalho nasce dentro do grupo do projeto dela.
+# Sem isso, três projetos ao mesmo tempo produzem uma lista achatada onde nada
+# diz de onde cada linha veio. Quem escolhe o grupo é o abridor, pelo cwd do
+# trabalho; a config só desenha a linha.
+#
 # O espaço mostra o que o adaptador publicar em `report-metadata`. Enquanto
 # ninguém publica, o token some e a linha fica como era.
 rows = [

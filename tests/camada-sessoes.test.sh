@@ -180,6 +180,10 @@ case "$1 $2" in
     cat "$HERDR_TELA" 2>/dev/null ;;
   "tab list")
     cat "$HERDR_TABS" 2>/dev/null ;;
+  "workspace list")
+    cat "$HERDR_ESPACOS" 2>/dev/null ;;
+  "workspace create")
+    echo '{"result":{"workspace":{"workspace_id":"wN"}}}' ;;
   "pane get")
     printf '{"result":{"pane":{"pane_id":"%s","agent_status":"%s"}}}\n' \
       "$3" "$(cat "$HERDR_ESTADO" 2>/dev/null || echo idle)" ;;
@@ -197,6 +201,8 @@ mkdir -p "$TMP/vazio"
 export HERDR_CHAMADAS="$TMP/chamadas.txt"
 export HERDR_TELA="$TMP/tela.txt"
 export HERDR_ESTADO="$TMP/estado.txt"
+export HERDR_ESPACOS="$TMP/espacos.json"
+echo '{"result":{"workspaces":[{"workspace_id":"w1","label":"~"}]}}' > "$HERDR_ESPACOS"
 export HERDR_PID="$TMP/pid.txt"
 : > "$HERDR_CHAMADAS"; : > "$HERDR_TELA"
 echo idle > "$HERDR_ESTADO"; echo 4242 > "$HERDR_PID"
@@ -317,9 +323,13 @@ if [[ -z "$vazados" ]]; then ok "nenhum script fora do adaptador nomeia a ferram
 else fail "a ferramenta é nomeada fora do adaptador: $vazados"; fi
 
 : > "$HERDR_CHAMADAS"
-saida=$(PATH="$TMP/bin:$PATH" bash "$ADAPT" abrir /tmp/x trabalho-y 2>/dev/null)
+saida=$(PATH="$TMP/bin:$PATH" bash "$ADAPT" abrir /tmp/x trabalho-y 2>"$TMP/adapt.err")
 if [[ "$saida" == $'w1:pZ\tw1:tZ' ]]; then ok "abrir devolve painel e aba"
 else fail "abrir não devolveu painel e aba (veio: '$saida')"; fi
+# Ruído no caminho que deu certo é o que faz erro de verdade passar batido: o
+# `local` em escopo global reclamava e o script seguia, e o teste não via nada.
+if [[ ! -s "$TMP/adapt.err" ]]; then ok "e não reclama nada no caminho feliz"
+else fail "o adaptador reclamou: $(cat "$TMP/adapt.err")"; fi
 
 # A ferramenta ausente é o caso comum de outra máquina, e não pode virar erro
 # ilegível vindo do shell: o adaptador responde por ela.
@@ -495,6 +505,64 @@ else fail "o processo mudou ao assumir ('$antes' → '$depois')"; fi
 if ! grep -qE 'tab create|pane split|agent start' "$HERDR_CHAMADAS"; then
   ok "e no mesmo painel, sem abrir nada novo"
 else fail "assumir criou painel ou sessão nova"; fi
+unset DELEGATE_ADAPTADOR
+
+echo "== agrupamento por projeto =="
+export DELEGATE_ADAPTADOR="$ADAPT"
+cat > "$TMP/espacos-dois.json" <<'JSON'
+{"result":{"workspaces":[
+ {"workspace_id":"w1","label":"~"},
+ {"workspace_id":"w7","label":"exitlag"}
+]}}
+JSON
+
+linhas=$(PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
+  bash "$ADAPT" espacos 2>/dev/null)
+if grep -qF $'w7\texitlag' <<<"$linhas"; then ok "espacos devolve grupo e nome"
+else fail "espacos não devolveu os grupos (veio: '$linhas')"; fi
+
+# shellcheck disable=SC1090
+source "$LIB" 2>/dev/null
+if declare -f visivel_espaco >/dev/null; then ok "visivel_espaco exportada"
+else fail "visivel_espaco não existe"; fi
+
+# Grupo que já existe se reusa: criar um segundo com o mesmo nome espalharia as
+# abas do mesmo projeto por dois lugares, que é o contrário do que a fatia quer.
+: > "$HERDR_CHAMADAS"
+espaco=$(PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
+  visivel_espaco /qualquer/caminho/exitlag 2>/dev/null)
+if [[ "$espaco" == "w7" ]]; then ok "o projeto que já tem grupo reusa o dele"
+else fail "não reusou o grupo existente (veio: '$espaco')"; fi
+if ! grep -q 'workspace create' "$HERDR_CHAMADAS"; then ok "e nenhum grupo novo nasce"
+else fail "criou grupo que já existia"; fi
+
+: > "$HERDR_CHAMADAS"
+espaco=$(PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
+  visivel_espaco /qualquer/caminho/kirara 2>/dev/null)
+if [[ "$espaco" == "wN" ]]; then ok "projeto sem grupo ganha o dele"
+else fail "projeto sem grupo não ganhou grupo (veio: '$espaco')"; fi
+if grep -qF -- '--label kirara' "$HERDR_CHAMADAS"; then
+  ok "e o grupo leva o nome do projeto"
+else fail "o grupo nasceu sem o nome do projeto (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+
+# O aceite de verdade: a aba nasce DENTRO do grupo, e é o cwd do trabalho que
+# diz qual é. Sem isso a lista volta a ser achatada.
+: > "$HERDR_CHAMADAS"
+printf 'Ask anything\n' > "$HERDR_TELA"
+PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
+  DELEGATE_POLICY="$TMP/policy.json" ABRE_PRAZO_TELA_S=1 \
+  bash "$ABRE" --nome t99-algo --backend bom --cwd /qualquer/caminho/exitlag >/dev/null 2>&1
+if grep -qF -- '--workspace w7' "$HERDR_CHAMADAS"; then
+  ok "a aba nasce no grupo do projeto dela"
+else fail "a aba nasceu fora do grupo (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+
+: > "$HERDR_CHAMADAS"
+PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
+  DELEGATE_POLICY="$TMP/policy.json" ABRE_PRAZO_TELA_S=1 \
+  bash "$ABRE" --nome t98-outro --backend bom --cwd /qualquer/caminho/kirara >/dev/null 2>&1
+if grep -qF -- '--workspace wN' "$HERDR_CHAMADAS"; then
+  ok "trabalho de outro projeto nasce em outro grupo"
+else fail "os dois projetos caíram no mesmo grupo"; fi
 unset DELEGATE_ADAPTADOR
 
 echo "== o modo no despachante =="

@@ -119,3 +119,19 @@ visivel_sincronizar() { # → rc 0
     done
     return 0
 }
+
+# Grupo do projeto: três projetos com trabalho aberto ao mesmo tempo produzem uma
+# lista achatada onde nada diz de onde cada linha veio. O nível de agrupamento já
+# existe na ferramenta, e o que faltava era alguém escolher por projeto.
+visivel_espaco() { # cwd → id do grupo do projeto, criando se ainda não houver
+    local cwd="$1" nome adaptador
+    nome=$(basename "$cwd")
+    adaptador=$(visivel_adaptador)
+    [[ -x "$adaptador" ]] || return 1
+    # Reusar antes de criar: dois grupos com o mesmo nome espalhariam as abas do
+    # mesmo projeto por dois lugares, que é o contrário do que a lista quer.
+    local achado
+    achado=$("$adaptador" espacos | awk -F'\t' -v n="$nome" '$2==n{print $1; exit}')
+    [[ -n "$achado" ]] && { printf '%s\n' "$achado"; return 0; }
+    "$adaptador" criar-espaco "$cwd" "$nome"
+}

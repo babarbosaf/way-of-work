@@ -53,7 +53,8 @@ visivel_sincronizar || true
 
 # Prefixo do marcador: aba dirigida se distingue da que dirige pelo nome, e a
 # receita de sidebar é quem transforma isso em contraste na tela.
-linha=$("$ADAPTADOR" abrir "$CWD" "$VISIVEL_MARCA_DIRIGIDA$NOME") || exit 1
+ESPACO=$(visivel_espaco "$CWD") || ESPACO=""
+linha=$("$ADAPTADOR" abrir "$CWD" "$VISIVEL_MARCA_DIRIGIDA$NOME" "$ESPACO") || exit 1
 IFS=$'\t' read -r PANE TAB <<<"$linha"
 [[ -n "$PANE" ]] || die "abre-sessao: o adaptador não devolveu o painel"
 

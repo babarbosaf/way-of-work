@@ -5,7 +5,9 @@
 #
 # Uso: herdr-adapter.sh <verbo> [args]
 #   disponivel                 rc 0 se a ferramenta está nesta máquina
-#   abrir <cwd> <rotulo>       cria a aba, devolve "pane_id<TAB>tab_id"
+#   abrir <cwd> <rotulo> [grupo]  cria a aba, devolve "pane_id<TAB>tab_id"
+#   espacos                    "grupo<TAB>nome", um grupo por linha
+#   criar-espaco <cwd> <nome>  cria o grupo, devolve o id
 #   rodar <pane> <comando>     entrega o comando ao shell da aba
 #   ler <pane> [linhas]        devolve a tela visível
 #   teclar <pane> <tecla>      manda uma tecla
@@ -32,7 +34,11 @@ case "$VERBO" in
         ;;
     abrir)
         [[ $# -ge 2 ]] || die "adaptador: abrir precisa de cwd e rótulo"
-        resposta=$("$FERRAMENTA" tab create --cwd "$1" --label "$2" --no-focus 2>&1) \
+        # Sem `local`: o case roda em escopo global, e `local` aqui falha em
+        # runtime sem parar o script, que é o pior dos dois mundos.
+        onde=()
+        [[ -n "${3:-}" ]] && onde=(--workspace "$3")
+        resposta=$("$FERRAMENTA" tab create --cwd "$1" --label "$2" "${onde[@]}" --no-focus 2>&1) \
             || die "adaptador: criar aba falhou: $resposta"
         # Painel e aba juntos de propósito: quem abre dirige pelo painel e fecha
         # pela aba, e voltar a perguntar qual aba é de qual painel é uma chamada
@@ -66,6 +72,16 @@ case "$VERBO" in
         [[ $# -ge 2 ]] || die "adaptador: rotular precisa de aba e rótulo"
         "$FERRAMENTA" tab rename "$1" "$2" >/dev/null 2>&1 \
             || die "adaptador: renomear a aba $1 falhou"
+        ;;
+    espacos)
+        "$FERRAMENTA" workspace list 2>/dev/null \
+            | jq -r '.result.workspaces // [] | .[] | [.workspace_id, .label] | @tsv' 2>/dev/null
+        ;;
+    criar-espaco)
+        [[ $# -ge 2 ]] || die "adaptador: criar-espaco precisa de cwd e nome"
+        resposta=$("$FERRAMENTA" workspace create --cwd "$1" --label "$2" 2>&1) \
+            || die "adaptador: criar grupo falhou: $resposta"
+        jq -r '.result.workspace.workspace_id // empty' <<<"$resposta" 2>/dev/null
         ;;
     instruir)
         [[ $# -ge 2 ]] || die "adaptador: instruir precisa de painel e texto"
