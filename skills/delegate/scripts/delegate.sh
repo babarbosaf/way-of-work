@@ -101,11 +101,11 @@ log_usage() { # task backend status detail pool [bytes_in] [bytes_out] [dur_s]
     dur=$(tr -dc '0-9' <<<"${8:-0}")
     # `material` é o campo que liga a chamada ao que o worker produziu. Vai em
     # TODA chamada, e não só quando falha: transcript existe e não rotaciona,
-    # medido em 21/set/2026 com 712 arquivos do worker de código desde fevereiro
-    # e 547 do Claude, mas são mais de mil nomes opacos e nada ligava uma task ao
-    # material dela. Gravado aqui, a ligação sobrevive ao terminal fechar, que é
-    # o que "imprimir na falha" não dá. CAMINHO, nunca conteúdo: o prompt pode
-    # carregar o repo inteiro, e despejar isso no log é vazamento, não diagnóstico.
+    # e medido em 21/set/2026 eram mais de mil arquivos de nome opaco desde
+    # fevereiro, sem nada que ligasse uma task ao material dela. Gravado aqui, a
+    # ligação sobrevive ao terminal fechar, que é o que "imprimir na falha" não
+    # dá. CAMINHO, nunca conteúdo: o prompt pode carregar o repo inteiro, e
+    # despejar isso no log é vazamento, não diagnóstico.
     jq -cn --arg ts "$(date -u +%Y-%m-%dT%H:%M:%SZ)" --arg task "$1" --arg backend "$2" \
         --arg status "$3" --arg detail "${4:-}" --arg pool "${5:-}" \
         --arg material "${MATERIAL:-$TMP_OUT}" \
