@@ -375,6 +375,10 @@
         ]
       }
     },
-    "$comment_telas": "`telas_de_abertura` é a lista de telas que cada worker mostra ANTES de aceitar prompt, medidas em 22/set/2026 abrindo cada um numa pasta nova. Cada uma nomeia o padrão que a identifica e as teclas que a respondem. Existe porque o item pré-selecionado difere entre workers e entre telas, e tecla cega faz estrago: no claude o default sai do programa, no codex o default roda `npm install -g`. O abridor casa o padrão na tela antes de mandar tecla, nunca manda no escuro."
+    "$comment_telas": "`telas_de_abertura` é a lista de telas que cada worker mostra ANTES de aceitar prompt, medidas em 22/set/2026 abrindo cada um numa pasta nova. Cada uma nomeia o padrão que a identifica e as teclas que a respondem. Existe porque o item pré-selecionado difere entre workers e entre telas, e tecla cega faz estrago: no claude o default sai do programa, no codex o default roda `npm install -g`. O abridor casa o padrão na tela antes de mandar tecla, nunca manda no escuro.",
+    "ciclo": {
+      "prazo_ocioso_min": 30,
+      "porque": "aba parada além disso já foi integrada ou abandonada; o prazo só é aceitável porque a tela vira arquivo antes de a aba sumir, e porque aba órfã fica fora dele. Curto demais mata trabalho em curso, longo demais devolve a lista entupida que a camada existe pra desentupir."
+    }
   }
 }

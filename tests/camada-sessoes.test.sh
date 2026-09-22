@@ -183,7 +183,7 @@ case "$1 $2" in
   "workspace list")
     cat "$HERDR_ESPACOS" 2>/dev/null ;;
   "workspace create")
-    echo '{"result":{"workspace":{"workspace_id":"wN"}}}' ;;
+    echo '{"result":{"workspace":{"workspace_id":"wN"},"root_pane":{"pane_id":"wN:p1","tab_id":"wN:t1"}}}' ;;
   "pane get")
     printf '{"result":{"pane":{"pane_id":"%s","agent_status":"%s"}}}\n' \
       "$3" "$(cat "$HERDR_ESTADO" 2>/dev/null || echo idle)" ;;
@@ -202,7 +202,11 @@ export HERDR_CHAMADAS="$TMP/chamadas.txt"
 export HERDR_TELA="$TMP/tela.txt"
 export HERDR_ESTADO="$TMP/estado.txt"
 export HERDR_ESPACOS="$TMP/espacos.json"
-echo '{"result":{"workspaces":[{"workspace_id":"w1","label":"~"}]}}' > "$HERDR_ESPACOS"
+# O grupo do projeto deste repo já existe na lista fingida: sem ele, todo teste
+# que abre aba cairia no caminho de criar grupo, que é o caso raro.
+jq -n --arg p "$(basename "$(cd "$ROOT" && pwd)")" \
+  '{result:{workspaces:[{workspace_id:"w1",label:"~"},{workspace_id:"w1",label:$p}]}}' \
+  > "$HERDR_ESPACOS"
 export HERDR_PID="$TMP/pid.txt"
 : > "$HERDR_CHAMADAS"; : > "$HERDR_TELA"
 echo idle > "$HERDR_ESTADO"; echo 4242 > "$HERDR_PID"
@@ -548,7 +552,7 @@ else fail "criou grupo que já existia"; fi
 
 : > "$HERDR_CHAMADAS"
 espaco=$(PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
-  visivel_espaco /qualquer/caminho/projeto-dois 2>/dev/null)
+  visivel_espaco /qualquer/caminho/projeto-dois 2>/dev/null | cut -f1)
 if [[ "$espaco" == "wN" ]]; then ok "projeto sem grupo ganha o dele"
 else fail "projeto sem grupo não ganhou grupo (veio: '$espaco')"; fi
 if grep -qF -- '--label projeto-dois' "$HERDR_CHAMADAS"; then
@@ -570,9 +574,15 @@ else fail "a aba nasceu fora do grupo (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
 PATH="$TMP/bin:$PATH" HERDR_ESPACOS="$TMP/espacos-dois.json" \
   DELEGATE_POLICY="$TMP/policy.json" ABRE_PRAZO_TELA_S=1 \
   bash "$ABRE" --nome t98-outro --backend bom --cwd /qualquer/caminho/projeto-dois >/dev/null 2>&1
-if grep -qF -- '--workspace wN' "$HERDR_CHAMADAS"; then
+if grep -qF -- '--label projeto-dois' "$HERDR_CHAMADAS"; then
   ok "trabalho de outro projeto nasce em outro grupo"
 else fail "os dois projetos caíram no mesmo grupo"; fi
+# Grupo nasce com uma aba. Criar uma segunda deixa a primeira vazia encalhada na
+# lista, um lixo por projeto, que é o contrário do que o agrupamento quer.
+if grep -qF 'tab rename wN:t1 » t98-outro' "$HERDR_CHAMADAS" \
+   && ! grep -q 'tab create' "$HERDR_CHAMADAS"; then
+  ok "e reusa a aba que nasceu com o grupo, sem deixar vazia"
+else fail "o grupo novo ficou com aba vazia (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
 unset DELEGATE_ADAPTADOR
 
 echo "== o modo no despachante =="
@@ -763,6 +773,124 @@ else fail "a tabela mostra a mesma coisa nos dois casos (veio: '$tab_ocioso')"; 
 if grep -q 'nenhuma task em curso' <<<"$tab_ocioso"; then
   ok "e ocioso na tabela continua dizendo o que dizia"
 else fail "a tabela de ocioso mudou (veio: '$tab_ocioso')"; fi
+
+echo "== ciclo de vida da aba =="
+FECHA="$ROOT/scripts/fecha-sessao.sh"
+if [[ -x "$FECHA" ]]; then ok "fecha-sessao.sh existe e é executável"
+else fail "fecha-sessao.sh não existe ou não é executável"; fi
+
+export DELEGATE_ADAPTADOR="$ADAPT"
+CICLO="$TMP/gate-ciclo"
+cat > "$TMP/policy-ciclo.json" <<'JSON'
+{
+  "backends": { "bom": { "enabled": true } },
+  "visivel": {
+    "ciclo": { "prazo_ocioso_min": 30 },
+    "backends": { "bom": { "elegivel": true, "medido_em": "2026-09-22",
+      "invoke": "bom --interativo", "porque": "medido" } }
+  }
+}
+JSON
+cat > "$TMP/policy-ciclo-agora.json" <<'JSON'
+{
+  "backends": { "bom": { "enabled": true } },
+  "visivel": {
+    "ciclo": { "prazo_ocioso_min": 0 },
+    "backends": { "bom": { "elegivel": true, "medido_em": "2026-09-22",
+      "invoke": "bom --interativo", "porque": "medido" } }
+  }
+}
+JSON
+echo '{"result":{"tabs":[{"tab_id":"w1:tZ","label":"» revisa-spec","agent_status":"idle","workspace_id":"w1"}]}}' \
+  > "$TMP/tabs-ciclo.json"
+
+# registro de sessão: nome do trabalho, aba, dono e desde quando está parada
+sessao_fixture() { # dono parada_desde → caminho do registro
+  mkdir -p "$CICLO/sessoes"
+  local arq="$CICLO/sessoes/w1-tZ.json"
+  jq -n --arg d "$1" --arg p "$2" \
+    '{pane:"w1:pZ", tab:"w1:tZ", nome:"revisa-spec", dono:($d|tonumber),
+      aberto_em:"2026-09-22T00:00:00Z", parada_desde:($p|tonumber)}' > "$arq"
+  printf '%s\n' "$arq"
+}
+
+# Quem abriu fecha ao integrar, e o dono não entra no meio. A tela vira arquivo
+# ANTES: o que a ferramenta devolve de uma aba é o buffer da tela, e fechar sem
+# gravar apaga justo o material que o dono quer ler depois.
+reg=$(sessao_fixture "$$" 0)
+: > "$HERDR_CHAMADAS"
+printf 'a conversa inteira da sessao\n' > "$HERDR_TELA"
+saida=$(PATH="$TMP/bin:$PATH" DELEGATE_GATE_DIR="$CICLO" HERDR_TABS="$TMP/tabs-ciclo.json" \
+  DELEGATE_POLICY="$TMP/policy-ciclo.json" bash "$FECHA" w1:tZ 2>&1); rc=$?
+if (( rc == 0 )); then ok "fechar uma aba integrada sai zero"
+else fail "fechar falhou (rc=$rc): $saida"; fi
+if grep -q 'tab close w1:tZ' "$HERDR_CHAMADAS"; then ok "e a aba fecha de verdade"
+else fail "a aba não foi fechada (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+tela_arq=$(ls "$CICLO"/sessoes/telas/*revisa-spec* 2>/dev/null | head -1)
+if [[ -n "$tela_arq" ]]; then ok "o arquivo da tela é nomeado pelo trabalho"
+else fail "não gravou a tela nomeada pelo trabalho"; fi
+if grep -q 'a conversa inteira da sessao' "$tela_arq" 2>/dev/null; then
+  ok "e carrega o que estava na tela"
+else fail "o arquivo da tela saiu vazio"; fi
+# Gravar depois de fechar pegaria a tela de uma aba que não existe mais.
+if [[ "$(grep -n 'tab close' "$HERDR_CHAMADAS" | head -1 | cut -d: -f1)" -gt \
+      "$(grep -n 'pane read' "$HERDR_CHAMADAS" | head -1 | cut -d: -f1)" ]]; then
+  ok "a tela é lida antes de a aba fechar"
+else fail "fechou antes de gravar a tela"; fi
+if grep -q "$tela_arq" "$CICLO/delegate.log" 2>/dev/null; then
+  ok "o caminho da tela entra no log"
+else fail "o log não tem o caminho da tela"; fi
+# Log grava caminho, nunca conteúdo: a conversa pode carregar o repo inteiro.
+if ! grep -q 'a conversa inteira da sessao' "$CICLO/delegate.log" 2>/dev/null; then
+  ok "e o conteúdo da tela não entra no log"
+else fail "o log recebeu o conteúdo da tela"; fi
+if [[ ! -f "$reg" ]]; then ok "e o registro sai junto com a aba"
+else fail "o registro sobreviveu ao fechamento"; fi
+
+# Ociosa além do prazo fecha sozinha.
+reg=$(sessao_fixture "$$" 0)
+: > "$HERDR_CHAMADAS"
+PATH="$TMP/bin:$PATH" DELEGATE_GATE_DIR="$CICLO" HERDR_TABS="$TMP/tabs-ciclo.json" \
+  DELEGATE_POLICY="$TMP/policy-ciclo-agora.json" bash "$FECHA" --ociosas >/dev/null 2>&1
+if grep -q 'tab close w1:tZ' "$HERDR_CHAMADAS"; then ok "aba ociosa além do prazo fecha sozinha"
+else fail "a aba ociosa não fechou"; fi
+
+# Dentro do prazo, fica. Fechar cedo é perder trabalho em curso.
+reg=$(sessao_fixture "$$" "$(date +%s)")
+: > "$HERDR_CHAMADAS"
+PATH="$TMP/bin:$PATH" DELEGATE_GATE_DIR="$CICLO" HERDR_TABS="$TMP/tabs-ciclo.json" \
+  DELEGATE_POLICY="$TMP/policy-ciclo.json" bash "$FECHA" --ociosas >/dev/null 2>&1
+if ! grep -q 'tab close' "$HERDR_CHAMADAS"; then ok "dentro do prazo, a aba fica"
+else fail "fechou uma aba que ainda está dentro do prazo"; fi
+if [[ -f "$reg" ]]; then ok "e o registro dela também"
+else fail "apagou o registro de sessão viva"; fi
+
+# Órfã não fecha por tempo, por mais que fique ociosa: worker vivo sem dono é
+# exatamente o caso que precisa aparecer, e fechar por prazo esconderia justo ele.
+reg=$(sessao_fixture 999999 0)
+: > "$HERDR_CHAMADAS"
+PATH="$TMP/bin:$PATH" DELEGATE_GATE_DIR="$CICLO" HERDR_TABS="$TMP/tabs-ciclo.json" \
+  DELEGATE_POLICY="$TMP/policy-ciclo-agora.json" bash "$FECHA" --ociosas >/dev/null 2>&1
+if ! grep -q 'tab close' "$HERDR_CHAMADAS"; then ok "aba órfã não fecha por tempo"
+else fail "o prazo fechou a aba órfã, que é a que precisa aparecer"; fi
+if [[ -f "$reg" ]]; then ok "e a órfã continua registrada"
+else fail "a varredura apagou o registro da órfã"; fi
+rm -f "$reg"
+
+# O prazo é dado da policy. Duração cravada em script é o que faz dois pontos de
+# chamada divergirem sem ninguém ver.
+if ! grep -nE '(ocios|prazo)[a-z_]*=[0-9]+|[0-9]+ ?\* ?60' "$FECHA" >/dev/null; then
+  ok "nenhuma duração cravada no fechador"
+else fail "o fechador escolhe duração: $(grep -nE '(ocios|prazo)[a-z_]*=[0-9]+' "$FECHA")"; fi
+if declare -f visivel_prazo_ocioso >/dev/null; then ok "o prazo é lido da policy pela lib"
+else fail "visivel_prazo_ocioso não existe"; fi
+# E a policy DESTE repo precisa declarar, senão a varredura morre em produção com
+# a suíte verde: fixture e repo real divergem calados.
+visivel_configurar "$POLICY" 2>/dev/null
+if [[ "$(visivel_prazo_ocioso)" =~ ^[0-9]+$ ]]; then
+  ok "a policy do repo declara o prazo de ociosidade"
+else fail "a policy do repo não declara prazo: a varredura não roda aqui"; fi
+unset DELEGATE_ADAPTADOR
 
 echo "== cenário de ponta a ponta =="
 # O único bloco que abre aba de verdade e gasta chamada de worker. Roda sozinho,

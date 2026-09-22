@@ -53,9 +53,17 @@ visivel_sincronizar || true
 
 # Prefixo do marcador: aba dirigida se distingue da que dirige pelo nome, e a
 # receita de sidebar é quem transforma isso em contraste na tela.
-ESPACO=$(visivel_espaco "$CWD") || ESPACO=""
-linha=$("$ADAPTADOR" abrir "$CWD" "$VISIVEL_MARCA_DIRIGIDA$NOME" "$ESPACO") || exit 1
-IFS=$'\t' read -r PANE TAB <<<"$linha"
+grupo=$(visivel_espaco "$CWD") || grupo=""
+IFS=$'\t' read -r ESPACO RAIZ_PANE RAIZ_TAB <<<"$grupo"
+if [[ -n "${RAIZ_PANE:-}" ]]; then
+    # Grupo recém-criado já veio com uma aba: reusar é o que evita uma aba vazia
+    # por projeto encalhada na lista, que é o contrário do que o agrupamento quer.
+    PANE="$RAIZ_PANE"; TAB="${RAIZ_TAB:-}"
+    "$ADAPTADOR" rotular "$TAB" "$VISIVEL_MARCA_DIRIGIDA$NOME" || exit 1
+else
+    linha=$("$ADAPTADOR" abrir "$CWD" "$VISIVEL_MARCA_DIRIGIDA$NOME" "${ESPACO:-}") || exit 1
+    IFS=$'\t' read -r PANE TAB <<<"$linha"
+fi
 [[ -n "$PANE" ]] || die "abre-sessao: o adaptador não devolveu o painel"
 
 # O dono é quem PEDIU o despacho, não este script, que morre em segundos. Com

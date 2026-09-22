@@ -122,6 +122,22 @@ colado e o worker a recusa como injeção; e a espera é por consulta de estado 
 prazo próprio, porque a espera embutida já pendurou além de dois minutos com o
 worker já tendo respondido.
 
+A aba tem ciclo de vida, e o fechamento tem dono:
+
+```bash
+fecha-sessao.sh <aba>        # quem abriu fecha, ao integrar
+fecha-sessao.sh --ociosas    # varre e fecha quem passou do prazo
+```
+
+Nos dois caminhos a tela vira arquivo em `<gate>/sessoes/telas/`, nomeado pelo
+trabalho, antes de a aba sumir, e o caminho entra no log. Fechar sem gravar
+apagaria o material que o dono quer ler depois, porque o que a ferramenta
+devolve de uma aba é o buffer da tela, não um arquivo. O prazo é dado da policy,
+em `visivel.ciclo`, e nenhum ponto de chamada escolhe duração.
+
+Aba órfã, cuja sessão que a despachou morreu, fica de fora do prazo: ela aparece
+na lista marcada com `?` e espera decisão de gente.
+
 Os nomes da ferramenta moram em `scripts/herdr-adapter.sh`, e em nenhum outro
 arquivo. Trocar de multiplexer é reescrever esse arquivo.
 

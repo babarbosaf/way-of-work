@@ -7,12 +7,13 @@
 #   disponivel                 rc 0 se a ferramenta está nesta máquina
 #   abrir <cwd> <rotulo> [grupo]  cria a aba, devolve "pane_id<TAB>tab_id"
 #   espacos                    "grupo<TAB>nome", um grupo por linha
-#   criar-espaco <cwd> <nome>  cria o grupo, devolve o id
+#   criar-espaco <cwd> <nome>  cria o grupo; devolve "id<TAB>pane<TAB>tab" da raiz
 #   rodar <pane> <comando>     entrega o comando ao shell da aba
 #   ler <pane> [linhas]        devolve a tela visível
 #   teclar <pane> <tecla>      manda uma tecla
 #   listar                     "tab_id<TAB>rotulo<TAB>estado", uma aba por linha
 #   rotular <tab> <rotulo>     renomeia a aba
+#   fechar <tab>               fecha a aba
 #   instruir <pane> <texto>    submete um prompt à sessão
 #   estado <pane>              devolve o estado que a ferramenta observa
 #   processo <pane>            devolve o pid do processo da sessão
@@ -73,6 +74,11 @@ case "$VERBO" in
         "$FERRAMENTA" tab rename "$1" "$2" >/dev/null 2>&1 \
             || die "adaptador: renomear a aba $1 falhou"
         ;;
+    fechar)
+        [[ $# -ge 1 ]] || die "adaptador: fechar precisa da aba"
+        "$FERRAMENTA" tab close "$1" >/dev/null 2>&1 \
+            || die "adaptador: fechar a aba $1 falhou"
+        ;;
     espacos)
         "$FERRAMENTA" workspace list 2>/dev/null \
             | jq -r '.result.workspaces // [] | .[] | [.workspace_id, .label] | @tsv' 2>/dev/null
@@ -81,7 +87,10 @@ case "$VERBO" in
         [[ $# -ge 2 ]] || die "adaptador: criar-espaco precisa de cwd e nome"
         resposta=$("$FERRAMENTA" workspace create --cwd "$1" --label "$2" 2>&1) \
             || die "adaptador: criar grupo falhou: $resposta"
-        jq -r '.result.workspace.workspace_id // empty' <<<"$resposta" 2>/dev/null
+        # A raiz vem junto: o grupo nasce com uma aba, e quem não a reusa deixa
+        # uma aba vazia por projeto pra sempre na lista do dono.
+        jq -r '.result | [.workspace.workspace_id, (.root_pane.pane_id // ""),
+                          (.root_pane.tab_id // "")] | @tsv' <<<"$resposta" 2>/dev/null
         ;;
     instruir)
         [[ $# -ge 2 ]] || die "adaptador: instruir precisa de painel e texto"

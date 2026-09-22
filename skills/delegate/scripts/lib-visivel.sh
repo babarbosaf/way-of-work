@@ -123,7 +123,9 @@ visivel_sincronizar() { # → rc 0
 # Grupo do projeto: três projetos com trabalho aberto ao mesmo tempo produzem uma
 # lista achatada onde nada diz de onde cada linha veio. O nível de agrupamento já
 # existe na ferramenta, e o que faltava era alguém escolher por projeto.
-visivel_espaco() { # cwd → id do grupo do projeto, criando se ainda não houver
+# Devolve "id" quando o grupo já existia, e "id<TAB>pane<TAB>tab" quando teve que
+# criar: a aba raiz que nasce com o grupo é pra ser reusada, não abandonada.
+visivel_espaco() { # cwd → grupo do projeto, criando se ainda não houver
     local cwd="$1" nome adaptador
     nome=$(basename "$cwd")
     adaptador=$(visivel_adaptador)
@@ -134,4 +136,12 @@ visivel_espaco() { # cwd → id do grupo do projeto, criando se ainda não houve
     achado=$("$adaptador" espacos | awk -F'\t' -v n="$nome" '$2==n{print $1; exit}')
     [[ -n "$achado" ]] && { printf '%s\n' "$achado"; return 0; }
     "$adaptador" criar-espaco "$cwd" "$nome"
+}
+
+# Prazo de ociosidade, em minutos, e ele é dado da policy. Duração cravada em
+# script é o que faz dois pontos de chamada divergirem sem ninguém ver, e aqui o
+# erro é caro nos dois sentidos: curto demais mata trabalho em curso, longo
+# demais devolve a lista entupida que a camada existe pra desentupir.
+visivel_prazo_ocioso() { # → minutos, ou nada quando a policy não declara
+    jq -r '.visivel.ciclo.prazo_ocioso_min // empty' "$VISIVEL_POLICY" 2>/dev/null
 }
