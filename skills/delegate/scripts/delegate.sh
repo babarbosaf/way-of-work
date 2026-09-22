@@ -148,7 +148,7 @@ is_sem_resposta() { [[ "$(classificar_limite "$1")" == silent_fail ]]; }
 
 # --- args ---
 TASK="" TIER="" FORCE_MODEL="" WORKTREE="" TIMEOUT="" GC="" BASE_REF="" CONTINUE_SLUG=""
-ASYNC=0; STATUS_ID=""; TASKS=0; ONELINE=0
+ASYNC=0; STATUS_ID=""; TASKS=0; ONELINE=0; VISIVEL=""
 QUESTION="" REFERENCE="" PATHS=() EXPECT_LINES="" EXPECT_REGEX=""
 while [[ $# -gt 0 ]]; do
     case "$1" in
@@ -164,6 +164,7 @@ while [[ $# -gt 0 ]]; do
         --worktree) need_arg --worktree $#; WORKTREE="$2"; shift 2 ;;
         --async) ASYNC=1; shift ;;
         --status) need_arg --status $#; STATUS_ID="$2"; shift 2 ;;
+        --visivel) need_arg --visivel $#; VISIVEL="$2"; shift 2 ;;
         --tasks) TASKS=1; shift ;;
         --oneline) ONELINE=1; shift ;;
         --continue) need_arg --continue $#; CONTINUE_SLUG="$2"; shift 2 ;;
@@ -351,6 +352,33 @@ if [[ "$TASK" == "review" ]]; then
 fi
 
 [[ -n "$TIMEOUT" ]] || TIMEOUT=$(jq -r --arg t "$TASK" '.timeouts[$t] // 120' "$POLICY")
+
+# --- modo visível: a task vira uma aba nomeada, em vez de um worker invisível ---
+# Desvio pedido explicitamente. Sem `--visivel` nada aqui roda, e é isso que
+# mantém o despacho de hoje idêntico ao de ontem. Não reordena a cascata: lê a
+# mesma fila, na mesma ordem, e fica com o primeiro que a medição aprovou pro
+# modo interativo.
+if [[ -n "$VISIVEL" ]]; then
+    # shellcheck disable=SC1091
+    source "$LIMITES_DIR/lib-visivel.sh" || die "--visivel: lib-visivel.sh não carregou"
+    visivel_configurar "$POLICY" || die "--visivel: policy ilegível"
+    escolhido="" modelo="" esforco=""
+    while IFS=$'\t' read -r b m e; do
+        [[ -n "$b" ]] || continue
+        if visivel_elegivel "$b"; then escolhido="$b"; modelo="$m"; esforco="$e"; break; fi
+    done < <(jq -r '.[] | [.backend, (.model // ""), (.effort // "")] | @tsv' <<<"$CASCADE")
+    # Cair no modo de lote aqui entregaria trabalho feito onde ninguém pediu, e
+    # quem pediu pra ver ficaria olhando uma aba que nunca abre.
+    [[ -n "$escolhido" ]] || die "--visivel: nenhum backend da fila de '$TASK' é elegível no modo interativo; a policy guarda o motivo medido de cada um"
+    ABRIDOR="${DELEGATE_ABRIDOR:-$LIMITES_DIR/../../../scripts/abre-sessao.sh}"
+    [[ -x "$ABRIDOR" ]] || die "--visivel: abridor não encontrado em $ABRIDOR"
+    args=(--nome "$VISIVEL" --backend "$escolhido")
+    [[ -n "$modelo"   ]] && args+=(--model "$modelo")
+    [[ -n "$esforco"  ]] && args+=(--effort "$esforco")
+    [[ -n "$WORKTREE" ]] && args+=(--cwd "$WORKTREE")
+    exec "$ABRIDOR" "${args[@]}"
+fi
+
 
 # --- timeout wrapper ---
 if command -v gtimeout >/dev/null 2>&1; then TIMEOUT_CMD="gtimeout $TIMEOUT"

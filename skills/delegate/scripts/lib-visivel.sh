@@ -37,6 +37,14 @@ visivel_invoke() { # backend → comando interativo medido, ou vazio
     visivel_campo "$1" invoke
 }
 
+# Telas que o worker mostra ANTES de aceitar prompt, uma por linha em JSON. Mora
+# aqui pelo mesmo motivo que a lista de elegíveis: régua copiada diverge, e esta
+# diz quais teclas saem, o que erra caro.
+visivel_telas() { # backend → uma tela por linha, ou nada
+    jq -c --arg b "$1" '.visivel.backends[$b].telas_de_abertura // [] | .[]' \
+        "$VISIVEL_POLICY" 2>/dev/null
+}
+
 # Porta única do modo visível. Recusa nomeia o worker e carrega o motivo que a
 # medição gravou: "não elegível" sozinho manda quem leu caçar o porquê num
 # arquivo de config, e é assim que a régua vira folclore.

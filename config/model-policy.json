@@ -327,14 +327,35 @@
         "elegivel": true,
         "medido_em": "2026-09-22",
         "invoke": "codex -m {model} -c model_reasoning_effort={effort}",
-        "porque": "vira agente detectado, aceita prompt pelo canal da camada e a resposta é lida da tela; uma revisão inteira de spec rodou assim"
+        "porque": "vira agente detectado, aceita prompt pelo canal da camada e a resposta é lida da tela; uma revisão inteira de spec rodou assim",
+        "telas_de_abertura": [
+          {
+            "padrao": "Update available!",
+            "teclas": [
+              "down",
+              "enter"
+            ],
+            "porque": "escolhe Skip. O item pré-selecionado é `Update now`, que roda npm install -g no meio do despacho"
+          }
+        ],
+        "atencao": "não pede para confiar na pasta: medido em pasta nova, vai direto ao prompt. A tela que atrapalha é a de atualização, e ela some quando a versão está em dia."
       },
       "claude": {
         "elegivel": true,
         "medido_em": "2026-09-22",
         "invoke": "claude --model {model}",
         "porque": "vira agente detectado e devolveu pela tela a transformação exata de um valor exclusivo, distinta do eco do prompt",
-        "atencao": "ao abrir um cwd novo, a TUI para num pedido de confiar na pasta, e a detecção marca `unknown` em vez de `blocked`. O item selecionado por padrão é o NÃO, que sai do programa: enter cego mata a sessão. Confirmar é descer um item e então confirmar. O agy faz o oposto, com o SIM já selecionado, então não existe tecla única que sirva para os dois."
+        "atencao": "ao abrir um cwd novo, a TUI para num pedido de confiar na pasta, e a detecção marca `unknown` em vez de `blocked`. O item selecionado por padrão é o NÃO, que sai do programa: enter cego mata a sessão. Confirmar é descer um item e então confirmar. O agy faz o oposto, com o SIM já selecionado, então não existe tecla única que sirva para os dois.",
+        "telas_de_abertura": [
+          {
+            "padrao": "Is this a project you created or one you trust",
+            "teclas": [
+              "down",
+              "enter"
+            ],
+            "porque": "escolhe `Yes, I trust this folder`. O pré-selecionado é `No, exit`, e enter cego encerra a sessão"
+          }
+        ]
       },
       "agy": {
         "elegivel": true,
@@ -342,8 +363,18 @@
         "invoke": "agy --model {model}",
         "porque": "vira agente detectado e devolveu pela tela uma transformação do valor exclusivo, distinta do eco do prompt, com Claude Sonnet 4.6",
         "atencao": "o modelo vai pelo ID da CLI (claude-sonnet-4-6), nunca pelo nome de exibição: o nome tem parênteses e o comando chega ao shell sem aspas. A tela só sai em --source visible. E a pasta nova pede confiança com o SIM já selecionado, ao contrário do claude.",
-        "pool_sem_cota": "o pool gemini estava esgotado na medição (reset em 31h) e o pool claude_gpt respondeu em 6s: cota do agy é por provider, então esgotamento de um pool não é veredito sobre o backend"
+        "pool_sem_cota": "o pool gemini estava esgotado na medição (reset em 31h) e o pool claude_gpt respondeu em 6s: cota do agy é por provider, então esgotamento de um pool não é veredito sobre o backend",
+        "telas_de_abertura": [
+          {
+            "padrao": "Do you trust the contents of this project",
+            "teclas": [
+              "enter"
+            ],
+            "porque": "o pré-selecionado já é `Yes, I trust this folder`, ao contrário do claude"
+          }
+        ]
       }
-    }
+    },
+    "$comment_telas": "`telas_de_abertura` é a lista de telas que cada worker mostra ANTES de aceitar prompt, medidas em 22/set/2026 abrindo cada um numa pasta nova. Cada uma nomeia o padrão que a identifica e as teclas que a respondem. Existe porque o item pré-selecionado difere entre workers e entre telas, e tecla cega faz estrago: no claude o default sai do programa, no codex o default roda `npm install -g`. O abridor casa o padrão na tela antes de mandar tecla, nunca manda no escuro."
   }
 }
