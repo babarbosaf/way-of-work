@@ -34,12 +34,22 @@ LOG="$GATE/delegate.log"
 fecha_um() { # registro → grava a tela, loga o caminho, fecha a aba, some o registro
     local arq="$1" nome tab pane tela
     nome=$(jq -r '.nome // "sessao"' "$arq")
+    # O nome vira componente de caminho, e o abridor já o recusa na porta. Aqui é
+    # a segunda tranca: registro editado à mão não pode gravar fora daqui.
+    nome=$(printf '%s' "$nome" | tr -c 'A-Za-z0-9._-' '-')
     tab=$(jq -r '.tab // empty' "$arq")
     pane=$(jq -r '.pane // empty' "$arq")
+    [[ -n "$tab" ]] || { printf 'fecha-sessao: registro sem aba, deixando de pé: %s\n' "$arq" >&2; return 1; }
     mkdir -p "$TELAS"
     tela="$TELAS/$nome-$(date -u +%Y-%m-%dT%H%M%SZ).txt"
-    # ANTES de fechar, sempre: depois não há mais aba de onde ler.
-    "$ADAPTADOR" ler "$pane" 400 > "$tela" 2>/dev/null
+    # ANTES de fechar, sempre: depois não há mais aba de onde ler. E se a leitura
+    # falhar, nada fecha: fechar com a tela perdida apaga exatamente o material
+    # que este script existe pra preservar.
+    if ! "$ADAPTADOR" ler "$pane" 400 > "$tela" 2>/dev/null || [[ ! -s "$tela" ]]; then
+        rm -f "$tela"
+        printf 'fecha-sessao: não consegui gravar a tela de %s, a aba fica de pé\n' "$nome" >&2
+        return 1
+    fi
     # Caminho, nunca conteúdo: a conversa da sessão pode carregar o repo inteiro,
     # e despejar isso no log é vazamento, não diagnóstico.
     mkdir -p "$GATE"; touch "$LOG"; chmod 600 "$LOG"
@@ -47,7 +57,7 @@ fecha_um() { # registro → grava a tela, loga o caminho, fecha a aba, some o re
         --arg tab "$tab" --arg material "$tela" \
         '{ts:$ts,task:"sessao",backend:"",status:"fechada",detail:$nome,
           pool:"",material:$material,tab:$tab}' >> "$LOG"
-    [[ -n "$tab" ]] && "$ADAPTADOR" fechar "$tab"
+    "$ADAPTADOR" fechar "$tab" || return 1
     rm -f "$arq"
 }
 
@@ -59,7 +69,8 @@ if [[ "$ALVO" != "--ociosas" ]]; then
         [[ -f "$arq" ]] || continue
         if [[ "$(jq -r '.tab // empty' "$arq")" == "$ALVO" \
            || "$(jq -r '.pane // empty' "$arq")" == "$ALVO" ]]; then
-            fecha_um "$arq"; exit 0
+            fecha_um "$arq" || exit 1
+            exit 0
         fi
     done
     die "fecha-sessao: nenhuma sessão registrada em $ALVO"
@@ -90,3 +101,7 @@ for arq in "$DIR"/*.json; do
     fi
     (( agora - desde >= prazo * 60 )) && fecha_um "$arq"
 done
+# Varredura em que nada venceu o prazo é o caminho NORMAL. Sem este exit, o rc do
+# script é o do último `(( ))`, que é 1 justamente quando não havia o que fechar,
+# e todo gancho encadeado leria a varredura saudável como falha.
+exit 0

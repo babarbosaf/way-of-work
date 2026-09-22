@@ -63,9 +63,20 @@ case "$VERBO" in
     instruir)
         [[ $# -ge 3 ]] || die "dirige-sessao: instruir precisa do texto"
         espera_tela_parar || true
+        antes=$("$ADAPTADOR" ler "$PANE" 40)
         "$ADAPTADOR" instruir "$PANE" "$3" || exit 1
         fim=$(( SECONDS + PARTIDA ))
-        while (( SECONDS < fim )); do parada || break; sleep 1; done
+        partiu=0
+        while (( SECONDS < fim )); do
+            parada || { partiu=1; break; }
+            sleep 1
+        done
+        # Worker que nem começou e tela que não mudou é instrução que se perdeu no
+        # caminho. Sair zero aqui faz a sessão principal ler o eco do prompt como
+        # se fosse resposta, que é pior que demorar.
+        if (( ! partiu )) && [[ "$("$ADAPTADOR" ler "$PANE" 40)" == "$antes" ]]; then
+            die "dirige-sessao: $PANE não absorveu a instrução em ${PARTIDA}s"
+        fi
         fim=$(( SECONDS + PRAZO ))
         while (( SECONDS < fim )); do
             parada && exit 0

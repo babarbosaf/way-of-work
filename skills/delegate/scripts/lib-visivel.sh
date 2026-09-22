@@ -100,7 +100,10 @@ visivel_sincronizar() { # → rc 0
     [[ -d "$dir" ]] || return 0
     adaptador=$(visivel_adaptador)
     [[ -x "$adaptador" ]] || return 1
+    # Lista que não deu pra ler não autoriza apagar nada: registro apagado por
+    # engano faz a aba viva sumir do rastro e nunca mais ser fechada nem gravada.
     lista=$("$adaptador" listar) || return 1
+    [[ -n "$lista" ]] || return 0
     for arq in "$dir"/*.json; do
         [[ -f "$arq" ]] || continue
         tab=$(jq -r '.tab // empty' "$arq" 2>/dev/null)

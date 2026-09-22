@@ -65,9 +65,15 @@ case "$VERBO" in
         "$FERRAMENTA" agent send-keys "$1" "$2" >/dev/null 2>&1
         ;;
     listar)
+        # Vazio e ilegível não podem ser a mesma coisa: quem varre apaga registro
+        # de sessão que sumiu da lista, e lista muda apagaria todas de uma vez.
+        # `-e` faz o jq reprovar quando `.result.tabs` não existe.
         "$FERRAMENTA" tab list 2>/dev/null \
-            | jq -r '.result.tabs // [] | .[]
+            | jq -er '.result.tabs | .[]
                 | [.tab_id, .label, (.agent_status // "")] | @tsv' 2>/dev/null
+        rc=$?
+        # rc 1 do jq é "saída vazia ou falsa", e lista sem nenhuma aba é isso.
+        (( rc == 0 || rc == 1 )) || die "adaptador: não consegui ler a lista de abas"
         ;;
     rotular)
         [[ $# -ge 2 ]] || die "adaptador: rotular precisa de aba e rótulo"

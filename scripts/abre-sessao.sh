@@ -33,6 +33,12 @@ while (( $# )); do
     esac
 done
 [[ -n "$NOME"    ]] || die "abre-sessao: --nome é obrigatório, e é o nome do trabalho"
+# O nome vira componente de caminho quando a tela é gravada, e ele chega como
+# texto livre de quem despacha. Sem esta recusa, `--visivel ../../../.ssh/algo`
+# trunca o arquivo e o enche com o buffer da sessão.
+case "$NOME" in
+    */*|*..*|-*) die "abre-sessao: --nome vira nome de arquivo: sem barra, sem '..' e sem começar com '-'" ;;
+esac
 [[ -n "$BACKEND" ]] || die "abre-sessao: --backend é obrigatório"
 
 # shellcheck disable=SC1091
@@ -76,9 +82,11 @@ cmd=$(visivel_invoke "$BACKEND")
 [[ -n "$cmd" ]] || die "abre-sessao: $BACKEND é elegível e não declara comando interativo"
 # O comando vai pro shell como texto, não como argv: nome de modelo do agy tem
 # espaço e parêntese ("Gemini 3.1 Pro (High)"), e solto assim o shell nem sobe a
-# sessão. Citar é o que faz o valor chegar inteiro.
-cmd="${cmd//\{model\}/\'$MODEL\'}"
-cmd="${cmd//\{effort\}/\'$EFFORT\'}"
+# sessão. Citar é o que faz o valor chegar inteiro, e escapar a aspa dentro do
+# valor é o que impede o resto da linha de virar comando novo.
+cita() { local v="${1//\'/\'\\\'\'}"; printf "'%s'" "$v"; }
+cmd="${cmd//\{model\}/$(cita "$MODEL")}"
+cmd="${cmd//\{effort\}/$(cita "$EFFORT")}"
 # Marcador que sobrou é pior que erro: o worker sobe e roda com outra coisa.
 [[ "$cmd" != *"{"*"}"* ]] || die "abre-sessao: o comando de $BACKEND ficou com marcador por preencher: $cmd"
 # A API nunca entra em worker nenhum, e o modo visível não é exceção.
@@ -90,23 +98,40 @@ cmd="${cmd//\{effort\}/\'$EFFORT\'}"
 # dispara instalação no outro, então só sai tecla depois de o padrão casar.
 telas=$(visivel_telas "$BACKEND")
 if [[ -n "$telas" ]]; then
+    # Responde TODA tela que aparecer, não só a primeira: o codex mostra update e
+    # confiança em sequência, e parar na primeira deixa o worker na segunda.
     fim=$(( SECONDS + PRAZO ))
+    viu=0
     while (( SECONDS < fim )); do
         tela=$("$ADAPTADOR" ler "$PANE" 60)
         casou=0
         while IFS= read -r t; do
             [[ -n "$t" ]] || continue
-            padrao=$(jq -r '.padrao' <<<"$t")
+            # `// empty`: sem isso, entrada sem padrão vira a string "null" e
+            # casa qualquer tela que tenha "null" dentro, que é tecla no escuro.
+            padrao=$(jq -r '.padrao // empty' <<<"$t")
+            [[ -n "$padrao" ]] || continue
             if grep -qiF "$padrao" <<<"$tela"; then
                 while IFS= read -r tecla; do
                     "$ADAPTADOR" teclar "$PANE" "$tecla"
-                done < <(jq -r '.teclas[]' <<<"$t")
+                done < <(jq -r '.teclas[]? // empty' <<<"$t")
                 casou=1
             fi
         done <<<"$telas"
-        (( casou )) && break
+        if (( casou )); then viu=1; sleep 1; continue; fi
+        (( viu )) && break
         sleep 2
     done
+    # Tela de abertura que sobreviveu às teclas é worker travado, e devolver o
+    # painel dali é reportar sucesso pra sessão que nunca vai responder.
+    tela=$("$ADAPTADOR" ler "$PANE" 60)
+    while IFS= read -r t; do
+        [[ -n "$t" ]] || continue
+        padrao=$(jq -r '.padrao // empty' <<<"$t")
+        [[ -n "$padrao" ]] || continue
+        grep -qiF "$padrao" <<<"$tela" \
+            && die "abre-sessao: $BACKEND continua na tela de abertura ('$padrao') depois de ${PRAZO}s"
+    done <<<"$telas"
 fi
 
 printf '%s\n' "$PANE"

@@ -385,7 +385,18 @@ if [[ -n "$VISIVEL" ]]; then
     [[ -n "$modelo"   ]] && args+=(--model "$modelo")
     [[ -n "$esforco"  ]] && args+=(--effort "$esforco")
     [[ -n "$WORKTREE" ]] && args+=(--cwd "$WORKTREE")
-    exec "$ABRIDOR" "${args[@]}"
+    # A policy que decidiu vai junto. Sem isso o abridor relê a policy BASE, e
+    # quando o veredito mora no override local os dois lados divergem calados:
+    # um escolhe o backend, o outro recusa ou sobe outro comando.
+    export DELEGATE_POLICY="$POLICY"
+    # O dono é quem PEDIU o despacho, e sem `exec` o pai do abridor passa a ser
+    # este processo, que morre em seguida: toda sessão nasceria órfã.
+    export DELEGATE_DONO_PID="${DELEGATE_DONO_PID:-$PPID}"
+    "$ABRIDOR" "${args[@]}"; _rc=$?
+    # Sem `exec`, a limpeza volta a acontecer: o temporário da fusão ficava em
+    # $TMPDIR pra sempre a cada despacho visível.
+    rm -f ${_EFF:+"$_EFF"}
+    exit $_rc
 fi
 
 

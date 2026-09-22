@@ -593,10 +593,13 @@ mkdir -p "$TMP/bin2"
 cat > "$TMP/bin2/abre-sessao.sh" <<'SH'
 #!/usr/bin/env bash
 echo "$*" > "$ABRIDOR_CHAMADAS"
+printf '%s' "${DELEGATE_POLICY:-}" > "$ABRIDOR_POLICY"
+cat "${DELEGATE_POLICY:-/dev/null}" > "$ABRIDOR_POLICY.json" 2>/dev/null
 echo "w1:pY"
 SH
 chmod +x "$TMP/bin2/abre-sessao.sh"
 export ABRIDOR_CHAMADAS="$TMP/abridor.txt"
+export ABRIDOR_POLICY="$TMP/abridor-policy.txt"
 
 : > "$ABRIDOR_CHAMADAS"
 DELEGATE_ABRIDOR="$TMP/bin2/abre-sessao.sh" \
@@ -890,6 +893,206 @@ visivel_configurar "$POLICY" 2>/dev/null
 if [[ "$(visivel_prazo_ocioso)" =~ ^[0-9]+$ ]]; then
   ok "a policy do repo declara o prazo de ociosidade"
 else fail "a policy do repo não declara prazo: a varredura não roda aqui"; fi
+unset DELEGATE_ADAPTADOR
+
+echo "== achados da revisão adversarial =="
+export DELEGATE_ADAPTADOR="$ADAPT"
+
+# 1. O nome do trabalho vira componente de caminho, e vem de texto livre de quem
+# despacha. Sem recusa, `--visivel ../../../.ssh/authorized_keys` trunca o
+# arquivo e o enche com o buffer da sessão.
+saida=$(PATH="$TMP/bin:$PATH" DELEGATE_POLICY="$TMP/policy.json" ABRE_PRAZO_TELA_S=1 \
+  bash "$ABRE" --nome '../../../alvo/PWNED' --backend bom 2>&1); rc=$?
+if (( rc != 0 )); then ok "nome que sobe diretório é recusado na porta"
+else fail "o abridor aceitou nome com travessia de caminho"; fi
+REVG="$TMP/gate-rev"; mkdir -p "$REVG/sessoes"
+jq -n '{pane:"w1:pZ", tab:"w1:tZ", nome:"../../../alvo/PWNED", dono:'"$$"',
+        aberto_em:"2026-09-22T00:00:00Z"}' > "$REVG/sessoes/w1-tZ.json"
+printf 'tela\n' > "$HERDR_TELA"
+echo '{"result":{"tabs":[{"tab_id":"w1:tZ","label":"x","agent_status":"idle"}]}}' > "$TMP/tabs-rev.json"
+PATH="$TMP/bin:$PATH" DELEGATE_GATE_DIR="$REVG" HERDR_TABS="$TMP/tabs-rev.json" \
+  DELEGATE_POLICY="$TMP/policy-ciclo.json" bash "$FECHA" w1:tZ >/dev/null 2>&1
+if [[ ! -e "$TMP/alvo" && ! -e "$REVG/alvo" ]]; then
+  ok "e registro com nome torto não grava fora do diretório de telas"
+else fail "a gravação da tela escapou do diretório"; fi
+
+# 2. O comando vai ao shell como TEXTO. Aspa simples dentro do valor fecha a
+# citação, e o resto da linha vira comando.
+: > "$HERDR_CHAMADAS"
+rm -f "$TMP/PWNED"
+PATH="$TMP/bin:$PATH" DELEGATE_POLICY="$TMP/policy-tmpl.json" ABRE_PRAZO_TELA_S=1 \
+  bash "$ABRE" --nome injecao --backend bom --model "m'; touch $TMP/PWNED; :'" \
+  --effort baixo >/dev/null 2>&1
+# O texto capturado é entregue a um shell de verdade, com `bom` e `env` de
+# mentira: é isso que o herdr faz do outro lado, e medir a string sem executá-la
+# provaria só que ela foi escrita.
+printf '#!/usr/bin/env bash\nexit 0\n' > "$TMP/bin/bom"; chmod +x "$TMP/bin/bom"
+entregue=$(sed -n 's/^pane run w1:pZ //p' "$HERDR_CHAMADAS" | head -1)
+( PATH="$TMP/bin:/usr/bin:/bin"; eval "$entregue" ) >/dev/null 2>&1
+if [[ ! -e "$TMP/PWNED" ]]; then ok "aspa simples no modelo não vira comando novo"
+else fail "o modelo injetou comando no shell da aba: $entregue"; fi
+
+# 3. Varredura em que nada vence o prazo é o caminho NORMAL, e não pode sair 1:
+# qualquer gancho que encadeie com && trataria isso como falha.
+rm -rf "$REVG/sessoes"; mkdir -p "$REVG/sessoes"
+jq -n '{pane:"w1:pZ", tab:"w1:tZ", nome:"viva", dono:'"$$"',
+        aberto_em:"2026-09-22T00:00:00Z", parada_desde:'"$(date +%s)"'}' \
+  > "$REVG/sessoes/w1-tZ.json"
+PATH="$TMP/bin:$PATH" DELEGATE_GATE_DIR="$REVG" HERDR_TABS="$TMP/tabs-rev.json" \
+  DELEGATE_POLICY="$TMP/policy-ciclo.json" bash "$FECHA" --ociosas >/dev/null 2>&1; rc=$?
+if (( rc == 0 )); then ok "varredura sem nada a fechar sai zero"
+else fail "a varredura normal saiu $rc, e um gancho leria isso como falha"; fi
+
+# 4. Lista vazia com rc 0 apagava TODO registro de sessão. É o mesmo erro que o
+# leitor de tasks parou de cometer: vazio e ilegível não podem ser a mesma coisa.
+cat > "$TMP/bin/adapt-mudo" <<'SH'
+#!/usr/bin/env bash
+case "$1" in listar) exit 0 ;; *) exit 0 ;; esac
+SH
+chmod +x "$TMP/bin/adapt-mudo"
+rm -rf "$REVG/sessoes"; mkdir -p "$REVG/sessoes"
+for n in 1 2 3; do
+  jq -n --arg t "w1:t$n" '{pane:"w1:p", tab:$t, nome:"viva", dono:'"$$"'}' \
+    > "$REVG/sessoes/w1-t$n.json"
+done
+DELEGATE_GATE_DIR="$REVG" DELEGATE_ADAPTADOR="$TMP/bin/adapt-mudo" \
+  bash -c 'source "'"$LIB"'"; visivel_sincronizar' >/dev/null 2>&1
+if [[ "$(ls "$REVG/sessoes" | wc -l | tr -d ' ')" == 3 ]]; then
+  ok "lista que não dá pra ler não apaga registro nenhum"
+else fail "a varredura apagou registro de sessão viva com a lista muda"; fi
+DELEGATE_ADAPTADOR="$ADAPT"
+
+# 5. Instruir que sai zero sem a instrução ter sido absorvida faz a sessão
+# principal ler o eco do prompt como se fosse resposta.
+echo idle > "$HERDR_ESTADO"
+printf 'tela parada\n' > "$HERDR_TELA"
+PATH="$TMP/bin:$PATH" DIRIGE_PRAZO_PARTIDA_S=2 DIRIGE_PRAZO_S=2 \
+  bash "$DIRIGE" instruir w1:pZ "faça X" >/dev/null 2>&1; rc=$?
+if (( rc != 0 )); then ok "instrução que não move a sessão nem a tela sai diferente de zero"
+else fail "instruir afirmou sucesso sem a sessão ter recebido nada"; fi
+
+# 6. Tela de abertura: sem `// empty` o padrão ausente vira a string "null", e
+# `grep -F null` casa qualquer tela com "null" dentro, disparando tecla no escuro.
+cat > "$TMP/policy-tela-torta.json" <<'JSON'
+{
+  "backends": { "bom": { "enabled": true } },
+  "visivel": { "backends": { "bom": {
+    "elegivel": true, "medido_em": "2026-09-22",
+    "invoke": "bom --interativo", "porque": "medido",
+    "telas_de_abertura": [ { "teclas": ["enter"] } ] } } }
+}
+JSON
+: > "$HERDR_CHAMADAS"
+printf 'valor null na tela\n' > "$HERDR_TELA"
+PATH="$TMP/bin:$PATH" DELEGATE_POLICY="$TMP/policy-tela-torta.json" ABRE_PRAZO_TELA_S=2 \
+  bash "$ABRE" --nome tela-torta --backend bom >/dev/null 2>&1
+if ! grep -q 'send-keys' "$HERDR_CHAMADAS"; then
+  ok "tela de abertura sem padrão não dispara tecla"
+else fail "padrão ausente virou 'null' e casou a tela"; fi
+
+# Duas telas em sequência: o codex mostra update e confiança no mesmo backend, e
+# parar na primeira deixa o worker travado na segunda.
+cat > "$TMP/policy-duas-telas.json" <<'JSON'
+{
+  "backends": { "bom": { "enabled": true } },
+  "visivel": { "backends": { "bom": {
+    "elegivel": true, "medido_em": "2026-09-22",
+    "invoke": "bom --interativo", "porque": "medido",
+    "telas_de_abertura": [
+      { "padrao": "primeira tela", "teclas": ["down"], "porque": "x" },
+      { "padrao": "segunda tela", "teclas": ["enter"], "porque": "y" }
+    ] } } }
+}
+JSON
+: > "$HERDR_CHAMADAS"
+printf 'primeira tela\nsegunda tela\n' > "$HERDR_TELA"
+PATH="$TMP/bin:$PATH" DELEGATE_POLICY="$TMP/policy-duas-telas.json" ABRE_PRAZO_TELA_S=3 \
+  bash "$ABRE" --nome duas-telas --backend bom >/dev/null 2>&1
+if grep -q 'send-keys w1:pZ down' "$HERDR_CHAMADAS" \
+   && grep -q 'send-keys w1:pZ enter' "$HERDR_CHAMADAS"; then
+  ok "duas telas de abertura são respondidas, não só a primeira"
+else fail "parou na primeira tela (veio: '$(cat "$HERDR_CHAMADAS")')"; fi
+
+# Tela de abertura que continua na tela depois do prazo é worker travado, e
+# devolver o painel dali é reportar sucesso pra sessão que nunca vai responder.
+: > "$HERDR_CHAMADAS"
+cat > "$TMP/bin/herdr-mudo" <<'SH'
+#!/usr/bin/env bash
+echo "$*" >> "$HERDR_CHAMADAS"
+case "$1 $2" in
+  "tab create") echo '{"result":{"root_pane":{"pane_id":"w1:pZ"},"tab":{"tab_id":"w1:tZ"}}}' ;;
+  "pane read") cat "$HERDR_TELA" 2>/dev/null ;;
+  "workspace list") cat "$HERDR_ESPACOS" 2>/dev/null ;;
+  *) echo '{"result":{"type":"ok"}}' ;;
+esac
+SH
+chmod +x "$TMP/bin/herdr-mudo"
+mkdir -p "$TMP/bin-travado" && cp "$TMP/bin/herdr-mudo" "$TMP/bin-travado/herdr"
+printf 'Update available!\n' > "$HERDR_TELA"
+cat > "$TMP/policy-travado.json" <<'JSON'
+{
+  "backends": { "bom": { "enabled": true } },
+  "visivel": { "backends": { "bom": {
+    "elegivel": true, "medido_em": "2026-09-22",
+    "invoke": "bom --interativo", "porque": "medido",
+    "telas_de_abertura": [
+      { "padrao": "Update available!", "teclas": ["enter"], "porque": "z" }
+    ] } } }
+}
+JSON
+saida=$(PATH="$TMP/bin-travado:$PATH" DELEGATE_POLICY="$TMP/policy-travado.json" \
+  ABRE_PRAZO_TELA_S=2 bash "$ABRE" --nome travado --backend bom 2>&1); rc=$?
+# A tela do fingido não muda por tecla nenhuma, que é o retrato do worker que
+# não saiu da tela de abertura.
+if (( rc != 0 )); then ok "tela de abertura que sobreviveu às teclas sai diferente de zero"
+else fail "o abridor devolveu painel de worker travado na tela de abertura"; fi
+if grep -qi 'Update available' <<<"$saida"; then ok "e a recusa nomeia a tela que travou"
+else fail "a recusa não diz qual tela travou (veio: '$saida')"; fi
+
+# 7. Fechar depois de a gravação falhar apaga o material que o fechamento existe
+# pra preservar.
+cat > "$TMP/bin/adapt-cego" <<'SH'
+#!/usr/bin/env bash
+echo "$*" >> "$ADAPT_CEGO_CHAMADAS"
+case "$1" in ler) exit 3 ;; *) exit 0 ;; esac
+SH
+chmod +x "$TMP/bin/adapt-cego"
+export ADAPT_CEGO_CHAMADAS="$TMP/cego.txt"; : > "$ADAPT_CEGO_CHAMADAS"
+rm -rf "$REVG/sessoes"; mkdir -p "$REVG/sessoes"
+jq -n '{pane:"w1:pZ", tab:"w1:tZ", nome:"trabalho-caro", dono:'"$$"'}' \
+  > "$REVG/sessoes/w1-tZ.json"
+DELEGATE_GATE_DIR="$REVG" DELEGATE_ADAPTADOR="$TMP/bin/adapt-cego" \
+  DELEGATE_POLICY="$TMP/policy-ciclo.json" bash "$FECHA" w1:tZ >/dev/null 2>&1; rc=$?
+if (( rc != 0 )); then ok "gravação da tela que falhou impede o fechamento"
+else fail "fechou mesmo sem conseguir gravar a tela"; fi
+if ! grep -q 'fechar' "$ADAPT_CEGO_CHAMADAS"; then ok "e a aba continua de pé"
+else fail "a aba foi fechada com a tela perdida"; fi
+if [[ -f "$REVG/sessoes/w1-tZ.json" ]]; then ok "e o registro também"
+else fail "o registro sumiu junto com a tela"; fi
+DELEGATE_ADAPTADOR="$ADAPT"
+
+# 8. O despachante decide sobre a policy fundida com o override local, e o
+# abridor relia a BASE. Quando o veredito do modo visível mora na local, os dois
+# lados divergem em silêncio: um escolhe o backend, o outro recusa ou sobe outro.
+: > "$ABRIDOR_CHAMADAS"; : > "$ABRIDOR_POLICY"
+cp "$TMP/policy-lote.json" "$TMP/base.json"
+cat > "$TMP/base.local.json" <<'JSON'
+{ "visivel": { "backends": { "falso": {
+  "elegivel": true, "medido_em": "2026-09-22", "porque": "medido só no override",
+  "invoke": "falso --do-override" } } } }
+JSON
+DELEGATE_ABRIDOR="$TMP/bin2/abre-sessao.sh" DELEGATE_POLICY="$TMP/base.json" \
+  DELEGATE_GATE_DIR="$TMP/gate-pol" bash "$DELEG" --task implement --visivel mesma-policy \
+  >/dev/null 2>&1
+recebida=$(cat "$ABRIDOR_POLICY" 2>/dev/null)
+if [[ -n "$recebida" ]] \
+   && [[ "$(jq -r '.visivel.backends.falso.invoke' "$ABRIDOR_POLICY.json" 2>/dev/null)" == "falso --do-override" ]]; then
+  ok "o abridor recebe a mesma policy fundida que decidiu o despacho"
+else fail "o abridor leria outra policy (veio: '$recebida')"; fi
+# `exec` pulava o trap de limpeza, e cada despacho visível deixava o temporário
+# da fusão em $TMPDIR pra sempre.
+if [[ ! -e "$recebida" ]]; then ok "e o temporário da fusão não fica pra trás"
+else fail "o temporário da fusão sobreviveu ao despacho: $recebida"; fi
 unset DELEGATE_ADAPTADOR
 
 echo "== cenário de ponta a ponta =="
