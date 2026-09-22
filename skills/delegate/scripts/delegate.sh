@@ -190,6 +190,15 @@ if [[ "$TASKS" == 1 ]]; then
     # Uma abertura por task: dois `sed` no mesmo arquivo podiam cair em lados
     # diferentes de uma reescrita e imprimir tipo de uma versão com branch de
     # outra.
+    # Ocioso e quebrado precisam de telas diferentes. A barra some quando não há
+    # nada em curso e sumia igual quando a leitura quebrou, e foi assim que um
+    # caminho de config errado deixou a camada morta por um dia inteiro sem
+    # ninguém notar. Gate que não dá pra ler não é "nada em curso": é não saber.
+    if [[ ! -d "$GATE_DIR" || ! -r "$GATE_DIR" || ! -x "$GATE_DIR" ]]; then
+        if [[ "$ONELINE" == 1 ]]; then echo "dlg: ?"
+        else echo "estado ilegível em $GATE_DIR"; fi
+        exit 0
+    fi
     if [[ "$ONELINE" == 1 ]]; then
         # A barra de status limpa a entrada quando o output vem vazio, então
         # ocioso aqui é silêncio, e não frase: "nenhuma task em curso" deixaria a

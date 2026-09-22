@@ -718,6 +718,42 @@ else fail "sem a ferramenta o modo visível não nomeou a causa (rc=$rc): '$said
 if [[ ! -s "$FALSO_CHAMADAS" ]]; then ok "e também não caiu no modo antigo"
 else fail "caiu no modo de lote sem a ferramenta"; fi
 
+echo "== camada morta se anuncia =="
+# Vazio significa ocioso, e só isso. O dia em que um caminho de config errado
+# deixou a camada morta, a barra ficou idêntica a "nada em curso" por um dia
+# inteiro, e é essa confusão que o aceite proíbe.
+quebrado=$(DELEGATE_GATE_DIR="$TMP/gate-que-nao-existe" bash "$DELEG" --tasks --oneline 2>&1)
+if [[ -n "$quebrado" ]]; then ok "leitor sem acesso ao estado não sai vazio"
+else fail "leitura quebrada saiu vazia, igual a ocioso"; fi
+
+mkdir -p "$TMP/gate-vazio/tasks"
+ocioso=$(DELEGATE_GATE_DIR="$TMP/gate-vazio" bash "$DELEG" --tasks --oneline 2>&1)
+if [[ -z "$ocioso" ]]; then ok "ocioso continua saindo vazio"
+else fail "ocioso deixou de ser silêncio (veio: '$ocioso')"; fi
+if [[ "$quebrado" != "$ocioso" ]]; then ok "e quebrado é diferente de ocioso na tela"
+else fail "quebrado e ocioso mostram a mesma coisa"; fi
+
+# Formato da linha do caso normal: outras telas já consomem `dlg: <balde>`, e
+# mudar isso quebraria quem lê sem avisar.
+mkdir -p "$TMP/gate-cheio/tasks/implement-aaaaaa"
+printf 'estado=em curso\ntask=implement\nbalde=falso\n' \
+  > "$TMP/gate-cheio/tasks/implement-aaaaaa/meta"
+printf 'balde=falso\npid=%s\nid=implement-aaaaaa\n' "$$" \
+  > "$TMP/gate-cheio/slot.falso"
+normal=$(DELEGATE_GATE_DIR="$TMP/gate-cheio" bash "$DELEG" --tasks --oneline 2>&1)
+if [[ "$normal" == "dlg: falso" ]]; then ok "a linha do caso normal não muda de formato"
+else fail "o formato da linha mudou (veio: '$normal')"; fi
+
+# A tabela é a outra superfície do mesmo leitor, e mente do mesmo jeito.
+tab_quebrado=$(DELEGATE_GATE_DIR="$TMP/gate-que-nao-existe" bash "$DELEG" --tasks 2>&1)
+tab_ocioso=$(DELEGATE_GATE_DIR="$TMP/gate-vazio" bash "$DELEG" --tasks 2>&1)
+if [[ "$tab_quebrado" != "$tab_ocioso" ]]; then
+  ok "na tabela, quebrado também difere de ocioso"
+else fail "a tabela mostra a mesma coisa nos dois casos (veio: '$tab_ocioso')"; fi
+if grep -q 'nenhuma task em curso' <<<"$tab_ocioso"; then
+  ok "e ocioso na tabela continua dizendo o que dizia"
+else fail "a tabela de ocioso mudou (veio: '$tab_ocioso')"; fi
+
 echo
 echo "== $PASS passed, $FAIL failed =="
 (( FAIL == 0 ))

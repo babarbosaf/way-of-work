@@ -1398,7 +1398,10 @@ virgem="$TMP/gate-virgem"
 rm -rf "$virgem"
 saida=$(DELEGATE_GATE_DIR="$virgem" bash "$DELEGATE" --tasks 2>&1); rc=$?
 assert_eq "gate inexistente: a leitura sai 0" "$rc" "0"
-assert_contains "e diz que não tem nada em curso" "$saida" "nenhuma task em curso"
+# Mudou com o AC-08: gate que não dá pra ler não é "nada em curso", é não saber.
+# Sair vazio nos dois casos foi o que deixou a camada morta por um dia inteiro
+# sem ninguém notar.
+assert_contains "e diz que não conseguiu ler" "$saida" "estado ilegível"
 [[ -e "$virgem" ]] && fail "a leitura criou o gate que não existia" \
   || ok "a leitura não criou o gate"
 # Log intocado: mtime é o que um laço de 2s mexeria, e conteúdo não pega isso.
