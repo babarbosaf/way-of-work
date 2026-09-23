@@ -6,7 +6,8 @@ escrever qualquer documento.
 
 A entrevista alimenta principalmente o PRD. As rotas e o design se derivam do PRD depois, com
 entrevistas curtas e complementares (ver `anatomia-rotas.md` e `anatomia-design.md`), e o
-CONVENTIONS.md consolida a camada técnica levantada aqui (ver `anatomia-conventions.md`).
+CONVENTIONS.md recebe só a regra universal de construção levantada aqui (ver
+`anatomia-conventions.md`). O contrato de cada funcionalidade fica na seção dela no PRD.
 
 ## Conteúdo
 
@@ -100,8 +101,8 @@ Repetir o loop para cada feature. Fechar cada uma com o mini-resumo antes de ir 
 ## Fase 3: camadas transversais
 
 Objetivo: as seções que não pertencem a uma feature só, mas atravessam o produto inteiro.
-No PRD-alvo são as seções finais (notificações, dados/sync, i18n): comportamento no PRD,
-detalhamento técnico no CONVENTIONS.md (regra de fronteira). Cobrir as que se aplicam:
+No PRD-alvo são as seções finais (notificações, dados/sync, i18n), com comportamento,
+contrato e edge cases na própria seção (regra de fronteira). Cobrir as que se aplicam:
 
 - **Dados e sincronização.** De onde vêm os dados? Há fonte externa ou API? Qual a cadência
   de atualização de cada tipo de dado (o que muda a cada minuto vs o que muda por semana)?

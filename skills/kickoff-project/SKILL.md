@@ -48,8 +48,8 @@ nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
 ### Passo 1: Entrevista
 
 Ler `references/metodo-entrevista.md` e conduzir a entrevista. Ela cobre, em fases:
-enquadramento e stack, pilares de engajamento, deep-dive por feature (modelo, estrutura,
-regras exatas, edge cases, pontos a definir), camadas transversais (dados e sync,
+enquadramento e stack, pilares de engajamento, deep-dive por feature (comportamento com
+regras exatas, contrato, edge cases, o que falta decidir), camadas transversais (dados e sync,
 notificações, performance, i18n, admin) e restrições invioláveis.
 
 Disciplina: um bloco de tema por mensagem, no máximo 1 a 3 perguntas por vez, forçar
@@ -84,11 +84,11 @@ Ler `references/anatomia-prd.md` e escrever o PRD a partir do material da entrev
 Consultar a seção equivalente de `references/exemplos/PRD.md` para calibrar o nível de
 detalhe de cada seção (abrir por seção, não carregar o arquivo inteiro de uma vez).
 
-Garantir os diferenciais: padrão de seção repetido (modelo, estrutura, regras em tabela,
-edge cases, pontos a definir), a seção de restrições invioláveis no imperativo, e
-as seções transversais em nível de comportamento. O detalhamento técnico delas nasce aqui
-na conversa, mas o texto final aponta para o CONVENTIONS.md (regra de fronteira na
-anatomia). Guardar o material técnico levantado para o Passo 5.
+Garantir os diferenciais: padrão de seção repetido (comportamento, contrato, edge cases),
+a tag `no ar` ou `previsto` em cada funcionalidade, `a definir` na célula em vez de bloco
+de pendências, a seção de restrições invioláveis no imperativo, e as seções transversais
+no mesmo padrão. O contrato de cada funcionalidade fica na seção dela; só a regra
+universal de construção levantada na entrevista vai para o Passo 5.
 
 ### Passo 3: Rotas
 

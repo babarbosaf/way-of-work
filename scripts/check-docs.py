@@ -281,6 +281,42 @@ def check_estado(path: Path, ach: Achados) -> None:
         if m := RISCADO.search(ln):
             ach.add(nome, n, f"texto riscado ({m.group(0)[:30]}); estado presente se reescreve, não se risca")
 
+    subdoc = "docs/prd/" in path.as_posix()
+    if path.name in COBRA_TAG or subdoc:
+        # PRD índice delega a tag aos subdocs de docs/prd/, que são cobrados por seção.
+        indice = path.name == "PRD.md" and "docs/prd/" in texto
+        check_tags(texto, nome, ach, exige_tag=not (subdoc or indice))
+
+
+# A tag marca a funcionalidade, não a seção: vai na primeira linha quando a seção
+# inteira está num estado, e no item quando mistura. No título não: o slug é âncora,
+# e trocar `previsto` por `no ar` quebraria todo link para a seção. Funcionalidade é a seção H2 do PRD
+# que tem "### Comportamento"; visão geral e restrição não levam tag. Os quatro
+# exemplos do kickoff passavam limpos com zero tag, porque nada cobrava a regra.
+TAG = re.compile(r"`(?:no ar|previsto)`")
+COBRA_TAG = {"PRD.md", "README.md"}
+
+
+def check_tags(texto: str, nome: str, ach: Achados, exige_tag: bool) -> None:
+    if exige_tag and not TAG.search(texto):
+        ach.add(nome, 0, "doc de estado sem tag; cada funcionalidade leva `no ar` ou `previsto`")
+        return
+    secoes: list[tuple[int, str, list[str]]] = []
+    cerca = False
+    for n, ln in enumerate(texto.splitlines(), 1):
+        if ln.lstrip().startswith("```"):
+            cerca = not cerca
+        if not cerca and ln.startswith("## "):
+            secoes.append((n, ln[3:].strip(), []))
+        elif secoes:
+            secoes[-1][2].append(ln)
+    for n, titulo, corpo in secoes:
+        funcionalidade = any(re.match(r"###\s+Comportamento\b", c) for c in corpo)
+        if funcionalidade and not TAG.search(titulo) and not any(TAG.search(c) for c in corpo):
+            ach.add(nome, n, f"funcionalidade sem tag ({titulo[:44]!r}); marque `no ar` ou `previsto` na primeira linha ou em cada item")
+        if TAG.search(titulo):
+            ach.add(nome, n, f"tag no título ({titulo[:44]!r}); o slug é âncora e quebra na troca de estado: tag na primeira linha")
+
 
 # ---------------------------------------------------------------------- molde
 
@@ -305,7 +341,7 @@ def check_molde(path: Path, ach: Achados) -> None:
     em_tabela = entradas = 0
     for n, ln in enumerate(linhas, 1):
         # O AGENTS roteia ("quando X, leia Y") e por isso linka os docs; roteamento
-        # é papel dele, e o template da casa acusava. Só o mapa ("doc, para quem") é
+        # é papel dele, e o próprio _template acusava. Só o mapa ("doc, para quem") é
         # do README.
         if path.name != "AGENTS.md" and ln.lstrip().startswith("|") and LINK_DOC_RAIZ.search(ln):
             em_tabela += 1

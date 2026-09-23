@@ -52,7 +52,7 @@ esperado_pega "subdoc sem indice"      "sem PRD.md"           --grafo prd-orfao
 
 echo "molde"
 esperado_limpo "README tem mapa e arvore" --molde molde-bom/README.md molde-bom/PRD.md molde-bom/CONVENTIONS.md
-esperado_limpo "diagrama de fluxo nao e arvore" --molde molde-diagrama/PRD.md
+esperado_limpo "diagrama de fluxo nao e arvore" --molde falso-positivo-diagrama/PRD.md
 esperado_limpo "roteamento do AGENTS nao e mapa" --molde molde-bom/AGENTS.md
 esperado_pega "mapa de docs fora do README" "mapa de docs"   --molde molde-ruim/PRD.md
 esperado_pega "arvore de pastas fora do README" "árvore"     --molde molde-ruim/CONVENTIONS.md
@@ -64,6 +64,9 @@ esperado_limpo "PRD bom passa" --estado bom/PRD.md
 # O CHANGELOG é o log: cobrar dele que não tenha seção de histórico é cobrar
 # que ele não seja o que é. Pego rodando --estado contra o BIP em 2026-09-15.
 esperado_limpo "CHANGELOG não é cobrado de não ser log" --estado bom/CHANGELOG.md
+# A tag marca a funcionalidade, não a seção: primeira linha quando a seção inteira
+# está num estado, item quando mistura. Restrição e visão geral não são funcionalidade.
+esperado_limpo "tag no titulo ou no item" --estado tags-bom/PRD.md tags-bom/README.md
 
 echo "estado sujo, um check por linha"
 esperado_pega "data em heading"       "data em heading"     --estado ruim-estado/PRD.md
@@ -73,6 +76,12 @@ esperado_pega "texto riscado"         "riscado"             --estado ruim-estado
 # Bloco de pontos a definir some da vista e apodrece: o item em aberto vive no
 # backlog, onde decai, ou vira "a definir" na célula exata da tabela.
 esperado_pega "secao de pontos em aberto" "em aberto"       --estado ruim-estado/PRD.md
+# Os exemplos do kickoff passaram limpos com zero tag: o lint não cobrava a regra.
+esperado_pega "funcionalidade sem tag" "Jornal"              --estado tags-ruim/PRD.md
+# Tag no título muda o slug: toda troca de estado quebraria link pra seção.
+esperado_pega "tag no titulo"          "tag no título"       --estado tags-ruim/PRD.md
+esperado_pega "README sem tag"         "sem tag"             --estado tags-ruim/README.md
+esperado_pega "subdoc de PRD sem tag"  "Resumo"              --estado tags-ruim/docs/prd/jornal.md
 
 echo "ciclo de vida limpo"
 esperado_limpo "arvore de decisoes boa passa" --ciclo bom

@@ -54,9 +54,11 @@ específico: stack, padrões e regras locais. Não re-narrar o modelo compartilh
 
 - **Padrão, não tutorial.** Cada seção registra a regra e as peças nomeadas; não ensina
   a implementar do zero. Quem lê é um agente com acesso ao código.
-- **Tabela para cadência e mapa.** Jobs de sync, crons, matriz do que roda onde: tabela.
+- **Tabela para matriz.** O que roda onde, o que o CI roda, cada eval: tabela. Cron e job
+  de uma funcionalidade moram na seção dela no PRD.
 - **O código vence.** Como no DESIGN.md: padrão que mudou no código atualiza o doc no
-  mesmo PR. CONVENTIONS.md descreve o estado atual, não a história (história é ADR).
+  mesmo PR. CONVENTIONS.md descreve o estado final com tags, como todo doc de estado; a
+  história mora no git.
 - **Racional embutido.** Regra sem porquê vira cargo cult; uma linha de racional basta
   (ex.: a regra "1 página = 1 roundtrip" nasceu de um diagnóstico de 5-7s de navegação).
 

@@ -7,7 +7,7 @@ prd: PRD.md#1-visão-geral
 
 > **Papel deste doc.** O como se constrói: stack, padrões de implementação e
 > regras obrigatórias. Depende do [`PRD.md`](PRD.md), que carrega o
-> comportamento prometido de cada domínio.
+> comportamento e o contrato de cada domínio.
 
 ## 1. Stack
 
@@ -28,8 +28,8 @@ lista no mesmo commit, senão ele não existe pra quem clona.
 
 ## 2. Regras do projeto
 
-- **Nome de ferramenta mora num arquivo só.** A camada de sessões nomeia o
-  multiplexer apenas em `scripts/herdr-adapter.sh`, e um assert da suíte varre os
+- **Nome de ferramenta externa mora num arquivo só**, o adaptador dela (hoje o
+  multiplexer, em `scripts/herdr-adapter.sh`), e um assert da suíte varre os
   demais scripts pra provar isso. Trocar de ferramenta é reescrever um arquivo.
 - **Policy é dado, nunca julgamento na hora.** Cascata, cota, prazo, teto de
   prompt e elegibilidade vivem em `config/model-policy.json`. Script que crava
@@ -85,32 +85,7 @@ Padrão de arquivo: `TMP=$(mktemp -d)` com `trap` de limpeza, contadores `PASS` 
 - **O assert espia a peça que a guarda muda.** Observar uma que fica calada de
   qualquer jeito não separa a guarda existir da guarda não existir.
 
-## 5. Camada de sessões
-
-A implementação tem quatro scripts e uma biblioteca:
-
-| Arquivo | Papel |
-|---|---|
-| `scripts/herdr-adapter.sh` | único que nomeia a ferramenta; traduz verbo em comando |
-| `scripts/abre-sessao.sh` | cria a aba, sobe o worker, responde as telas de abertura |
-| `scripts/dirige-sessao.sh` | instruir, ler, processo, assumir |
-| `scripts/fecha-sessao.sh` | fecha uma aba, ou varre as ociosas |
-| `skills/delegate/scripts/lib-visivel.sh` | elegibilidade, registro, sincronização, prazo |
-
-- **O estado mora no rótulo da aba e num registro em disco.** Metadado da
-  ferramenta expira por prazo próprio, e expirar apagaria a linha da sessão cujo
-  despachante morreu, que é justamente a que precisa aparecer.
-- **A instrução vai como texto digitado**, mais a tecla de envio. O canal de
-  prompt entrega instrução longa como conteúdo colado, e o worker a recusa como
-  injeção.
-- **A espera é por consulta de estado com prazo próprio.** A espera embutida da
-  ferramenta já pendurou além de dois minutos com o worker tendo respondido.
-- **Duas leituras de tela iguais significam interface pronta.** Instrução que
-  chega enquanto a interface desenha se perde.
-- **Grupo de projeto nasce com uma aba.** Quem não reusa a aba raiz deixa uma aba
-  vazia por projeto, e fechar a última aba de um grupo fecha o grupo junto.
-
-## 6. Processo
+## 5. Processo
 
 Antes de propor commit:
 
@@ -128,7 +103,7 @@ Commit de correção se revisa dobrado, e se procura o gêmeo. Numa revisão
 adversarial de três rodadas desta base, todo achado alto estava no que tinha
 acabado de ser tocado.
 
-## 7. Índice de ADRs
+## 6. Índice de ADRs
 
 | ADR | Decisão | Status |
 |---|---|---|
@@ -137,5 +112,5 @@ acabado de ser tocado.
 
 ## Relacionado
 
-- [`PRD.md`](PRD.md) consome deste doc o detalhamento técnico de cada domínio que
-  ele descreve em nível de comportamento.
+- [`PRD.md`](PRD.md) consome deste doc a regra universal de construção; o
+  contrato de cada domínio mora na seção dele no PRD.

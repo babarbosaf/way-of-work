@@ -29,26 +29,14 @@ Os domínios abaixo são numerados na ordem em que aparecem num dia de trabalho.
 
 ## 2. Ciclo de trabalho
 
-### Modelo
+`no ar`
+
+### Comportamento
 
 Pedido entra, e a primeira decisão é o trilho. Errar o trilho para cima custa
 cerimônia sobre trabalho de dez minutos; errar para baixo perde o contrato de
 uma feature que vai durar semanas. O default é o trilho mais barato, com
 promoção quando o trabalho cresce.
-
-### Estrutura
-
-| Trilho | Quando | O que produz |
-|---|---|---|
-| Direto, com TDD | todo o resto | commit verde |
-| Plan mode | o *quê* está fechado, o *como* tem mais de uma forma defensável | plano com arquivo tocado por passo |
-| `/kickoff-project` | projeto novo | PRD, ROUTES, DESIGN, CONVENTIONS, AGENTS, FEEDBACK |
-| `/to-spec` → `/to-tickets` → `/execute` | várias sessões, muitos arquivos, toca contrato ou prod | uma PR, um commit verde por ticket |
-
-A promoção é mecânica: plano que passou de cinco passos, ou que o dono quis
-salvar, já é spec.
-
-### Regras
 
 O backlog tem cinco estágios de maturidade, e um item aparece em exatamente um
 deles. Promover é mover, nunca copiar.
@@ -65,6 +53,18 @@ O custo de entrada cresce com o estágio: captura é uma linha, dossiê só se
 escreve na véspera do build. Fundir os estágios 1 e 2 é o gerador de lixo, porque
 produz 25 linhas de análise antes de alguém decidir que o item importa.
 
+### Contrato
+
+| Trilho | Quando | O que produz |
+|---|---|---|
+| Direto, com TDD | todo o resto | commit verde |
+| Plan mode | o *quê* está fechado, o *como* tem mais de uma forma defensável | plano com arquivo tocado por passo |
+| `/kickoff-project` | projeto novo | PRD, ROUTES, DESIGN, CONVENTIONS, AGENTS, FEEDBACK |
+| `/to-spec` → `/to-tickets` → `/execute` | várias sessões, muitos arquivos, toca contrato ou prod | uma PR, um commit verde por ticket |
+
+A promoção é mecânica: plano que passou de cinco passos, ou que o dono quis
+salvar, já é spec.
+
 ### Edge cases
 
 - **Spec aprovada é append-only.** Contrato que muda no caminho ganha
@@ -80,7 +80,9 @@ produz 25 linhas de análise antes de alguém decidir que o item importa.
 
 ## 3. Delegação e orquestração de workers
 
-### Modelo
+`no ar`
+
+### Comportamento
 
 O orquestrador é a sessão que conversa com o dono, e ela não gasta a própria
 janela em trabalho mecânico. Varredura de codebase, boilerplate, teste repetido
@@ -91,7 +93,16 @@ O que decide onde a task roda é dado, nunca julgamento na hora:
 `config/model-policy.json` é a fonte única, com override pessoal em
 `config/model-policy.local.json`, que é gitignored e funde em runtime.
 
-### Estrutura
+- **Cota esgotada de um pool não é veredito sobre o backend.** O provedor segue
+  elegível pelos outros pools dele.
+- **Falha de CLI arma cooldown, nunca vira `enabled: false` na config.** Sondagem
+  mede a janela, e escrever o resultado na policy congela um estado temporário.
+- **O prompt tem teto em bytes**, medido no log: o maior resultado útil entrou
+  com 93.588 bytes, e o teto mora na policy, não no script.
+- **Prazo por tipo de task mora na policy**, e nenhum consumidor crava número
+  próprio.
+
+### Contrato
 
 Cinco tipos de task (`boilerplate`, `implement`, `pesquisa`, `review`, `scan`),
 três backends (`codex`, `agy`, `claude`), e uma cascata por tipo: o despachante
@@ -117,17 +128,6 @@ duração.
 | `tier_fallback` | 60 min |
 | `silent_fail` | 60 min |
 
-### Regras
-
-- **Cota esgotada de um pool não é veredito sobre o backend.** O provedor segue
-  elegível pelos outros pools dele.
-- **Falha de CLI arma cooldown, nunca vira `enabled: false` na config.** Sondagem
-  mede a janela, e escrever o resultado na policy congela um estado temporário.
-- **O prompt tem teto em bytes**, medido no log: o maior resultado útil entrou
-  com 93.588 bytes, e o teto mora na policy, não no script.
-- **Prazo por tipo de task mora na policy**, e nenhum consumidor crava número
-  próprio.
-
 ### Edge cases
 
 - **Worker que escapou da worktree** aparece no `git status` da árvore principal,
@@ -143,7 +143,9 @@ duração.
 
 ## 4. Camada de sessões
 
-### Modelo
+`no ar`
+
+### Comportamento
 
 Um worker despachado às cegas não tem nome nem estado visível, então worker
 parado esperando resposta fica idêntico a worker trabalhando. A diferença só
@@ -153,21 +155,6 @@ O modo visível resolve isso colocando o worker numa aba nomeada do multiplexer,
 que o dono vê na lateral, e que a sessão consegue dirigir. É **opcional e
 pedido**: sem a flag, nenhuma linha de código toca a ferramenta de terminal, e o
 despacho é byte a byte o de antes.
-
-### Estrutura
-
-| Verbo | O que faz |
-|---|---|
-| abrir | cria a aba com o nome do trabalho, sobe o worker interativo, devolve o painel |
-| instruir | digita a instrução na sessão viva e espera ela voltar a parar |
-| ler | devolve o que está na tela agora |
-| assumir | foca o painel, e o dono continua a conversa sem trocar de processo |
-| fechar | grava a tela em arquivo e só então fecha a aba |
-
-Os nomes da ferramenta moram num arquivo só, `scripts/herdr-adapter.sh`. Trocar
-de multiplexer é reescrever esse arquivo, não caçar o nome espalhado.
-
-### Regras
 
 - A aba nasce com o nome do trabalho, nunca com um contador.
 - Quem dirige se distingue na lista por marca no rótulo, e o estado mora no
@@ -179,6 +166,26 @@ de multiplexer é reescrever esse arquivo, não caçar o nome espalhado.
 - Quem chama a varredura é o `--gc` do despachante, guardado por existir registro
   de sessão.
 
+### Contrato
+
+| Verbo | O que faz |
+|---|---|
+| abrir | cria a aba com o nome do trabalho, sobe o worker interativo, devolve o painel |
+| instruir | digita a instrução na sessão viva e espera ela voltar a parar |
+| ler | devolve o que está na tela agora |
+| assumir | foca o painel, e o dono continua a conversa sem trocar de processo |
+| fechar | grava a tela em arquivo e só então fecha a aba |
+
+| Arquivo | Papel |
+|---|---|
+| `scripts/herdr-adapter.sh` | único que nomeia a ferramenta; traduz verbo em comando |
+| `scripts/abre-sessao.sh` | cria a aba, sobe o worker, responde as telas de abertura |
+| `scripts/dirige-sessao.sh` | instruir, ler, processo, assumir |
+| `scripts/fecha-sessao.sh` | fecha uma aba, ou varre as ociosas |
+| `skills/delegate/scripts/lib-visivel.sh` | elegibilidade, registro, sincronização, prazo |
+
+Trocar de multiplexer é reescrever o adaptador, não caçar o nome espalhado.
+
 ### Edge cases
 
 - **Sessão órfã**, cujo despachante morreu, não fecha por prazo nenhum: worker
@@ -189,14 +196,22 @@ de multiplexer é reescrever esse arquivo, não caçar o nome espalhado.
   cair calado no modo antigo.
 - **Instrução longa não vai pelo canal de prompt da ferramenta**, que a entrega
   como conteúdo colado e faz o worker recusá-la como injeção. Vai como texto
-  digitado.
+  digitado, mais a tecla de envio.
+- **A espera embutida da ferramenta já pendurou** além de dois minutos com o
+  worker tendo respondido. A espera é por consulta de estado, com prazo próprio.
+- **Instrução que chega enquanto a interface desenha se perde.** Duas leituras de
+  tela iguais seguidas significam interface pronta.
+- **Grupo de projeto nasce com uma aba.** Quem não reusa a aba raiz deixa uma aba
+  vazia por projeto, e fechar a última aba de um grupo fecha o grupo junto.
 - **O que a aba devolve é o buffer da tela, não um arquivo**, então fechar sem
   gravar apaga o material que o dono quer ler depois.
 
 
 ## 5. Memória e continuidade
 
-### Modelo
+`no ar`
+
+### Comportamento
 
 Duas coisas atravessam o fim de uma sessão, e elas não se misturam. **Memória** é
 fato durável sobre o dono, sobre como trabalhar e sobre recursos externos.
@@ -205,17 +220,6 @@ fecha.
 
 Misturar os dois produz memória cheia de status obsoleto, que é pior que memória
 vazia, porque o agente age com ela.
-
-### Estrutura
-
-Memória é um arquivo por fato, com frontmatter, indexado num `MEMORY.md` que
-carrega uma linha por memória. Quatro tipos: `user`, `feedback`, `project`,
-`reference`.
-
-Handoff é um arquivo só, em `_tmp/`, gitignored. Substitui, não acumula: dois
-handoffs vivos na mesma pasta é achado.
-
-### Regras
 
 | Artefato | Prazo | O que acontece no fim |
 |---|---|---|
@@ -228,6 +232,15 @@ Transiente sem prazo nunca é apagado, e por isso a data se escreve, não se
 presume. A regra de não acumular falhou dezenas de vezes antes de existir data,
 porque prosa não se executa.
 
+### Contrato
+
+Memória é um arquivo por fato, com frontmatter, indexado num `MEMORY.md` que
+carrega uma linha por memória. Quatro tipos: `user`, `feedback`, `project`,
+`reference`.
+
+Handoff é um arquivo só, em `_tmp/`, gitignored. Substitui, não acumula: dois
+handoffs vivos na mesma pasta é achado.
+
 ### Edge cases
 
 - **Memória que conflita com o `AGENTS.md` se corrige na hora.** O arquivo tem
@@ -237,29 +250,18 @@ porque prosa não se executa.
 - **Memória não versionada**, porque é comportamento de agente, específico da
   máquina.
 
+
 ## 6. Docs vivos
 
-### Modelo
+`no ar`
 
-Doc de estado descreve **o presente** ou **o futuro desejado depois das specs em
-aberto**. Não existe terceiro tempo. O que foi decidido, tentado e descartado
-mora no git e no `CHANGELOG.md`, que é onde histórico tem leitor.
+### Comportamento
 
-### Estrutura
-
-| Doc | O que carrega |
-|---|---|
-| `PRD.md` | o que o usuário percebe |
-| `CONVENTIONS.md` | o que só quem constrói percebe |
-| `ROUTES.md` | fluxo e endereços |
-| `DESIGN.md` | padrão visual |
-| ADR em `docs/adrs/` | decisão cara de reverter, viva enquanto o `Status:` é vivo |
-
-A fronteira entre os dois primeiros é a que mais escorrega: comportamento
-prometido fica no PRD, com link pro CONVENTIONS onde encostar em técnica, e o
-detalhamento nunca é duplicado dos dois lados.
-
-### Regras
+Doc de estado descreve **o estado final**, o produto depois das specs em aberto,
+e cada funcionalidade leva `no ar` ou `previsto`. Não existe prosa de "hoje"
+contra "no alvo". O que foi decidido, tentado e descartado mora no git e no
+`CHANGELOG.md`, que é onde histórico tem leitor. Cada assunto mora num doc só; a
+régua completa é o [`docs/doc-standard.md`](docs/doc-standard.md).
 
 - **README descreve pra quem chega de fora; AGENTS.md manda em quem já está
   dentro.** A marca é gramatical: README em terceira pessoa, AGENTS.md no
@@ -273,6 +275,22 @@ detalhamento nunca é duplicado dos dois lados.
 - **Subdoc de PRD carrega as duas direções do grafo:** de quem depende, no topo,
   e quem depende dele, no fim.
 
+### Contrato
+
+| Doc | O que carrega |
+|---|---|
+| `README.md` | o que é, fluxo com tags, o único mapa de pastas e de docs |
+| `PRD.md` | uma seção por funcionalidade: comportamento, contrato e edge cases |
+| `CONVENTIONS.md` | só a regra universal de construção, até 150 linhas |
+| `ROUTES.md` | fluxo e endereços |
+| `DESIGN.md` | padrão visual |
+| ADR em `docs/adrs/` | decisão cara de reverter, viva enquanto o `Status:` é vivo |
+
+A fronteira que mais escorrega é PRD contra CONVENTIONS, e se resolve pelo
+assunto, não pelo público: o contrato de uma funcionalidade fica na seção dela, e
+o CONVENTIONS guarda só o que vale pra qualquer tarefa. Quem cobra:
+`check-docs.py --estado` (tag por funcionalidade) e `--molde` (mapa, árvore e teto).
+
 ### Edge cases
 
 - **Doc de estado que vira decision log** cresce sem fim e ninguém lê até o fim.
@@ -284,9 +302,12 @@ detalhamento nunca é duplicado dos dois lados.
   pro doc que possui o assunto, no imperativo, sem a data e sem as alternativas
   descartadas.
 
+
 ## 7. Enforcement
 
-### Modelo
+`no ar`
+
+### Comportamento
 
 Toda regra que importa vira hook que bloqueia em runtime, lint que roda antes do
 commit, ou assert na suíte. A que depende de o agente lembrar não sobrevive à
@@ -294,7 +315,14 @@ primeira sessão com pressa. A mensagem de bloqueio diz o que fazer no lugar, e
 todo hook tem kill switch por variável de ambiente, porque enforcement que não se
 desliga vira obstáculo quando erra.
 
-### Estrutura
+- **Suíte verde é pré-condição de commit**, e a suíte hoje são 11 arquivos de
+  teste com 848 asserts, sem rede e sem CLI real.
+- **Comportamento novo nasce com teste**, e bug ganha regressão antes da
+  correção.
+- **Aceite de rodar à mão vira script com assert**, exceto o que só olho humano
+  observa, que vira cenário escrito com veredito.
+
+### Contrato
 
 | Trava | O que impede | Kill switch |
 |---|---|---|
@@ -313,15 +341,6 @@ Os lints cobram o que hook nenhum alcança: `check-docs.py` (estado, grafo, cicl
 decaimento, estágio), `check-spec.py` (spec, tickets, corrente), `check-skill.py`,
 `check-writing.py`, e `tests/agnostico.test.sh`, que bloqueia nome de cliente num
 repo público.
-
-### Regras
-
-- **Suíte verde é pré-condição de commit**, e a suíte hoje são 11 arquivos de
-  teste com 848 asserts, sem rede e sem CLI real.
-- **Comportamento novo nasce com teste**, e bug ganha regressão antes da
-  correção.
-- **Aceite de rodar à mão vira script com assert**, exceto o que só olho humano
-  observa, que vira cenário escrito com veredito.
 
 ### Edge cases
 
@@ -372,8 +391,8 @@ arquitetura.
 
 ## Relacionado
 
-- [`CONVENTIONS.md`](CONVENTIONS.md) consome deste doc o comportamento prometido
-  de cada domínio, e carrega o detalhamento técnico que aqui só aparece linkado.
+- [`CONVENTIONS.md`](CONVENTIONS.md) consome deste doc a stack e as restrições,
+  e carrega a regra universal de construção; o contrato de cada domínio fica aqui.
 - [`AGENTS.md`](AGENTS.md) consome as restrições e o roteamento, no imperativo,
   pra quem já está dentro executando.
 - [`README.md`](README.md) consome a visão geral e os pilares, em terceira

@@ -37,7 +37,8 @@ A fonte única de instruções operacionais do projeto. Cinco seções obrigató
 
 Apresentar os quatro documentos da fundação e o papel de cada um:
 
-- `PRD.md`: fonte de verdade do produto. Features, regras, edge cases e decisões.
+- `PRD.md`: fonte de verdade do produto. Uma seção por funcionalidade: comportamento,
+  contrato, edge cases e a tag `no ar` ou `previsto`.
   Consultar a seção correspondente antes de implementar qualquer funcionalidade.
 - `ROUTES.md`: mapa de telas e navegação condicional. Consultar ao criar ou alterar
   telas e fluxos.
@@ -97,6 +98,7 @@ fonte de verdade:
 - Decisão de produto (uma regra mudou, um escopo entrou ou saiu, um número foi definido,
   um ponto em aberto foi fechado): atualizar o `PRD.md`, com nota de escopo datada quando
   substituir decisão anterior (ver `anatomia-prd.md`).
+- Funcionalidade que entrou no ar: a tag vira `no ar` no PRD e no README, no mesmo PR.
 - Tela ou fluxo de navegação criado, alterado ou removido: atualizar o `ROUTES.md`.
 - Token, pattern ou regra visual que mudou no código: atualizar o `DESIGN.md`. É a regra
   "o código vence" do próprio design system: o doc se atualiza no mesmo PR que muda o

@@ -22,7 +22,10 @@ nomeia o comando que a aplica:
 ## Um tempo verbal, com duas tags
 
 Doc de estado descreve **o estado final**: o produto como ele vai ser depois das specs
-em aberto. Cada seção abre com uma tag, e numa seção mista a tag vai na linha:
+em aberto. **A tag marca a funcionalidade, não a seção:** seção inteira num estado leva a
+tag na primeira linha, nunca no título, que é âncora e quebraria link a cada troca;
+seção mista marca cada item (linha, célula, etapa do diagrama). Nunca um
+bloco `no ar` e outro `previsto`, que é o "hoje contra alvo" com outra roupa.
 
 - `no ar`: já funciona.
 - `previsto`: entra com spec em aberto.
@@ -53,6 +56,11 @@ imperativo, sem a data e sem as alternativas descartadas.
 | PRD | uma seção por funcionalidade: comportamento, contrato e edge cases | regra universal |
 | CONVENTIONS | a regra universal: stack, código, branch, commit, lint, CI, evals; teto de 150 linhas | funcionalidade, mapa |
 
+- **Conector: negócio no PRD, fornecedor no config.** Comportamento e contrato curto do
+  conector vão numa linha da tabela de fontes do PRD, e ganham seção só com regra
+  exclusiva. Id, versão da API, credencial e gotcha vão no config do conector. O critério:
+  o que muda quando o fornecedor muda a API vai pro config; o que muda quando o dono muda
+  de ideia vai pro PRD.
 - **Contrato grande no código.** DDL, schema e exemplo de config moram no arquivo que o
   código lê, e a seção do PRD linka. Antes do código, moram na spec.
 - **Sem README de pasta.** O que uma pasta precisa dizer mora no arquivo de contrato

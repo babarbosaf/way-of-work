@@ -25,8 +25,8 @@ assunto em dois arquivos, e os dois divergiam.
 
 Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
 
-- **Padrão de seção repetido.** Cada feature segue: modelo conceitual, depois estrutura,
-  depois as regras em tabela, depois edge cases explícitos.
+- **Padrão de seção repetido.** Cada feature segue: comportamento (o modelo conceitual e
+  as regras em tabela), depois contrato, depois edge cases explícitos.
 - **Edge cases por feature.** Fluxo feliz é o mínimo. O valor está nos casos de borda
   listados: o que anula, o que adia, o que empata, o que acontece no esquecimento.
 - **Lacuna declarada onde ela morde.** O que ainda não foi decidido não vira bloco no fim
@@ -40,9 +40,9 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
   vigente, e a deliberação mora no git. PRD que vira decision log cresce sem fim e
   ninguém lê até o fim.
 - **Seções transversais.** Ao fim, as camadas que atravessam o produto (notificações,
-  sincronização de dados, i18n) descritas em nível de comportamento: o que o usuário vê,
-  quais eventos existem, o que é ou não coberto. O detalhamento de arquitetura de cada uma
-  vive no CONVENTIONS.md, linkado ao fim da seção (regra de fronteira acima).
+  sincronização de dados, i18n), no mesmo padrão: comportamento, contrato e edge cases na
+  seção. Só a regra que vale pra todo código vai pro CONVENTIONS.md (regra de fronteira
+  acima).
 - **Nível de leitura duplo.** Um PM que não lê código consegue seguir a prosa; um dev
   consegue executar a partir dela. Descrever arquitetura (tabelas, jobs, rotinas, cadências)
   conceitualmente, nomeando as peças, sem exigir que o leitor leia código.
@@ -57,8 +57,9 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
    em lista, cada um com uma frase.
 
 ## 2..N. <Uma seção por feature / pilar>
-   Padrão interno de cada seção, que abre com a tag `no ar` ou `previsto`:
-   ### Comportamento    -> como funciona, com números exatos em tabela
+   A tag `no ar` ou `previsto` marca a funcionalidade: na primeira linha, se a seção
+   inteira está num estado (no título não, que é âncora); em cada item, se mistura. Padrão interno de cada seção:
+   ### Comportamento    -> modelo e regras, com números exatos em tabela
    ### Contrato         -> nomes e formatos de que outra peça depende; o grande, linkado
    ### Edge cases       -> casos fora do fluxo feliz
 
@@ -110,4 +111,4 @@ fecho transitivo é o PRD inteiro de volta.
 `exemplos/PRD.md` é o padrão-ouro. Ao escrever uma seção nova, abrir a seção equivalente
 do exemplo e reproduzir o nível de detalhe, não o conteúdo. O exemplo é de um bolão de
 futebol; o produto em mãos pode ser qualquer coisa. O que se copia é a disciplina:
-modelo, estrutura, tabela de regras e edge cases.
+comportamento, contrato, edge cases e a tag em cada funcionalidade.
