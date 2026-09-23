@@ -167,5 +167,5 @@ entrada de constraint. Sem esse endereço, papercut vira spot-fix.
 - `references/anatomia-agents.md`: estrutura do CLAUDE.md, do AGENTS.md e do FEEDBACK.md,
   e as regras operacionais que eles carregam.
 - `references/stack-default.md`: o molde da stack default e como adaptar ao trocar.
-- `references/exemplos/{PRD,ROUTES,DESIGN,CONVENTIONS}.md`: o padrão-ouro do Chutaí, a
+- `references/exemplos/{PRD,ROUTES,DESIGN,CONVENTIONS,README}.md`: o padrão-ouro do Chutaí, a
   régua de profundidade. Consultar por seção.

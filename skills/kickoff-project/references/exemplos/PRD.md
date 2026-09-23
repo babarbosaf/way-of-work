@@ -1,22 +1,24 @@
 # PRD: Bolão Copa do Mundo 2026
 
+> Exemplo adaptado do blueprint de Iago de Macedo (github.com/iagodemacedo/project-blueprint). As tags ilustram o molde.
+
 ## 1. Visão geral
 
-Produto standalone gratuito de bolão para a Copa do Mundo FIFA 2026, voltado para o lúdico, interação social e competição entre amigos. 
+Produto standalone gratuito de bolão para a Copa do Mundo FIFA 2026, voltado para o lúdico, interação social e competição entre amigos.
 
 O produto se sustenta em três motores principais de engajamento:
 
-1. **Palpites** que premiam tanto V/E/D quanto placar exato, com multiplicadores crescentes por fase do torneio
-2. **Grupos privados entre amigos** com ranking de Liga e estatísticas sociais do grupo
-3. **Álbum de figurinhas digital** com 154 figurinhas em 4 coleções, sistema de troca e drop diário (v2)
+1. **Palpites** que premiam tanto V/E/D quanto placar exato, com multiplicadores crescentes por fase do torneio `no ar`
+2. **Grupos privados entre amigos** com ranking de Liga e estatísticas sociais do grupo `no ar`
+3. **Álbum de figurinhas digital** com 154 figurinhas em 4 coleções, sistema de troca e drop diário `previsto`
 
 ## 2. Cadastro e identidade
 
-### Modelo
+`no ar`
 
-Cadastro **aberto a qualquer pessoa**. Após criar a conta, todo usuário passa pela tela `/convite`, onde escolhe **entrar num grupo existente** (com um código) ou **criar o seu próprio grupo**. A reentrada de usuário existente é feita pela tela de login.
+### Comportamento
 
-### Cadastro (aberto)
+Cadastro **aberto a qualquer pessoa**. Após criar a conta, todo usuário passa pela tela `/convite`, onde escolhe **entrar num grupo existente** (com um código) ou **criar o seu próprio grupo**. A reentrada de usuário existente é feita pela tela de login, que não cria conta.
 
 Caminhos de entrada:
 
@@ -26,53 +28,33 @@ Caminhos de entrada:
 
 Ao criar um grupo, o usuário informa o **nome do grupo** e o sistema gera um **código de convite legível** (6 caracteres, sem caracteres ambíguos) que ele compartilha para os amigos entrarem. O criador vira admin do grupo.
 
-Estados do código de convite ao entrar:
+Submit do cadastro cria a conta, faz o ingresso no grupo do convite e direciona para o onboarding (seção 11).
 
-- **Código inválido, expirado, grupo cheio ou encerrado:** mensagem orientando pedir um novo código
+Login: email + senha, atalho com Google, atalho com Apple e link "Esqueci a senha" (recuperação por email).
 
-Campos obrigatórios no cadastro:
+### Contrato
 
-- Email
-- Nome
-- Apelido/nickname (exibido nos rankings e nas estatísticas do grupo)
-- Senha
+| Campo do cadastro | Regra |
+|---|---|
+| Email | obrigatório |
+| Nome | obrigatório |
+| Apelido | obrigatório; é o nome exibido nos rankings e nas estatísticas do grupo |
+| Senha | obrigatória; Google e Apple dispensam |
 
-Atalhos no cadastro:
+### Edge cases
 
-- Cadastro com Google
-- Cadastro com Apple
-
-Submit cria a conta, faz o ingresso no grupo do convite e direciona para o onboarding (seção 12).
-
-### Login (reentrada de usuário existente)
-
-- Email + senha
-- Atalho com Google
-- Atalho com Apple
-- Link "Esqueci a senha" (recuperação por email)
-
-A criação de conta fica na landing e em `/cadastro`; a tela de login é só reentrada.
+- **Código inválido, expirado, grupo cheio ou encerrado:** `/entrar/erro` mostra o motivo e orienta pedir um novo código.
+- **Código válido com sessão ativa:** sheet "Entrar no grupo X?" em vez do cadastro.
 
 ## 3. Estrutura de palpites
 
-### Tipos de palpite
+`no ar`
 
-**Por jogo:**
-- Resultado (V/E/D)
-- Placar exato
-- Pergunta Plus (sistemática, ver seção 4)
+### Comportamento
 
-**Long-term picks** (travados no dia 17/06/2026 as 23h59 hora que aconteceu o último jogo da primeira rodada da fase de grupos):
+**Por jogo:** resultado (V/E/D), placar exato e Pergunta Plus (seção 4).
 
-- Campeão
-- Vice-campeão
-- 3º lugar
-- 4º lugar
-- Artilheiro
-- Bola de Ouro (Melhor Jogador)
-- Melhor Jogador Jovem (sub 21)
-
-### Régua de pontuação
+**Long-term picks**, travados em 17/06/2026 às 23h59 na hora do último jogo da primeira rodada da fase de grupos: campeão, vice-campeão, 3º lugar, 4º lugar, artilheiro, Bola de Ouro (melhor jogador) e melhor jogador jovem (sub 21).
 
 **Pontuação base (fase de grupos):**
 
@@ -97,7 +79,7 @@ A criação de conta fica na landing e em `/cadastro`; a tela de login é só re
 | Disputa 3º lugar | 2.0x |
 | Final | 3.0x |
 
-> A Copa 2026 tem 48 seleções (vs. 32 das anteriores), o que introduziu uma fase extra antes das oitavas. "Round of 32", com 16 jogos. Total: 72 + 16 + 8 + 4 + 2 + 1 + 1 = 104 jogos.
+> A Copa 2026 tem 48 seleções (contra 32 das anteriores), o que introduz uma fase extra antes das oitavas, o Round of 32, com 16 jogos. Total: 72 + 16 + 8 + 4 + 2 + 1 + 1 = 104 jogos.
 
 **Long-term picks (pontuação fixa):**
 
@@ -110,9 +92,8 @@ A criação de conta fica na landing e em `/cadastro`; a tela de login é só re
 | Artilheiro | 150 |
 | Bola de Ouro (melhor jogador) | 150 |
 | Melhor Jogador Jovem (sub 21) | 150 |
-|                               |        |
 
-### Princípios da pontuação
+Princípios da régua:
 
 - Placar exato vale aproximadamente 3x o resultado simples
 - Pontuação cresce ao longo da Copa via multiplicadores
@@ -120,109 +101,108 @@ A criação de conta fica na landing e em `/cadastro`; a tela de login é só re
 - Long-term picks pesam, mas não decidem sozinhos a Liga
 - Sem pontos negativos: errar dá zero, sem ônus
 
+### Contrato
+
+O cálculo mora na engine JS `lib/pontuacao`, com os helpers puros `agregarPontuacao` e `ordenarPosicoes` compartilhados por home, liga e perfil, que por isso mostram números idênticos. O schema dos palpites mora em `supabase/migrations/`.
+
+### Edge cases
+
+- **Jogo anulado / WO:** anula os palpites, ninguém pontua.
+- **Mata-mata decidido nos pênaltis:** placar exato considera tempo normal + prorrogação (padrão FIFA).
+
 ## 4. Pergunta Plus sistemática
 
-### Modelo
+`no ar`
+
+### Comportamento
 
 Pergunta extra por jogo, validada automaticamente via provider de dados esportivos. Pool fixo definido antes da Copa, sem dependência de curadoria editorial.
 
-### Pool para fase de grupos
+| Pool | Perguntas |
+|---|---|
+| Fase de grupos | Total de gols acima de 2.5? · Ambas as seleções marcam? · Tem gol no primeiro tempo? · Mais de 3 cartões amarelos no jogo? · Algum gol depois dos 80 minutos? |
+| Mata-mata | Decidido no tempo normal, prorrogação ou pênaltis? (3 alternativas) · Tem gol no primeiro tempo? · Ambas marcam? · Mais de 2.5 gols no tempo normal? · Alguma expulsão no jogo? |
 
-- Total de gols acima de 2.5?
-- Ambas as seleções marcam?
-- Tem gol no primeiro tempo?
-- Mais de 3 cartões amarelos no jogo?
-- Algum gol depois dos 80 minutos?
-
-### Pool para mata-mata
-
-- Decidido no tempo normal, prorrogação ou pênaltis? (3 alternativas)
-- Tem gol no primeiro tempo?
-- Ambas marcam?
-- Mais de 2.5 gols no tempo normal?
-- Alguma expulsão no jogo?
-
-### Regras
-
-- Sistema sorteia ou rotaciona uma pergunta do pool por jogo
-- Pergunta visível até a hora do jogo iniciar. 
-- Validação 100% automática via API.
+- O sistema sorteia ou rotaciona uma pergunta do pool por jogo
+- A pergunta fica visível até a hora do jogo iniciar
+- Validação 100% automática via API
 - Vale 15 pts base, multiplicado pela fase
+
+### Contrato
+
+A resposta certa se apura pelos eventos da partida em `jogo_detalhes.eventos` (seção 15).
+
+### Edge cases
+
+- **Jogo anulado:** a Plus anula junto com o palpite do jogo.
 
 ## 5. Janela de palpite
 
+`no ar`
+
+### Comportamento
+
 | Tipo de palpite | Abre | Fecha |
 |---|---|---|
-| Long-term (campeão, artilheiro, etc.) | Lançamento do app | 17/06/2026 as 23h59 hora do último jogo da primeira rodada da fase de grupo |
+| Long-term (campeão, artilheiro, etc.) | Lançamento do app | 17/06/2026 às 23h59, hora do último jogo da primeira rodada da fase de grupos |
 | Jogo da fase de grupos | 72h antes do jogo | 5 min antes do início |
 | Jogo de mata-mata | Quando definidos os classificados (fim da rodada anterior) | 5 min antes do início |
 | Pergunta Plus | Junto com o palpite do jogo | 5 min antes do início |
 
-### Visualização
-
 - "Palpite aberto" verde, com contagem regressiva nas últimas 6h
 - "Palpite fechado" cinza, mostra resultado se já jogou
 - "Em breve" para palpite que vai abrir depois (apenas mata-mata)
-- **Tela de palpite inacessível após o início do jogo:** `/palpites/jogos/[id]` redireciona para `/ao-vivo` (jogo rolando) ou `/resultado` (jogo encerrado), inclusive em acesso direto por URL. Os cards de jogo (calendário, início, lista de jogos) apontam para o destino correspondente ao estado. O backend reforça a regra recusando salvar palpite fora da janela
+
+### Contrato
+
+Depois do início do jogo, `/palpites/jogos/[id]` redireciona para `/ao-vivo` (jogo rolando) ou `/resultado` (jogo encerrado), inclusive em acesso direto por URL. Os cards de jogo (calendário, início, lista de jogos) apontam para o destino do estado. O backend recusa salvar palpite fora da janela.
 
 ### Edge cases
 
-- **Jogo anulado / WO:** anula os palpites, ninguém pontua
-- **Mata-mata decidido nos pênaltis:** placar exato considera tempo normal + prorrogação (padrão FIFA)
 - **Janela aberta e jogo adiado:** janela continua aberta até o novo horário menos 5 min
 - **Janela fechada e jogo adiado:** palpites permanecem válidos pro novo horário, janela não reabre
-- **Esquecimento de palpite:** ganha zero pts no jogo, sem ônus adicional, streak quebra se aplicável
-- **Edição de palpite:** livre quantas vezes quiser até o fechamento da janela, sem histórico público
+- **Esquecimento de palpite:** zero pts no jogo, sem ônus adicional; o streak quebra se aplicável
+- **Edição de palpite:** livre até o fechamento da janela, sem histórico público
 
 ## 6. Grupos
 
-### Modelo no MVP
+`no ar`
 
-Grupos criados exclusivamente por usuário Admin via painel administrativo. Não há criação de grupos pelo usuário final no MVP.
+### Comportamento
 
-### Estrutura
+Qualquer usuário **cria um grupo** em `/convite`, vira admin e recebe um código de convite legível. A entrada num grupo existente é por **código de convite**: deep link `/entrar/:codigo`, colando o código em `/convite` ou em `/grupo/entrar`. Não há lista pública de grupos.
 
 - Cada grupo tem nome, descrição opcional e limite de membros
-- Cada grupo tem uma Liga (ranking por pontos acumulados)
+- Cada grupo tem uma Liga (seção 7)
 - Múltiplos grupos por usuário, com seletor de grupo no topo da interface
 - Palpite único compartilhado entre todos os grupos do usuário (faz uma vez, vale em todos)
 
-### Painel admin (acessível apenas ao Admin)
+Painel do admin do grupo: editar grupo, gerar código ou link de entrada, ver e remover membros, encerrar grupo e ver métricas básicas (membros ativos, palpites feitos, completude média do álbum).
 
-- Criar grupo (nome, descrição, limite de membros)
-- Editar grupo
-- Gerar código/link de entrada
-- Ver lista de membros
-- Remover membro
-- Encerrar grupo
-- Ver métricas básicas (membros ativos, palpites feitos, completude média do álbum)
+Saída voluntária, a qualquer momento, por `/grupo/info`:
 
-### Caminho de entrada
+- Pontos acumulados na Liga do grupo saem do ranking
+- Histórico de palpites permanece (palpite é compartilhado entre grupos)
+- Reentrada no mesmo grupo só com novo convite do admin
 
-Qualquer usuário pode **criar um grupo** (na tela `/convite` pós-cadastro), virando admin e recebendo um código de convite legível para compartilhar. A entrada num grupo existente é por **código de convite**: deep link `/entrar/:codigo`, colando o código em `/convite` (pós-cadastro) ou em `/grupo/entrar`. Não há lista pública de grupos no MVP.
-
-### Saída voluntária
-
-Usuário pode sair do grupo a qualquer momento via `/grupo/info`. Ao sair:
-
-- Pontos acumulados na Liga do grupo são removidos do ranking
-- Histórico de palpites do usuário permanece (palpite é compartilhado entre grupos)
-- Reentrada no mesmo grupo só é possível com novo convite do admin
+### Contrato
 
 | Regra | Valor |
 |---|---|
-| Cenário de uso dos grupos admin-only | a definir (oficial nacional, afinidade, sob demanda, teste) |
-| Limite de tamanho do grupo | a definir, conforme o cenário acima |
+| Código de convite | 6 caracteres, sem caracteres ambíguos |
+| Limite de tamanho do grupo | `a definir` |
+
+### Edge cases
+
+- **Grupo encerrado:** o código deixa de valer e cai no erro de `/entrar/erro`.
 
 ## 7. Liga do grupo
 
-### Funcionamento
+### Comportamento
 
-Ranking único do grupo, baseado em pontos acumulados durante toda a Copa. Deve ser atualizada a cada 10 minutos. 
+Ranking único do grupo, pelos pontos acumulados durante toda a Copa, atualizado a cada 10 minutos. `no ar`
 
-### Cascata de critérios de desempate
-
-Aplicada em ordem, para no primeiro critério que diferencia:
+Cascata de desempate, aplicada em ordem e parando no primeiro critério que diferencia: `no ar`
 
 1. Mais placares exatos acertados na Copa toda
 2. Mais palpites de torneio acertados (long-term)
@@ -230,53 +210,55 @@ Aplicada em ordem, para no primeiro critério que diferencia:
 4. Maior streak máximo atingido na Copa
 5. Data de criação da conta (mais antiga vence)
 
-### Visualização do desempate
+Quando há empate, o ranking mostra qual critério está desempatando. Exemplo: "Empate em 1.247 pts. Iago à frente por mais placares exatos (12 vs 9)". `no ar`
 
-Quando há empate, o ranking mostra qual critério está desempatando. Exemplo: "Empate em 1.247 pts. Iago à frente por mais placares exatos (12 vs 9)".
+**Ranking de álbum** `previsto`: um seletor de tipo de ranking (pills) alterna **Palpites** (padrão) e **Álbum**. O de Álbum ordena os membros pela completude (% de figurinhas distintas sobre o catálogo), no mesmo card do ranking de pontos: posição, avatar, "X de 154 figurinhas" com barra de progresso e o % em destaque. Tocar num membro abre o álbum dele.
 
-### Ranking de álbum (seletor na Liga)
+- **Ranking puramente social, sem premiação:** completar o álbum não vale pontos na Liga (restrição da seção 13).
+- **Desempate simples:** mais figurinhas distintas; persistindo, ordem alfabética de apelido. Sem cascata, porque não há prêmio em jogo.
 
-Além do ranking de pontos, a tela da Liga tem um **seletor de tipo de ranking** (pills): **Palpites** (padrão) e **Álbum**. O ranking de Álbum ordena os membros pela **completude do álbum de figurinhas** (% de figurinhas distintas obtidas sobre o total do catálogo), no mesmo design de card do ranking de pontos: posição, avatar, "X de 154 figurinhas" com barra de progresso e o % em destaque. Tocar num membro abre o álbum dele.
+### Contrato
 
-Decisões:
+Os dois rankings chegam no mesmo payload de `get_liga_resumo` (1 roundtrip, `CONVENTIONS.md` §3), e o seletor alterna client-side, sem nova request. O ranking de álbum expõe só a **contagem** por membro, com gate de mesmo grupo na RPC.
 
-- **Ranking puramente social, sem premiação:** completar o álbum não vale pontos na Liga, mantém a separação economia social (álbum) e competição (Liga) da seção 14.
-- **Desempate simples:** mais figurinhas distintas; persiste empate, ordem alfabética de apelido. Sem cascata de critérios, não há prêmio em jogo.
-- **Privacidade:** o ranking expõe apenas a **contagem** por membro (RPC com gate de mesmo grupo); quais figurinhas cada um tem continua visível só pelo álbum do membro, que já tem seu próprio gate.
-- **Troca instantânea:** os dois rankings chegam no mesmo payload da Liga (1 roundtrip. CONVENTIONS.md, seção 6) e o seletor alterna client-side, sem nova request.
+### Edge cases
+
+- **Quais figurinhas cada um tem** continua visível só pelo álbum do membro, que tem o próprio gate.
+- **Membro que saiu** some do ranking, com os pontos (seção 6).
 
 ## 8. Estatísticas do grupo
 
-### Modelo
+### Comportamento
 
-Sub-aba 2 da aba Grupo (`/grupo/estatisticas`). Painel de estatísticas sociais derivadas dos palpites e do álbum, atualizado automaticamente a cada jogo resolvido, não depende de conteúdo produzido pelos membros.
+Sub-aba 2 da aba Grupo (`/grupo/estatisticas`). Painel de estatísticas sociais derivadas dos palpites e do álbum, atualizado a cada jogo resolvido, sem depender de conteúdo produzido pelos membros.
 
-> **Nota de escopo:** substituiu o **Mural** (feed cronológico de eventos) em 12/06/2026. O mural dependia de eventos automáticos do sistema que nunca foram implementados e ficou sem uso. As tabelas (`mural_eventos`, `mural_reacoes`, `mural_comentarios`) foram mantidas no banco; o feed pode voltar como v2 se os eventos automáticos forem implementados.
+| Bloco | O que mostra | Estado |
+|---|---|---|
+| Termômetro do grupo | total de palpites, % de acerto coletivo, placares exatos acumulados e maior streak ativo (com o dono) | `no ar` |
+| Jogos de hoje | quem já palpitou todos os jogos do dia e quem ainda falta; pendente que é o próprio usuário ganha CTA "Palpitar" | `no ar` |
+| Cutucada | membro cutuca quem ainda não palpitou, 1 por dupla por dia; vira notificação no sino do cutucado | `no ar` |
+| Destaques do dia | craque do dia (mais pontos no último dia com jogos resolvidos), "na mosca" (placares exatos do dia) e "gelado" (errou todos do dia, mínimo 2) | `no ar` |
+| Raio X dos jogos | por jogo encerrado: distribuição dos palpites (1/X/2), quantos acertaram o resultado, quem cravou o placar e a lista de palpites revelados | `no ar` |
+| Zebra e consenso | jogo recente em que 80%+ do grupo (mínimo 3 palpites) apostou num lado e deu outro; jogo em que o grupo inteiro acertou | `no ar` |
+| Álbum do grupo | cobertura coletiva, quem está mais perto de completar e a figurinha mais rara do grupo (menos donos) | `previsto` |
 
-### Blocos da tela
+### Contrato
 
-- **Termômetro do grupo:** total de palpites, % de acerto coletivo, placares exatos acumulados e maior streak ativo (com o dono).
-- **Jogos de hoje:** quem já palpitou todos os jogos do dia e quem ainda falta (expõe só o fato de ter palpitado, nunca o conteúdo). Pendente que é o próprio usuário ganha CTA "Palpitar".
-- **Cutucada:** membro pode cutucar quem ainda não palpitou (1 cutucada por dupla por dia). Vira notificação no sino do cutucado.
-- **Destaques do dia:** craque do dia (mais pontos no último dia com jogos resolvidos), "na mosca" (placares exatos do dia) e "gelado" (errou todos os palpites do dia, mínimo 2).
-- **Raio X dos jogos:** para cada jogo encerrado, distribuição dos palpites do grupo (1/X/2), quantos acertaram o resultado, quem cravou o placar e a lista completa de palpites revelados. Materializa a regra "após o apito final, o palpite vira público".
-- **Zebra e consenso:** jogo recente em que 80%+ do grupo (mínimo 3 palpites) apostou num lado e deu outro; jogo em que o grupo inteiro acertou.
-- **Álbum do grupo:** cobertura coletiva (% de figurinhas que já apareceram em algum membro), quem está mais perto de completar e a figurinha mais rara do grupo (menos donos; expõe nome e dono único, mesmo nível de visibilidade do álbum do membro).
+RPC consolidada `get_grupo_estatisticas` (1 roundtrip), agregação na engine JS `lib/estatisticas-grupo`. Tudo deriva de `jogos` e das tabelas de palpites e de álbum; nenhuma tabela própria.
 
-### Privacidade
+### Edge cases
 
-- Palpite de terceiros só é exposto depois do início do jogo (mesmo gate das RPCs de ranking).
-- "Quem já palpitou hoje" expõe apenas a contagem, não o conteúdo.
-
-### Dados
-
-- Tudo deriva das tabelas já sincronizadas com a BallDontLie (`jogos`, via crons existentes) e das tabelas de palpites/álbum. RPC consolidada `get_grupo_estatisticas` (1 roundtrip, CONVENTIONS.md seção 6); agregação na engine JS (`lib/estatisticas-grupo`).
+- **Palpite de terceiros** só aparece depois do início do jogo (o mesmo gate das RPCs de ranking). É o Raio X que materializa a regra "após o apito final, o palpite vira público".
+- **"Quem já palpitou hoje"** expõe só o fato de ter palpitado, nunca o conteúdo.
+- **Figurinha mais rara com dono único:** expõe nome e dono, o mesmo nível de visibilidade do álbum do membro.
 
 ## 9. Álbum de figurinhas
 
-### Estrutura
+`previsto`
 
-154 figurinhas distribuídas em 4 coleções temáticas, todas definidas antes do início da Copa (sem dependência de convocação oficial).
+### Comportamento
+
+154 figurinhas em 4 coleções temáticas, todas definidas antes do início da Copa (sem dependência de convocação oficial).
 
 | Coleção | Figurinhas | Conteúdo |
 |---|---|---|
@@ -286,67 +268,52 @@ Sub-aba 2 da aba Grupo (`/grupo/estatisticas`). Painel de estatísticas sociais 
 | 4. Momentos Históricos | 30 | Cenas icônicas de Copas anteriores |
 | **Total** | **154** | |
 
-### Estilo visual
+Ilustração estilizada gerada por IA, com identidade única entre as 4 coleções: estilo de referência, paleta consistente, enquadramento padrão, família de fundos e curadoria humana antes de publicar.
 
-Ilustração estilizada gerada via IA, com identidade visual única e consistente entre as 4 coleções. Requisitos de produção:
+**Sem raridade.** Todas as 154 têm a mesma chance de cair em qualquer pacote. Tornar uma lenda como Pelé mais difícil penalizaria completar a coleção sem ganho de engajamento proporcional, e a distribuição uniforme elimina a discussão regulatória sobre probabilidade pública de drop.
 
-- Estilo visual único definido como referência
-- Paleta de cores consistente
-- Enquadramento padrão
-- Fundo padrão ou família de fundos
-- Curadoria humana sobre as saídas da IA antes de publicação
+| Pacotes | Regra |
+|---|---|
+| Tamanho | 3 figurinhas |
+| Drop diário base | 2 pacotes por resgate ativo (clique manual) |
+| Extra por palpitar | +1 por palpitar em pelo menos 1 jogo no dia |
+| Extra por acerto | +1 por palpite de resultado acertado (vencedor ou empate, não o placar exato) |
+| Extra por missões | +1 ao completar as 3 missões do dia |
+| Extra por streak | marcos de streak (seção 10) |
 
-### Distribuição em pacotes
+**Troca entre amigos:** listas "Tenho" e "Quero" visíveis dentro do grupo, troca 1×1 com confirmação dupla, sem moeda intermediária e sem leilão.
 
-Sem sistema de raridade. Todas as 154 figurinhas têm a mesma probabilidade de cair em qualquer pacote (distribuição aleatória uniforme).
+**Colecionável puro:** sem boost no jogo e sem impacto na pontuação da Liga.
 
-Racional: o produto é colecionável e social, voltado a completar o álbum. Tornar uma lenda como Pelé mais difícil que outras figurinhas penalizaria a chance de completar a coleção sem trazer ganho de engajamento proporcional. A simplicidade também elimina toda a discussão regulatória adjacente a probabilidades públicas de drop.
+Economia esperada ao longo da Copa (~30 dias), que cria gradiente entre níveis de engajamento sem nenhum nível ser punitivo:
 
-### Pacotes
+| Perfil | Pacotes | Figurinhas | Comportamento esperado |
+|---|---|---|---|
+| Super engajado | ~260 | ~780 | Completa o álbum com folga, gera muitas repetidas para troca |
+| Médio | ~140 | ~420 | Completa boa parte do álbum, depende de troca para fechar |
+| Casual | ~80 | ~240 | Avança em algumas coleções, não completa |
 
-- **Tamanho do pacote:** 3 figurinhas
-- **Drop diário base:** 2 pacotes por resgate ativo (clique manual)
-- **Pacotes extras:**
-  - +1 por palpitar em pelo menos 1 jogo no dia
-  - +1 por palpite de resultado acertado (vencedor ou empate, não o placar exato)
-  - +1 ao completar as 3 missões do dia
-  - Pacotes por marcos de streak (ver seção 10: 3/7/14 dias → +1/+2/+3)
+### Contrato
 
-### Troca entre amigos
+Lista item a item das 154 figurinhas (IDs `S001` a `S154`, tema de cada uma) em **`Sticker.md`**. Geração das imagens via OpenAI por `scripts/generate-stickers.mjs`, que lê o `Sticker.md` e o Estilo Mestre. Coleções 1 e 2 vêm da API BallDontLie; coleções 3 e 4 são curadoria editorial. O catálogo é público e estável, e usa cache cross-request.
 
-- Lista "Tenho" e "Quero" visível dentro do grupo
-- Troca 1×1 com confirmação dupla
-- Sem moeda intermediária, sem leilão
-- **Indicativo de figurinha já comprometida:** ao montar uma troca, as figurinhas do lado "Você oferece" que já estão sendo oferecidas em outra troca ativa (pendente) aparecem esmaecidas e com o selo "Ofertada para [Apelido]" (`+N` quando há mais de um destinatário). É só um aviso, o usuário ainda pode selecioná-las normalmente.
+### Edge cases
 
-### Utilidade
-
-Colecionável puro, sem boost no jogo, sem impacto na pontuação da Liga.
-
-### Curadoria fina
-
-Lista item a item das 154 figurinhas (IDs `S001`–`S154`, tema de cada uma) definida em **`Sticker.md`**. Geração das imagens via OpenAI automatizada por `scripts/generate-stickers.mjs` (lê o `Sticker.md` + Estilo Mestre). Coleções 1 e 2 (seleções e cidades) vêm da API do BallDontLie; coleções 3 e 4 (lendas e momentos) são curadoria editorial.
+- **Figurinha já comprometida:** ao montar uma troca, as figurinhas de "Você oferece" que já estão em outra troca pendente aparecem esmaecidas, com o selo "Ofertada para [Apelido]" (`+N` com mais de um destinatário). É só aviso: o usuário ainda pode selecioná-las.
 
 ## 10. Streak diário
 
-### Como manter
+### Comportamento
 
-Usuário precisa fazer pelo menos um destes no dia:
-- Resgatar pelo menos um pacote do álbum
-- Fazer pelo menos 1 palpite
+Mantém o streak quem, no dia, resgata pelo menos um pacote do álbum ou faz pelo menos 1 palpite. `no ar`
 
-### Reset
+- 24h sem ação de manutenção zera o streak `no ar`
+- Fuso de Brasília (público nacional), reset à meia-noite local `no ar`
+- Sem mecanismo de "salvar streak" `no ar`
+- Streak máximo registrado no perfil mesmo depois de quebrar `no ar`
+- Sem multiplicador de pontos e sem selo visual por streak `no ar`
 
-- 24h sem ação de manutenção zera o streak
-- Fuso de Brasília (público nacional)
-- Reset à meia-noite local
-- Sem mecanismo de "salvar streak"
-
-### Streak máximo histórico
-
-Registrado no perfil mesmo depois de quebrar.
-
-### Recompensas por milestones
+Recompensas por marco, em pacotes do álbum `previsto`:
 
 | Dias consecutivos | Recompensa |
 |---|---|
@@ -356,169 +323,195 @@ Registrado no perfil mesmo depois de quebrar.
 | 21 dias | +4 pacotes bônus |
 | 30 dias | +7 pacotes bônus |
 
-Cada milestone dispara uma única vez, não recorrente.
+### Contrato
 
-### Não inclui
+O streak máximo alimenta o critério 4 de desempate da Liga (seção 7) e o calendário de `/perfil/streak`.
 
-- Multiplicador de pontos por streak
-- Selos visuais por streak
+### Edge cases
 
+- **Cada marco dispara uma única vez**, sem recorrência.
+- **Esquecimento de palpite** quebra o streak só se não houve resgate de pacote no dia.
 
+## 11. Onboarding pós-cadastro
 
-## 11. Ao vivo durante o jogo
+`no ar`
 
-A tela do jogo (`/palpites/jogos/[id]/ao-vivo`) é rica em dados reais da BallDontLie (tier GOAT) e muda conforme o estado da partida. O client faz polling de 20s do snapshot via rota estável (`GET /api/jogos/[id]/ao-vivo`); os dados-fonte são sincronizados **minuto a minuto** pelas edge functions (ver seção 16).
+### Comportamento
 
-**Garantia de atualização sem refresh:** a tela se mantém atualizada sozinha durante todo o jogo, mesmo se um deploy acontecer no meio da partida (a rota de snapshot sobrevive à troca de build; após falhas consecutivas o client se recupera com um reload único e transparente). Ao voltar para o app (desbloquear o celular, trocar de aba), o snapshot é rebuscado na hora, sem esperar o próximo ciclo. A troca de dados é silenciosa: nada de spinner nem re-render quando o snapshot não mudou.
-
-### Pré-jogo (tela de palpite)
-
-- Ficha do jogo: estádio (com capacidade), árbitro, técnicos
-- Escalação **real** (titulares com formação + banco) quando publicada; antes disso, formação provável + técnico
-- "Como chegam": classificação no grupo + forma recente da BDL (nota média e forma), que aparece quando a API publica o `team_form`
-
-### Ao vivo
-
-- Placar ao vivo com animação de gol e pênaltis
-- **Pressão do jogo** (momentum minuto a minuto, gráfico de barras; some no pós-jogo)
-- **Card unificado da partida** com abas. Lances (principal), Estatísticas, Chutes, Posições e Escalações, posicionado logo abaixo do placar/momentum. Troca de aba por toque ou **gesto lateral (swipe)**; abas sem dados não aparecem:
-  - **Lances**: feed minuto a minuto com gols (autor, assistência, placar momentâneo), cartões, substituições, decisões do VAR (gol anulado aparece riscado), fim de tempo e disputa de pênaltis
-  - **Estatísticas**: barras comparativas (posse, xG, finalizações, escanteios, passes certos etc.)
-  - **Chutes**: campinho com o mapa de chutes (raio do ponto cresce com o xG)
-  - **Posições**: campinho com as posições médias dos jogadores
-  - **Escalações**: titulares (com formação) + banco, badges de quem entrou/saiu (cruzamento lineup × eventos de substituição), com toggle de país como segunda hierarquia dentro da aba
-- **Card "Seu palpite"** unificado: junta o palpite de placar e a Pergunta Plus do jogo num só card, com o total parcial "valendo" no topo (placar + Plus já apurada) e o placar **destrinchado por nível** logo abaixo. Em vez de só um badge "valendo +X", mostra a faixa da régua atingida com o placar corrente (placar exato, resultado + um placar, resultado + saldo, resultado, ou não acertou) e os pontos abertos de cada parte. A linha da Plus preserva a pergunta, a resposta do usuário, a parcial "se terminasse agora" (vira "Real" no encerramento) e quanto está valendo. No pós-jogo o card congela como pontuação final; mesma régua e estética da seção "Sua pontuação" da tela de resultado
-- **Palpites do Grupo**: somente os membros do **grupo ativo**, ranqueados pela **estimativa de pontos com o placar corrente** (placar + Pergunta Plus já apurada), mesmo formato do pós-jogo: posição, tag "Cravou" e badge "Valendo +X"
-
-### Pós-jogo
-
-- Tudo do ao vivo (exceto o momentum), congelado no resultado final
-- **Craque da partida** (man of the match com rating) + melhores notas do jogo
-- A tela de resultado (`/palpites/jogos/[id]/resultado`) traz o link "Veja como foi a partida" junto ao placar, levando à revisão pós-jogo acima
-
-## 12. Onboarding pós-cadastro
-
-### Modelo
-
-Fluxo de 6 passos exibido **uma única vez**, logo após o primeiro cadastro. Botão "Pular" disponível em todos os passos. Ao concluir ou pular, marca-se a flag `onboarded: true` na conta e direciona para `/grupo/liga`.
-
-### Passos
+Fluxo de 6 passos exibido **uma única vez**, logo após o primeiro cadastro, com "Pular" em todos os passos. Ao concluir ou pular, direciona para `/grupo/liga`.
 
 1. **Palpites.** Como funciona a pontuação base e os multiplicadores por fase
 2. **Grupo e Liga.** Explica o ranking e os critérios de desempate
 3. **Pergunta Plus.** Como funciona a pergunta extra por jogo
-4. **Álbum.** Apresenta o álbum, drop diário, missões e trocas
+4. **Álbum.** Apresenta o álbum, drop diário, missões e trocas `previsto`
 5. **Streak e missões.** Como manter o streak e ganhar pacotes extras
 6. **Boas-vindas ao grupo "X".** Finaliza chamando o nome do grupo do convite
 
-### Reabertura
+### Contrato
 
-O onboarding pode ser revisto a qualquer momento via `/perfil/ajuda` ("Ver tour novamente"), sem alterar a flag `onboarded`.
+Concluir ou pular grava `onboarded: true` na conta.
 
-## 13. Economia de pacotes (calibração esperada)
+### Edge cases
 
-Projeção de figurinhas geradas por perfil de usuário ao longo da Copa (~30 dias):
+- **Reabertura:** `/perfil/ajuda` ("Ver tour novamente") reabre o fluxo sem alterar a flag `onboarded`.
 
-| Perfil | Pacotes estimados | Figurinhas geradas | Comportamento esperado |
-|---|---|---|---|
-| Super engajado | ~260 | ~780 | Completa o álbum com folga, gera muitas repetidas para troca |
-| Médio | ~140 | ~420 | Completa boa parte do álbum, depende de troca para fechar |
-| Casual | ~80 | ~240 | Avança em algumas coleções, não completa |
+## 12. Ao vivo durante o jogo
 
-A distribuição cria gradiente entre níveis de engajamento sem nenhum nível ser punitivo.
+`no ar`
 
-## 14. Restrições invioláveis
+### Comportamento
 
-As regras que nenhuma feature pode quebrar. Estão no presente, no imperativo, sem a data
-e sem as alternativas descartadas: o racional caro de reverter mora no ADR, e a
-deliberação mora no git.
+A tela do jogo (`/palpites/jogos/[id]/ao-vivo`) é rica em dados reais da BallDontLie e muda conforme o estado da partida. Ela se mantém atualizada sozinha durante todo o jogo; ao voltar para o app (desbloquear o celular, trocar de aba) o snapshot é rebuscado na hora, e nada de spinner nem re-render quando o snapshot não mudou.
+
+**Pré-jogo (tela de palpite):**
+
+- Ficha do jogo: estádio (com capacidade), árbitro, técnicos
+- Escalação **real** (titulares com formação + banco) quando publicada; antes disso, formação provável + técnico
+- "Como chegam": classificação no grupo + forma recente (nota média e forma), que aparece quando a API publica o `team_form`
+
+**Ao vivo:**
+
+- Placar ao vivo com animação de gol e pênaltis
+- **Pressão do jogo** (momentum minuto a minuto, gráfico de barras; some no pós-jogo)
+- **Card unificado da partida** logo abaixo do placar, com abas trocadas por toque ou **swipe**; aba sem dados não aparece:
+  - **Lances**: feed minuto a minuto com gols (autor, assistência, placar momentâneo), cartões, substituições, decisões do VAR (gol anulado aparece riscado), fim de tempo e disputa de pênaltis
+  - **Estatísticas**: barras comparativas (posse, xG, finalizações, escanteios, passes certos etc.)
+  - **Chutes**: campinho com o mapa de chutes (raio do ponto cresce com o xG)
+  - **Posições**: campinho com as posições médias dos jogadores
+  - **Escalações**: titulares (com formação) + banco, badges de quem entrou e saiu, com toggle de país dentro da aba
+- **Card "Seu palpite"**: junta o palpite de placar e a Pergunta Plus, com o total parcial "valendo" no topo e o placar **destrinchado por nível** (placar exato, resultado + um placar, resultado + saldo, resultado, ou não acertou) com os pontos abertos de cada parte. A linha da Plus mostra a pergunta, a resposta do usuário, a parcial "se terminasse agora" (vira "Real" no encerramento) e quanto está valendo
+- **Palpites do Grupo**: só os membros do **grupo ativo**, ranqueados pela estimativa de pontos com o placar corrente, no formato do pós-jogo: posição, tag "Cravou" e badge "Valendo +X"
+
+**Pós-jogo:**
+
+- Tudo do ao vivo (exceto o momentum), congelado no resultado final, com o card "Seu palpite" virando pontuação final
+- **Craque da partida** (man of the match com rating) + melhores notas do jogo
+- A tela de resultado (`/palpites/jogos/[id]/resultado`) traz o link "Veja como foi a partida" junto ao placar
+
+### Contrato
+
+O client faz polling de 20s do snapshot pela rota estável `GET /api/jogos/[id]/ao-vivo`. Os dados-fonte chegam minuto a minuto pelas edge functions da seção 15. As badges de substituição cruzam lineup com os eventos de substituição.
+
+### Edge cases
+
+- **Deploy no meio da partida:** a rota de snapshot sobrevive à troca de build; após falhas consecutivas o client se recupera com um reload único e transparente.
+- **Gol anulado pelo VAR:** aparece riscado no feed, e o replace total de `jogo_detalhes` a cada sync resolve o placar sem reconciliar por id.
+
+## 13. Restrições invioláveis
+
+As regras que nenhuma feature pode quebrar. Estão no presente, no imperativo, sem a data e sem as alternativas descartadas: o racional caro de reverter mora no ADR, e a deliberação mora no git.
 
 - **Erro não tira ponto.** O produto é lúdico, e punição de erro afasta o jogador casual
-- **O álbum é colecionável puro.** Figurinha não dá vantagem na Liga: a economia social e
-  a competição não se misturam
-- **Toda figurinha tem a mesma chance de drop.** Sem raridade: raridade penalizaria fechar
-  o álbum e puxaria discussão regulatória sobre probabilidade pública
-- **Qualquer pessoa cria conta e cria grupo.** Quem cria o grupo vira admin e recebe um
-  código de convite legível
-- **A saída do grupo é voluntária e reversível.** Ao sair, os pontos somem do ranking e o
-  histórico de palpites fica; voltar exige convite novo
+- **O álbum é colecionável puro.** Figurinha não dá vantagem na Liga: a economia social e a competição não se misturam
+- **Toda figurinha tem a mesma chance de drop.** Sem raridade: raridade penalizaria fechar o álbum e puxaria discussão regulatória sobre probabilidade pública
+- **Qualquer pessoa cria conta e cria grupo.** Quem cria o grupo vira admin e recebe um código de convite legível
+- **A saída do grupo é voluntária e reversível.** Ao sair, os pontos somem do ranking e o histórico de palpites fica; voltar exige convite novo
 - **Onboarding nunca bloqueia.** Os 6 passos pós-cadastro são puláveis e reabríveis
-- **A pergunta Plus vem de API, não de curadoria.** Curadoria editorial por jogo não
-  escala na operação
-- **Lenda é ilustração estilizada por IA.** É o ponto de equilíbrio entre identidade
-  visual e risco de imagem
-- **Idioma é preferência de usuário (PT/ES/EN), não rota.** Admin e conteúdo de usuário
-  não são traduzidos. Ver seção 17
-- **Cada tela carrega em um roundtrip ao banco.** RPC consolidada, e o shell do app nunca
-  espera query. Padrão obrigatório no CONVENTIONS.md, seção 6
+- **A pergunta Plus vem de API, não de curadoria.** Curadoria editorial por jogo não escala na operação
+- **Lenda é ilustração estilizada por IA.** É o ponto de equilíbrio entre identidade visual e risco de imagem
+- **Idioma é preferência de usuário (PT/ES/EN), não rota.** Admin e conteúdo de usuário não são traduzidos. Ver seção 16
+- **Cada tela carrega em um roundtrip ao banco.** RPC consolidada, e o shell do app nunca espera query. Padrão obrigatório no `CONVENTIONS.md` §3
 
-## 15. Notificações
+## 14. Notificações
 
-### Porta de entrada
+### Comportamento
 
-Sino no header de cada aba abre `/notificacoes` (tela única com histórico cronológico). Push notifications fora do app levam para a tela específica do evento (deep links).
+O sino no header de cada aba abre `/notificacoes`, a tela única com o histórico cronológico. `no ar`
 
-### Deep links de push (MVP)
+Push fora do app, via **Web Push** com o app instalado como PWA: o sino deriva o feed ao vivo para o app aberto, e o push avisa no device mesmo com o app fechado. `no ar`
 
-| Evento | Tela de destino |
+- **Default opt-out:** todas as categorias já vêm ligadas para o usuário novo, e ele desliga o que não quer em `/perfil/notificacoes`. A permissão do browser é sempre pedida por gesto explícito (um toggle "Receber notificações push" por dispositivo).
+- **Anti-spam:** no máximo **1 push por evento por usuário**, sem agrupar eventos, e cada fonte só olha eventos recentes (acerto nas últimas 3h, drop nas últimas 24h, cutucada nas últimas 6h): ninguém recebe histórico antigo.
+
+| Evento | Categoria em `notif_prefs` | Destino do deep link | Estado |
+|---|---|---|---|
+| Palpite fechando em ~1h, sem palpite | `lembrete_palpite` | `/palpites/jogos/:id` | `no ar` |
+| Resultado / acertou palpite | `resultado_jogo` | `/palpites/jogos/:id/resultado` | `no ar` |
+| Cutucada recebida | `cutucada` | `/palpites/jogos` | `no ar` |
+| Convite recebido (sessão ativa) | | sheet de confirmação → `/grupo/liga` | `no ar` |
+| Drop diário disponível | `drop` | `/album/drop-diario` | `previsto` |
+| Oferta de troca recebida | `troca` | `/album/trocas/:id` | `previsto` |
+| Ranking e marco de streak | | | `previsto` |
+
+### Contrato
+
+| Peça | Contrato |
 |---|---|
-| Palpite fechando em 1h | `/palpites/jogos/:id` |
-| Drop diário disponível | `/album/drop-diario` |
-| Fulano quer trocar com você | `/album/trocas/:id` |
-| Cutucada recebida | `/palpites/jogos` |
-| Convite recebido (sessão ativa) | Sheet de confirmação → `/grupo/liga` |
+| `push_subscriptions` | endpoint e chaves por device, RLS self |
+| `push_enviados` | dedupe por `(user, chave)`, só service role |
+| RPC `get_pushes_pendentes()` | SECURITY DEFINER, só `service_role`: devolve o que falta enviar, já filtrado por `notif_prefs`, janela de recência e existência de assinatura |
+| edge function `send-push` | fan-out VAPID (`web-push`) pros devices do usuário, grava em `push_enviados`, remove assinatura morta (404/410); `pg_cron` a cada 2 min, com guard em SQL (só invoca se houver assinatura) |
+| `public/sw.js` | handlers `push` (mostra) e `notificationclick` (foca ou abre no deep link) |
+| `src/lib/push/client.ts` | pede permissão, assina com `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, persiste via server action |
 
-### Push notifications (Web Push / PWA)
+A chave de dedupe é estável, `push-<tipo>:<id>`, e a `tag` da notificação reusa a chave: re-disparo substitui em vez de empilhar. Chave ausente em `notif_prefs` conta como ativa.
 
-Entrega via **Web Push API**, com o app instalado como PWA. Camada de *entrega* sobre a central de notificações (o sino deriva o feed ao vivo para o app aberto; o push avisa no device mesmo com o app fechado).
+### Edge cases
 
-**Decisões:**
+- **iOS/iPadOS** exige **16.4+** e o app **adicionado à tela de início** (standalone); em aba normal do Safari não funciona, e a UI comunica isso. Android, Chrome, Edge, Firefox e desktop funcionam sem essa amarra.
+- **Primeiro deploy:** a janela de recência impede disparar histórico acumulado.
+- **Canal alternativo para quem não habilitou push:** `a definir`.
 
-- **Default opt-out:** todas as categorias já vêm **ligadas** para o usuário novo (chave ausente em `notif_prefs` conta como ativa). O usuário desliga o que não quer em `/perfil/notificacoes`. A permissão do browser, porém, é sempre pedida por gesto explícito (um toggle "Receber notificações push" por dispositivo).
-- **Eventos sistemáticos cobertos (1ª rodada):** palpite fechando em ~1h (não palpitou), resultado/acertou palpite, drop diário disponível, oferta de troca recebida, cutucada recebida. Cada um mapeia a uma categoria de `notif_prefs` (`lembrete_palpite`, `resultado_jogo`, `drop`, `troca`, `cutucada`).
-- **Anti-spam (promessa):** no máximo **1 push por evento por usuário**, e cada fonte só olha eventos recentes (ex.: acerto nas últimas 3h, drop nas últimas 24h, cutucada nas últimas 6h), ninguém recebe histórico antigo. Mecânica de dedupe e entrega: CONVENTIONS.md, seção 4.
+## 15. Dados e sincronização (BallDontLie)
 
-**Restrição de plataforma (iOS):** Web Push no iOS/iPadOS exige **16.4+** e o app **adicionado à tela de início** (standalone), não funciona em aba normal do Safari. A UI comunica isso quando o device não suporta. Android/Chrome/Edge/Firefox/desktop funcionam sem essa amarra.
+`no ar`
 
-> Infra de entrega (tabelas, RPC, edge function, service worker): CONVENTIONS.md, seção 4.
+### Comportamento
 
-| Comportamento | Hoje |
+Toda tela esportiva (seleções, estádios, jogos, placares, chaveamento) mostra dado real da API BallDontLie FIFA World Cup, lido de um cache local; o browser nunca consulta a API. A regra de construção por trás está no `CONVENTIONS.md` §2.
+
+| Dado | Frescor prometido |
 |---|---|
-| Agrupamento de eventos num push | não existe, é 1 push por evento |
-| Canal alternativo para quem não habilitou push | a definir |
-| Eventos de ranking e de marco de streak | fora da 1ª rodada |
+| Placar, eventos e detalhes da partida | a cada 1 minuto durante os jogos |
+| Classificação dos grupos | a cada 10 minutos na fase de grupos; diária fora dela |
+| Seleções, estádios e elencos | semanal |
 
-## 16. Dados e sincronização (BallDontLie)
+O cache `jogadores` alimenta a tela de elenco por seleção (`/inicio/copa/selecao/[id]`) e os pickers de torneio (artilheiro, bola de ouro, jovem revelação). A base é **só os convocados para a Copa 2026**: cobre as 48 seleções e o vínculo jogador↔seleção, e jogador histórico não é armazenado.
 
-### Política de dados (regra do projeto)
+### Contrato
 
-**Sem mocks, sem dados estáticos.** Toda tela que exibe dados esportivos (seleções, estádios, jogos, placares, chaveamento) consome **dados reais da API BallDontLie FIFA World Cup**, nunca constantes hard-coded. Todo dado externo tem fonte real e rotina de atualização agendada, com cadência proporcional à volatilidade do dado.
+| Peça | Contrato |
+|---|---|
+| tabelas locais | `selecoes`, `estadios`, `jogos`, `classificacao`, `jogadores`, `jogo_detalhes` |
+| `jogo_detalhes` | 1 linha por jogo, uma coluna jsonb por seção (eventos, lineups, team_stats, shots, momentum, best_players, avg_positions, team_form) e timestamp de sync por seção; replace total a cada sync |
 
-### Frescor prometido ao usuário
+| Function | Conteúdo | Cron |
+|---|---|---|
+| `sync-reference` | seleções (`/teams`) e estádios (`/stadiums`) | `0 6 * * 1` |
+| `sync-players` | elenco convocado e stats (`/rosters?seasons[]=2026`) → `jogadores` | `30 6 * * 1` |
+| `sync-matches` | estrutura, datas, sede, mata-mata (`/matches`) | `0 5 * * *` |
+| `sync-standings` | classificação dos grupos → `classificacao` | `10 5 * * *` e `*/10 * * * *` |
+| `sync-live` | placar, status e eventos → `jogos` e `jogo_detalhes.eventos` | `* * * * *` |
+| `sync-jogo-detalhes` | lineups, stats, shots, momentum, posições (ao vivo), best players (≤48h), team form (≤7d) | `* * * * *` |
 
-- Placar, eventos e detalhes da partida: atualizados **a cada 1 minuto** durante os jogos.
-- Classificação dos grupos: a cada 10 minutos durante a fase de grupos; diária fora dela.
-- Seleções, estádios e elencos: semanais (mudam pouco).
+Agendamento por `pg_cron` + `pg_net`. `sync-balldontlie`, o sync completo num job só, serve só a backfill manual. Id de endpoint, tier exigido e gotcha da API moram no código do conector, em `supabase/functions/`, não aqui.
 
-O app nunca consulta a API esportiva direto do browser: lê de um cache local sempre atualizado. Arquitetura de cache, rotinas de sincronização e notas de API: CONVENTIONS.md, seção 3.
+### Edge cases
 
-### Uso dos jogadores
+- **Fora de dia de jogo** os dois crons de 1 min não disparam: o guard em SQL só chama a edge function se existir jogo em alguma janela, então não há consumo da API.
+- **Pré-Copa:** o job diário do `sync-standings` roda sempre e captura sorteio e ajustes; o de 10 min passa `{ onlyDuringCup: true }` e só atua na fase de grupos.
+- **Proteção das edge functions de sync:** `verify_jwt` com anon key; o header de shared-secret no lugar dele está `a definir`.
 
-O cache `jogadores` alimenta dois pontos do produto: a tela de elenco por seleção (`/inicio/copa/selecao/[id]`, acessível ao clicar numa seleção em "A Copa") e os pickers de torneio (artilheiro, bola de ouro, jovem revelação). A base é **exclusivamente os convocados para a Copa 2026**, que garante cobertura das 48 seleções e o vínculo jogador↔seleção. Jogadores históricos que não estão nesta Copa não são armazenados, não há uso para eles no produto.
+## 16. Internacionalização (idiomas)
 
-## 17. Internacionalização (idiomas)
+### Comportamento
 
-O produto suporta **três idiomas** na experiência do jogador/palpitador: **Português** (base), **Espanhol** e **Inglês**. Motivação: base de usuários no México e nos EUA, além do Brasil.
+Três idiomas na experiência do jogador: **Português** (base), **Espanhol** e **Inglês**, para a base de usuários no México e nos EUA além do Brasil. `no ar`
 
-### Modelo
+- **Preferência por usuário:** persistida como o fuso horário, detectada no 1º acesso (idioma do navegador) e ajustável em Configurações. Sem prefixo de idioma na URL. Fallback sempre para Português. `no ar`
+- Datas, horas e tempo relativo respeitam o idioma escolhido. `no ar`
+- **Traduzido:** toda a experiência do jogador (navegação, início, A Copa, calendário, palpites, torneio, álbum, grupo, perfil, streak, regras, notificações). `no ar`
+- **Não traduzido:** área administrativa (ferramenta interna, em PT) e conteúdo gerado por usuário (apelidos, nomes de grupos, nomes de jogadores e cidades vindos da API).
+- Roteamento por URL (`/es`, `/en`), idiomas RTL e formatação de números por locale. `previsto`
 
-- **Preferência por usuário:** o idioma é uma preferência persistida, espelhando o padrão do fuso horário. Detectado no 1º acesso (idioma do navegador) e ajustável em Configurações. Sem prefixo de idioma na URL. Fallback sempre para Português.
-- Datas, horas e tempo relativo respeitam o idioma escolhido.
+### Contrato
 
-### Escopo
+| Peça | Contrato |
+|---|---|
+| locale | cookie `NEXT_LOCALE` no SSR, com `profiles.locale` como fonte durável cross-device |
+| UI estática | `messages/{pt,es,en}.json` (next-intl) |
+| conteúdo curado | colunas `*_i18n` (JSONB `{pt,es,en}`) com fallback PT, editadas nos campos ES/EN do CRUD admin; nome de seleção por `Intl.DisplayNames` |
 
-- **Traduzido:** toda a experiência do jogador (navegação, início, A Copa, calendário, palpites, torneio, álbum, grupo, perfil, streak, regras, notificações).
-- **Não traduzido:** área administrativa (ferramenta interna, permanece em PT) e conteúdo gerado por usuários. UGC (apelidos, nomes de grupos, nomes de jogadores/cidades vindos da API).
-- **Fora do escopo atual:** roteamento por URL (`/es`, `/en`), idiomas RTL e formatação de números por locale (passo futuro).
+### Edge cases
 
-> Implementação (catálogos, resolução no servidor, conteúdo curado do banco): CONVENTIONS.md, seção 5.
+- **Tradução ausente** numa coluna `*_i18n` cai no PT, nunca em campo vazio.

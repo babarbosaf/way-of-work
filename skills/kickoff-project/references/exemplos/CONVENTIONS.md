@@ -1,12 +1,14 @@
 # CONVENTIONS: Bolão Copa do Mundo 2026
 
-Como este produto se constrói. O comportamento prometido ao usuário vive no `PRD.md`; aqui vive o detalhamento técnico obrigatório. Padrão que mudar no código atualiza este doc no mesmo PR.
+> Exemplo adaptado do blueprint de Iago de Macedo (github.com/iagodemacedo/project-blueprint).
+
+A regra universal de construção: vale em qualquer tarefa, seja qual for a funcionalidade. O contrato de cada funcionalidade (tabela, RPC, cron, edge function) mora na seção dela no `PRD.md`. Padrão que mudar no código atualiza este doc no mesmo PR.
 
 ## 1. Stack
 
 | Camada | Escolha |
 |---|---|
-| Front e renderização | Next.js (App Router, React Server Components), instalável como PWA |
+| Front e renderização | Next.js 16 (App Router, React Server Components), instalável como PWA; UI em `DESIGN.md` |
 | Backend e dados | Supabase (Postgres gerenciado, RLS, edge functions) |
 | Deploy | Netlify Functions em São Paulo (`gru`), junto do Supabase (`sa-east-1`), cada roundtrip cross-region custa ~140ms |
 | Dados esportivos | API BallDontLie FIFA World Cup (https://fifa.balldontlie.io), tier GOAT |
@@ -16,65 +18,14 @@ Segredos: a key da API é server-only (`BALLDONTLIE_API_KEY`); URL do projeto e 
 ## 2. Regras do projeto
 
 - **Sem mocks, sem dados estáticos.** Toda tela que exibe dados esportivos consome dados reais da BallDontLie, nunca constantes hard-coded. Todo dado externo precisa de (1) fonte real e (2) rotina de atualização agendada com cadência proporcional à volatilidade do dado.
-- **Regra de negócio não vai para o SQL.** A RPC só agrega leituras; cálculo (ex.: pontuação/ranking pela engine `lib/pontuacao`) permanece em JS, com helpers puros compartilhados entre telas (`agregarPontuacao`/`ordenarPosicoes`), assim home, liga e perfil exibem números idênticos por construção.
+- **Regra de negócio não vai para o SQL.** A RPC só agrega leituras; o cálculo fica em JS, em helpers puros compartilhados entre telas, para que duas telas nunca mostrem números diferentes (ex.: a pontuação, PRD §3).
+- **Dependência nova só quando o que já está na stack não cobre.** Pacote visual segue o `DESIGN.md` §10.
 - **RPCs de leitura são `SECURITY INVOKER` e `stable`.** Respeitam RLS, mesma visibilidade das queries que substituem.
-- **1 página = 1 roundtrip** (seção 6). Vale para toda tela nova ou alterada.
+- **1 página = 1 roundtrip** (seção 3). Vale para toda tela nova ou alterada.
 
-## 3. Dados e sincronização (BallDontLie)
+## 3. Performance (padrões obrigatórios)
 
-### Arquitetura de cache
-
-A BallDontLie não é consultada direto pelo browser. Um conjunto de edge functions (Supabase) sincroniza a API para tabelas locais (`selecoes`, `estadios`, `jogos`, `classificacao`, `jogadores`, `jogo_detalhes`), e o app lê só do Supabase.
-
-A tabela `jogo_detalhes` guarda os dados ricos por jogo (tier GOAT) em **1 linha por jogo com uma coluna jsonb por seção** (eventos, lineups, team_stats, shots, momentum, best_players, avg_positions, team_form) + timestamp de sync por seção. Dados display-only, escritos por replace total a cada sync (resolve VAR/gol anulado sem reconciliação por id).
-
-### Rotinas de sincronização (pg_cron)
-
-O sync é dividido por cadência conforme a volatilidade de cada dado:
-
-| Function | Conteúdo | Cadência | Cron |
-|---|---|---|---|
-| `sync-reference` | Seleções reais (`/teams`) + estádios (`/stadiums`) | Semanal | `0 6 * * 1` |
-| `sync-players` | Elenco convocado 2026 e stats por seleção (`/rosters?seasons[]=2026`) → `jogadores` | Semanal | `30 6 * * 1` |
-| `sync-matches` | Jogos: estrutura, datas, sede, preenchimento do mata-mata (`/matches`) | Diária | `0 5 * * *` |
-| `sync-standings` | Classificação dos grupos (`/group_standings` → `classificacao`) | Diária + 10 min na Copa | `10 5 * * *` e `*/10 * * * *` |
-| `sync-live` | Placares/status ao vivo + eventos da partida (`/matches?match_ids[]=` batched + `/match_events`) → `jogos` e `jogo_detalhes.eventos` | A cada 1 min | `* * * * *` |
-| `sync-jogo-detalhes` | Lineups, team stats, shots, momentum, posições médias (janela ao vivo), best players (finalizados ≤48h) e team form (agendados ≤7d) → `jogo_detalhes` | A cada 1 min | `* * * * *` |
-
-Os dois crons de 1 min têm **guard em SQL**: o `net.http_post` só dispara se existir jogo em alguma janela, então fora de dia de jogo não há invocação de edge function nem consumo da API. `sync-standings` tem dois jobs: um diário que roda sempre (captura sorteio/ajustes na pré-Copa) e um de 10 em 10 min que passa `{ onlyDuringCup: true }` e só atua dentro da janela da fase de grupos. Assim só consomem quota da API quando faz sentido (efeito adaptativo: tranquilo na pré-Copa, frequente nos dias de partida).
-
-**Nota de API (jun/2026):** o endpoint singular `/matches/{id}` passou a retornar 404; todo fetch usa o filtro de lista `match_ids[]` (o param `match_id` simples é ignorado pela API). Os endpoints ricos (events, lineups, stats, shots, momentum, best players, avg positions, team form) exigem o **tier GOAT**.
-
-Agendamento via `pg_cron` + `pg_net`. A função legada `sync-balldontlie` (sync completo num job só) permanece apenas como utilitário de backfill manual.
-
-As edge functions de sync são protegidas só pelo `verify_jwt` com anon key pública. O
-shared-secret header no lugar disso está `a definir` na tabela de hardening.
-
-## 4. Notificações (infra de entrega)
-
-Entrega via Web Push API com o app instalado como PWA. Camada de *entrega* sobre a central de notificações, os eventos, categorias e deep links são produto e vivem no PRD (seção 15).
-
-**Arquitetura:**
-
-- **Tabelas:** `push_subscriptions` (endpoint + chaves por device, RLS self) e `push_enviados` (dedupe `(user, chave)`, só service role).
-- **RPC `get_pushes_pendentes()`** (SECURITY DEFINER, só `service_role`): varre as fontes sistemáticas e devolve o que falta enviar, já filtrado por `notif_prefs`, janela de recência e existência de assinatura.
-- **Edge function `send-push`:** lê as pendências, faz fan-out para os devices do usuário via VAPID (`web-push`), grava em `push_enviados` e remove assinaturas mortas (404/410). Agendada por `pg_cron` a cada 2 min, com guard em SQL (só invoca se houver assinatura).
-- **Service worker** (`src/sw.js`): handlers `push` (mostra a notificação) e `notificationclick` (foca/abre o app no deep link).
-- **Client** (`src/lib/push/client.ts`): pede permissão, assina (`pushManager.subscribe` com `NEXT_PUBLIC_VAPID_PUBLIC_KEY`) e persiste via server action.
-
-**Anti-spam:** dedupe por **chave estável** (`push-<tipo>:<id>`) na tabela `push_enviados`. 1 push por evento por usuário. Cada fonte tem **janela de recência** (ex.: acerto só nas últimas 3h, drop nas últimas 24h, cutucada nas últimas 6h), o que também evita disparar histórico no primeiro deploy. A `tag` da notificação reusa a chave: um re-disparo substitui em vez de empilhar.
-
-## 5. Internacionalização (implementação)
-
-Quais idiomas e o que é traduzido: PRD, seção 17. Implementação:
-
-- **Resolução no servidor:** via cookie `NEXT_LOCALE` (SSR), com `profiles.locale` como fonte durável cross-device. Fallback sempre para Português.
-- **UI estática:** strings em catálogos `messages/{pt,es,en}.json` (next-intl). Datas, horas e tempo relativo respeitam o locale.
-- **Conteúdo curado do banco** (coleções, figurinhas, missões): colunas `*_i18n` (JSONB `{pt,es,en}`) com fallback PT; nomes de seleções resolvidos por `Intl.DisplayNames`. O admin gerencia as traduções via campos ES/EN no CRUD de conteúdo.
-
-## 6. Performance (padrões obrigatórios)
-
-Padrões adotados após diagnóstico de navegação lenta no PWA (~5s para trocar de aba + ~2s de conteúdo): a causa era acúmulo de **ondas seriais de queries** (waterfalls) por página, layout bloqueante e ausência de cache no cliente. Estas práticas valem para **toda tela nova ou alterada**.
+A navegação lenta no PWA (~5s para trocar de aba + ~2s de conteúdo) vinha do acúmulo de **ondas seriais de queries** (waterfalls) por página, layout bloqueante e ausência de cache no cliente. Estas práticas valem para **toda tela nova ou alterada**.
 
 ### Regra de ouro: 1 página = 1 roundtrip
 
@@ -99,12 +50,20 @@ Padrões adotados após diagnóstico de navegação lenta no PWA (~5s para troca
 - **Service worker** (`public/sw.js`): cache-first apenas para assets imutáveis (`/_next/static`, stickers, ícones, fontes, arte das figurinhas no Storage). **HTML, RSC, APIs e sessão nunca passam pelo cache.**
 - O matcher do proxy exclui assets, `sw.js` e manifest, nada que não dependa de sessão paga o roundtrip de auth.
 
-## 7. Processo
+## 4. Processo
 
 - Migrations aplicadas via MCP devem ter o arquivo local nomeado com a **versão registrada no histórico remoto** (senão o workflow `supabase db push` quebra).
 - Checklist para tela nova: (1) dados em 1 RPC ou, no máximo, 2 ondas justificadas por dependência real; (2) `loading.tsx`; (3) nada de `await` serial de queries independentes; (4) catálogos/estáticos via cache compartilhado.
 
-## 8. Índice de ADRs
+## 5. Lint, CI e evals
+
+| O quê | Quando | Corte |
+|---|---|---|
+| lint, typecheck e testes | todo PR, no CI | verde |
+| `check-docs.py --estado --molde` e `check-writing.py` | PR que toca doc de raiz | limpo |
+| `evals.yaml` | cada eval declara `paths:`, `cmd:` e `threshold:`; o CI roda só os tocados | o `threshold` do eval |
+
+## 6. Índice de ADRs
 
 Decisão técnica cara de reverter (schema, contrato público, plataforma) vira ADR em `docs/adrs/`. Nunca editar ADR aceito: criar um novo que o substitui.
 

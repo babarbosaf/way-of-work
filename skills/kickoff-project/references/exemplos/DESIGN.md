@@ -1,5 +1,7 @@
 # DESIGN.md, Chutaí Design System
 
+> Exemplo adaptado do blueprint de Iago de Macedo (github.com/iagodemacedo/project-blueprint).
+
 Sistema de design "**Neon Night**" do Chutaí. Cobre as constraints do produto, tokens, padrões de componentes, princípios de layout e como construir telas novas sem cair no AI slop.
 
 Quando este doc divergir do código real, **o código vence**. Atualize este arquivo no mesmo PR que mudar tokens, fontes, ou patterns globais.
@@ -23,7 +25,7 @@ Mobile-first bolão social brasileiro pra Copa do Mundo 2026. **Playful-confiant
 - `MOTION_INTENSITY: 6`, micro-interações spring-y, hover lifts
 - `VISUAL_DENSITY: 3`, espaçoso, focado em hierarquia clara
 
-**Modo de cor:** **DARK MODE LOCKED no MVP**. Não há light mode. `<html class="dark" style="color-scheme: dark">` no `src/app/layout.tsx`. Tokens light em `:root` são placeholders; as cores reais vivem em `:root, .dark` no `src/app/globals.css`.
+**Modo de cor:** **dark mode travado**. Não há light mode. `<html class="dark" style="color-scheme: dark">` no `src/app/layout.tsx`. Tokens light em `:root` são placeholders; as cores reais vivem em `:root, .dark` no `src/app/globals.css`.
 
 ---
 
@@ -97,7 +99,7 @@ Use **sempre as utilities Tailwind tokenizadas**, nunca hex/oklch direto em comp
 
 ### 3.2 Tipografia
 
-**Fonte única:** `Geist` (sans). `Geist Mono` para números tabulares e código. Outfit foi removido por ser excessivamente friendly contra o vibe techy-neon.
+**Fonte única:** `Geist` (sans). `Geist Mono` para números tabulares e código. Outfit não entra: friendly demais para o vibe techy-neon.
 
 Variáveis CSS (em `globals.css`):
 - `--font-sans-app` → Geist
@@ -420,7 +422,7 @@ Pattern: chip pequeno com ícone Phosphor.
 
 ## 5. Ícones
 
-Use **`@phosphor-icons/react`**. Lucide está banida (foi removida quando migramos).
+Use **`@phosphor-icons/react`**. Lucide está banida.
 
 **Import:**
 
@@ -611,9 +613,10 @@ export function MeuCard({ href, title, subtitle, variant = "default" }: MeuCardP
 
 ## 10. Tooling
 
-### Stack
+### Bibliotecas visuais
 
-- **Next.js 16** (App Router + RSC)
+A stack do app está no `CONVENTIONS.md`; aqui, só o que o design system usa.
+
 - **Tailwind v4** com `@theme inline` em globals.css
 - **Geist + Geist Mono** via `next/font/google`
 - **Phosphor Icons React v2** (`@phosphor-icons/react`)
@@ -621,17 +624,7 @@ export function MeuCard({ href, title, subtitle, variant = "default" }: MeuCardP
 - **shadcn/ui Nova preset** (base, mas a maioria dos componentes foi customizada)
 - **sonner** (toasts)
 
-### Setup local
-
-```bash
-pnpm dev          # localhost:3000
-pnpm lint
-pnpm build        # smoke check antes de PR
-```
-
-### Quando adicionar dependência nova
-
-Antes de `pnpm add <pacote>`:
+### Quando adicionar dependência visual nova
 
 1. **Cheque se Phosphor / Tailwind / Geist já cobre.** 90% das vezes cobre.
 2. **Se for animação complexa**, use `motion/react` (não framer-motion legacy). Evite GSAP a menos que seja scroll-pinning real.
@@ -653,5 +646,5 @@ Antes de `pnpm add <pacote>`:
 - ❌ Logo wall genérico no hero ("Used by"), só sob a hero como section separada
 - ❌ Pillar count rule violado: bento N items ≠ N cells
 - ❌ Lucide icons, migramos pra Phosphor
-- ❌ Light mode no MVP, dark locked
+- ❌ Light mode: o dark é travado
 

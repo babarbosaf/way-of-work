@@ -83,6 +83,18 @@ esperado_pega "tag no titulo"          "tag no título"       --estado tags-ruim
 esperado_pega "README sem tag"         "sem tag"             --estado tags-ruim/README.md
 esperado_pega "subdoc de PRD sem tag"  "Resumo"              --estado tags-ruim/docs/prd/jornal.md
 
+echo "exemplos do kickoff"
+# O padrão-ouro que o kickoff mostra precisa passar no molde que ele ensina: os
+# quatro exemplos passavam limpos com zero tag enquanto a regra não era cobrada.
+EX="$HERE/../skills/kickoff-project/references/exemplos"
+esperado_limpo "exemplos no estado final com tag" --estado "$EX"/*.md
+esperado_limpo "exemplos no molde" --molde "$EX"/*.md
+if out=$(python3 "$HERE/../skills/writing/scripts/check-writing.py" "$EX"/*.md 2>&1) && [ -z "$out" ]; then
+  ok "exemplos sem slop"
+else
+  fail "exemplos sem slop — veio: $out"
+fi
+
 echo "ciclo de vida limpo"
 esperado_limpo "arvore de decisoes boa passa" --ciclo bom
 
