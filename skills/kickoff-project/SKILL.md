@@ -1,7 +1,7 @@
 ---
 name: kickoff-project
 description: |
-  Cria a fundação documental de um projeto novo por entrevista dirigida, em cadeia: PRD, documento de rotas, design system, CONVENTIONS.md, CLAUDE.md, AGENTS.md, FEEDBACK.md e TODOS.md. Oito arquivos por default, cada um derivando do anterior; pula algum só se for pedido.
+  Cria a fundação documental de um projeto novo por entrevista dirigida, em cadeia: PRD, documento de rotas, design system, CONVENTIONS.md, README.md, CLAUDE.md, AGENTS.md, FEEDBACK.md e TODOS.md. Nove arquivos por default, cada um derivando do anterior; pula algum só se for pedido.
   Invoque quando o usuário for começar ou estruturar um projeto novo, ou pedir "kickoff", "fundação do projeto", "planta do projeto", "documentação base", "blueprint", ou o PRD, as rotas, o design ou as convenções de um produto.
   Não invoque para: feature dentro de projeto que já tem fundação (é `to-spec`), doc avulso sem projeto novo por trás, ou ajuste em documento que já existe.
 ---
@@ -31,9 +31,9 @@ nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
   se apoia no anterior. Produzir um de cada vez, na ordem. Não é preciso um portão formal de
   aprovação entre eles, mas cada documento é entregue antes de começar o próximo, o que abre
   espaço natural para correção.
-- **Fronteira PRD × CONVENTIONS:** o que o usuário percebe é PRD; o que só o dev percebe é
-  CONVENTIONS. Onde o PRD encostar em técnica, vira link para a seção correspondente do
-  CONVENTIONS.md, nunca duplicação.
+- **Um assunto, um lugar:** funcionalidade, com comportamento e contrato, é seção do PRD;
+  regra universal de construção é CONVENTIONS; mapa de pastas e de docs é README.
+  `check-docs.py --molde` cobra, e desvio só vale declarado no topo do doc.
 - **Entrega padrão são os quatro documentos mais CLAUDE.md, AGENTS.md, o scaffold de
   FEEDBACK.md e um TODOS.md vazio.** Só pular algum se o usuário pedir explicitamente.
 - **Português por padrão**, acompanhando o idioma do usuário.
@@ -116,12 +116,15 @@ escrever: ele é a base do DESIGN.md e nenhuma informação dele pode ser perdid
 "Quando já existe um design system" em `references/anatomia-design.md`). A entrevista de
 design curta se reduz ao que o arquivo não cobre.
 
-### Passo 5: Conventions
+### Passo 5: Conventions e README
 
-Ler `references/anatomia-conventions.md` e escrever o CONVENTIONS.md consolidando a camada
-técnica: a stack confirmada na Fase 0, as convenções de construção capturadas na entrevista
-e o detalhamento de arquitetura das seções transversais do PRD (dados e sync, notificações,
-i18n, performance). Calibrar por `references/exemplos/CONVENTIONS.md`.
+Ler `references/anatomia-conventions.md` e escrever o CONVENTIONS.md só com a regra
+universal: a stack confirmada na Fase 0 e as convenções de construção capturadas na
+entrevista. O detalhamento técnico de cada funcionalidade já foi para o Contrato da seção
+dela no PRD.
+
+Depois, ler `references/anatomia-readme.md` e escrever o README.md: o que é, o fluxo com
+tags, o mapa de pastas e o mapa de docs.
 
 Se o projeto vive num umbrella com um CONVENTIONS.md compartilhado (modelo de trabalho da
 casa), o documento gerado abre declarando que o estende, e registra só o que é específico
@@ -139,7 +142,7 @@ rotas, design ou conventions); e o scaffold de `FEEDBACK.md`, que o AGENTS.md im
 ### Passo 7: Entrega
 
 Salvar os arquivos na raiz do projeto atual: `PRD.md`, `ROUTES.md`, `DESIGN.md`,
-`CONVENTIONS.md`, `CLAUDE.md`, `AGENTS.md`, `FEEDBACK.md` e `TODOS.md` (mais `STRATEGY.md`
+`CONVENTIONS.md`, `README.md`, `CLAUDE.md`, `AGENTS.md`, `FEEDBACK.md` e `TODOS.md` (mais `STRATEGY.md`
 se foi opt-in na Fase 0). CLAUDE.md, AGENTS.md e FEEDBACK.md precisam estar na raiz, senão
 os agentes não os carregam. Se não houver um diretório de projeto claro, perguntar o destino
 antes de salvar. Quando a skill rodar no claude.ai (sem projeto local), salvar em
@@ -158,6 +161,7 @@ entrada de constraint. Sem esse endereço, papercut vira spot-fix.
 - `references/anatomia-prd.md`: estrutura e convenções do PRD.
 - `references/anatomia-rotas.md`: estrutura do documento de rotas e como derivá-lo do PRD.
 - `references/anatomia-design.md`: estrutura do design system e como derivá-lo das rotas.
+- `references/anatomia-readme.md`: estrutura do README.md, o único doc com mapa.
 - `references/anatomia-conventions.md`: estrutura do CONVENTIONS.md e a regra de fronteira
   com o PRD.
 - `references/anatomia-agents.md`: estrutura do CLAUDE.md, do AGENTS.md e do FEEDBACK.md,

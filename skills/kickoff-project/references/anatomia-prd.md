@@ -6,15 +6,20 @@ padrão na prática, em vez de carregar o arquivo inteiro toda vez.
 
 O PRD é o documento-raiz. As rotas, o design e as conventions se derivam dele.
 
-## Regra de fronteira com o CONVENTIONS.md
+## Regra de fronteira: um assunto, um lugar
 
-**O que o usuário percebe é PRD; o que só o dev percebe é CONVENTIONS.** O comportamento
-(a notificação chega em até 1h, o dado é sempre real, o app abre instantâneo) fica no PRD.
-O como (a edge function, o cron, a RPC, a lib de i18n, o padrão de cache) vai para o
-CONVENTIONS.md. Onde o PRD encostar em técnica, fecha com um link para a seção
-correspondente do CONVENTIONS.md, nunca duplica o detalhamento. Decisão estratégica de
-teor técnico permanece na seção de decisões do PRD (decisão é produto); só o detalhamento
-migra.
+**O que é de uma funcionalidade mora na seção dela no PRD, comportamento e contrato
+juntos. O CONVENTIONS guarda só a regra universal de construção; o README, só o mapa.**
+Separar por público (o que o usuário percebe, o que só o dev percebe) punha o mesmo
+assunto em dois arquivos, e os dois divergiam.
+
+- **Comportamento:** o que acontece, com números em tabela (a notificação chega em até
+  1h, o corte é 0,8).
+- **Contrato:** os nomes e formatos que outra peça depende (a tabela, o evento, o campo, a
+  pergunta do classificador), curto.
+- **Contrato grande no código.** DDL, JSON schema e exemplo de config moram no arquivo que
+  o código lê (`migrations/`, `*.schema.json`), e a seção linka. Copiar código em doc é
+  redundância que diverge. Antes do código existir, o contrato grande mora na spec.
 
 ## O que faz um PRD deste nível
 
@@ -52,10 +57,9 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
    em lista, cada um com uma frase.
 
 ## 2..N. <Uma seção por feature / pilar>
-   Padrão interno de cada seção:
-   ### Modelo           -> como funciona conceitualmente
-   ### Estrutura        -> partes, tipos, estados
-   ### Regras / tabelas -> números exatos em tabela (pontuação, janelas, limites)
+   Padrão interno de cada seção, que abre com a tag `no ar` ou `previsto`:
+   ### Comportamento    -> como funciona, com números exatos em tabela
+   ### Contrato         -> nomes e formatos de que outra peça depende; o grande, linkado
    ### Edge cases       -> casos fora do fluxo feliz
 
 ## <Restrições invioláveis>
@@ -63,11 +67,9 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
    nem ultrapassados. Uma linha por restrição, com o racional quando houver.
 
 ## <Seções transversais>
-   Notificações, Dados e sincronização, Internacionalização, Admin. Cada uma no nível
-   de comportamento (eventos, escopo, promessas ao usuário), com tabela quando fizer
-   sentido, fechando com link para a seção correspondente do CONVENTIONS.md.
-   Performance e demais padrões puramente técnicos não ganham seção no PRD: vivem no
-   CONVENTIONS.md, citados na restrição que os torna requisito.
+   Notificações, Dados e sincronização, Internacionalização, Admin. Mesmo padrão:
+   comportamento e contrato na seção. Regra que vale para todo código (stack, estilo,
+   performance obrigatória) não ganha seção: vive no CONVENTIONS.md.
 ```
 
 A numeração é contínua. As seções transversais entram como seções numeradas ao fim.

@@ -10,6 +10,7 @@ nomeia o comando que a aplica:
 | Regra | Quem cobra |
 |---|---|
 | Doc de estado descreve o estado final, com tags | `scripts/check-docs.py --estado <arquivo.md>` |
+| Um assunto, um lugar; mapa só no README | `scripts/check-docs.py --molde <arquivo.md>` |
 | Domínio do PRD se cita de volta | `scripts/check-docs.py --grafo <raiz>` |
 | Decisão vive enquanto vigente | `scripts/check-docs.py --ciclo <raiz>` |
 | Transiente tem prazo de validade | `scripts/check-docs.py --decay <raiz>` |
@@ -42,6 +43,21 @@ histórico.
 **Deliberação morre no git; restrição sobrevive colhida.** Cortar o decision log não é
 cortar a regra que ele carregava: a regra vai pro doc que possui o assunto, no
 imperativo, sem a data e sem as alternativas descartadas.
+
+## Um assunto, um lugar
+
+| Doc | Guarda | Não guarda |
+|---|---|---|
+| README | o que é, fluxo com tags, mapa de pastas e de docs, como começar | regra |
+| AGENTS | invariantes e roteamento do agente | detalhe de funcionalidade |
+| PRD | uma seção por funcionalidade: comportamento, contrato e edge cases | regra universal |
+| CONVENTIONS | a regra universal: stack, código, branch, commit, lint, CI, evals; teto de 150 linhas | funcionalidade, mapa |
+
+- **Contrato grande no código.** DDL, schema e exemplo de config moram no arquivo que o
+  código lê, e a seção do PRD linka. Antes do código, moram na spec.
+- **README de pasta só em fronteira:** pasta que alguém chama sem ler o código.
+- **Desvio do molde é declarado.** `> **Desvio do molde:** <motivo>` nas primeiras linhas
+  do doc cala o `--molde` naquele arquivo. Desvio sem a linha é acidente, e o lint pega.
 
 ## O grafo de domínios
 

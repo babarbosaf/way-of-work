@@ -5,6 +5,7 @@
     check-docs.py --estado <arquivo.md> [<arquivo.md> ...]
     check-docs.py --ciclo <raiz-do-projeto>
     check-docs.py --decay <raiz-do-projeto>
+    check-docs.py --molde <arquivo.md> [<arquivo.md> ...]
     check-docs.py --estagio <raiz-do-projeto>
 
 `--grafo` prova que a documentação de produto é navegável e recíproca: link
@@ -33,6 +34,11 @@ exatamente um degrau da escada (`INBOX.md`, `TODOS.md`, `docs/specs/<slug>/spec.
 `tickets/`, some). Promover é mover, nunca copiar, e o item que sobe sai do degrau de
 baixo sem deixar ponteiro nem linha riscada. Doc de raiz que a escada não nomeia é
 degrau clandestino: ele não duplica por descuido, duplica por desenho.
+
+`--molde` prova que cada doc de raiz fica no papel dele. Mapa de docs e árvore de
+pastas só existem no README, e o CONVENTIONS tem teto de tamanho, porque guarda só a
+regra universal. Fugir do molde é permitido quando declarado: `> **Desvio do molde:**
+<motivo>` nas primeiras linhas cala o check daquele arquivo.
 
 Exit 0 limpo, 1 com achado, 2 erro de uso.
 """
@@ -276,6 +282,46 @@ def check_estado(path: Path, ach: Achados) -> None:
             ach.add(nome, n, f"texto riscado ({m.group(0)[:30]}); estado presente se reescreve, não se risca")
 
 
+# ---------------------------------------------------------------------- molde
+
+DOCS_RAIZ = {"README.md", "AGENTS.md", "PRD.md", "CONVENTIONS.md", "ROUTES.md", "DESIGN.md"}
+LINK_DOC_RAIZ = re.compile(r"\]\((?:\./)?(" + "|".join(re.escape(d) for d in DOCS_RAIZ) + r")[#)]")
+# Entrada de árvore é "├── nome", sem seta. Diagrama de fluxo usa os mesmos traços
+# ("└────┘", "├── falta algo ──▶"), e dois PRDs do kirara acusavam por isso.
+ARVORE = re.compile(r"[├└]── [\w.\-]+/?\s*(#.*)?$")
+DESVIO = re.compile(r"^>\s*\*\*Desvio do molde:\*\*", re.M)
+TETO_CONVENTIONS = 150     # linhas; regra universal cabe nisso, funcionalidade não
+
+
+def check_molde(path: Path, ach: Achados) -> None:
+    if path.name not in DOCS_RAIZ or path.name == "README.md":
+        return
+    texto = path.read_text(encoding="utf-8", errors="replace")
+    if DESVIO.search("\n".join(texto.splitlines()[:15])):
+        return
+    nome = str(path)
+    linhas = texto.splitlines()
+
+    em_tabela = entradas = 0
+    for n, ln in enumerate(linhas, 1):
+        # O AGENTS roteia ("quando X, leia Y") e por isso linka os docs; roteamento
+        # é papel dele, e o template da casa acusava. Só o mapa ("doc, para quem") é
+        # do README.
+        if path.name != "AGENTS.md" and ln.lstrip().startswith("|") and LINK_DOC_RAIZ.search(ln):
+            em_tabela += 1
+            if em_tabela == 3:
+                ach.add(nome, n, "mapa de docs fora do README; o mapa mora num lugar só")
+        elif not ln.lstrip().startswith("|"):
+            em_tabela = 0
+        if ARVORE.search(ln):
+            entradas += 1
+            if entradas == 2:
+                ach.add(nome, n, "árvore de pastas fora do README; o mapa mora num lugar só")
+
+    if path.name == "CONVENTIONS.md" and len(linhas) > TETO_CONVENTIONS:
+        ach.add(nome, len(linhas), f"CONVENTIONS com {len(linhas)} linhas, acima do teto de {TETO_CONVENTIONS}; o que é de uma funcionalidade vai para a seção dela no PRD")
+
+
 # ---------------------------------------------------------------------- decay
 
 HANDOFF_DIR = "_tmp"
@@ -480,10 +526,11 @@ def main() -> int:
     g.add_argument("--estado", type=Path, nargs="+", help="doc de estado a checar")
     g.add_argument("--ciclo", type=Path, help="raiz do projeto (checa a árvore de ADR e DDR)")
     g.add_argument("--decay", type=Path, help="raiz do projeto (checa o que devia ter morrido)")
+    g.add_argument("--molde", type=Path, nargs="+", help="doc de raiz a checar contra o molde")
     g.add_argument("--estagio", type=Path, help="raiz do projeto (checa o invariante de estágio único)")
     args = ap.parse_args()
 
-    alvos = args.estado or [args.grafo or args.ciclo or args.decay or args.estagio]
+    alvos = args.estado or args.molde or [args.grafo or args.ciclo or args.decay or args.estagio]
     for alvo in alvos:
         if not alvo.exists():
             print(f"não existe: {alvo}", file=sys.stderr)
@@ -498,6 +545,9 @@ def main() -> int:
         check_decay(args.decay, ach)
     elif args.estagio:
         check_estagio(args.estagio, ach)
+    elif args.molde:
+        for alvo in args.molde:
+            check_molde(alvo, ach)
     else:
         for alvo in args.estado:
             check_estado(alvo, ach)

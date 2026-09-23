@@ -50,6 +50,15 @@ esperado_pega "aresta de mao unica"    "não volta"            --grafo ruim-graf
 esperado_pega "orfao de entrada"       "órfão de entrada"     --grafo ruim-grafo
 esperado_pega "subdoc sem indice"      "sem PRD.md"           --grafo prd-orfao
 
+echo "molde"
+esperado_limpo "README tem mapa e arvore" --molde molde-bom/README.md molde-bom/PRD.md molde-bom/CONVENTIONS.md
+esperado_limpo "diagrama de fluxo nao e arvore" --molde molde-bom/DESIGN.md
+esperado_limpo "roteamento do AGENTS nao e mapa" --molde molde-bom/AGENTS.md
+esperado_pega "mapa de docs fora do README" "mapa de docs"   --molde molde-ruim/PRD.md
+esperado_pega "arvore de pastas fora do README" "árvore"     --molde molde-ruim/CONVENTIONS.md
+esperado_pega "CONVENTIONS acima do teto" "teto"             --molde molde-ruim/CONVENTIONS.md
+esperado_limpo "desvio declarado cala o molde" --molde molde-desvio/CONVENTIONS.md
+
 echo "estado limpo"
 esperado_limpo "PRD bom passa" --estado bom/PRD.md
 # O CHANGELOG é o log: cobrar dele que não tenha seção de histórico é cobrar
