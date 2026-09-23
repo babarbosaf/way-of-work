@@ -44,11 +44,6 @@ específico: stack, padrões e regras locais. Não re-narrar o modelo compartilh
    O que o CI roda em todo PR, e o `evals.yaml`: cada eval com gatilho por caminho,
    comando e corte.
 
-## 5. README de pasta
-   Só em fronteira: pasta que alguém chama sem ler o código (um conector, um pacote
-   público) tem README com o que precisa para chamar. O resto se explica por docstring
-   e teste.
-
 ## <Índice de ADRs>
    Decisão técnica cara de reverter vira ADR em docs/adrs/ (uma decisão por arquivo,
    nunca editar ADR aceito — criar um novo que o substitui). Este índice lista ADR,

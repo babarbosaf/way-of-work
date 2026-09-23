@@ -52,7 +52,7 @@ esperado_pega "subdoc sem indice"      "sem PRD.md"           --grafo prd-orfao
 
 echo "molde"
 esperado_limpo "README tem mapa e arvore" --molde molde-bom/README.md molde-bom/PRD.md molde-bom/CONVENTIONS.md
-esperado_limpo "diagrama de fluxo nao e arvore" --molde molde-bom/DESIGN.md
+esperado_limpo "diagrama de fluxo nao e arvore" --molde molde-diagrama/PRD.md
 esperado_limpo "roteamento do AGENTS nao e mapa" --molde molde-bom/AGENTS.md
 esperado_pega "mapa de docs fora do README" "mapa de docs"   --molde molde-ruim/PRD.md
 esperado_pega "arvore de pastas fora do README" "árvore"     --molde molde-ruim/CONVENTIONS.md

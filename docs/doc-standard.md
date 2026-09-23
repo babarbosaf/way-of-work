@@ -55,7 +55,8 @@ imperativo, sem a data e sem as alternativas descartadas.
 
 - **Contrato grande no código.** DDL, schema e exemplo de config moram no arquivo que o
   código lê, e a seção do PRD linka. Antes do código, moram na spec.
-- **README de pasta só em fronteira:** pasta que alguém chama sem ler o código.
+- **Sem README de pasta.** O que uma pasta precisa dizer mora no arquivo de contrato
+  dela (o schema, o config) ou no docstring. README é um só, o da raiz.
 - **Desvio do molde é declarado.** `> **Desvio do molde:** <motivo>` nas primeiras linhas
   do doc cala o `--molde` naquele arquivo. Desvio sem a linha é acidente, e o lint pega.
 
