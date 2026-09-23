@@ -30,7 +30,7 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
   `check-docs.py --estado` bloqueia a seção, e o padrão 35 do catálogo de escrita explica
   o porquê.
 - **Restrição no imperativo, nunca decisão logada.** A escolha difícil vira uma regra na
-  seção que possui o assunto ("o número publicado mora na tabela"), no presente, sem data
+  seção que possui o assunto ("o número publicado mora na tabela"), no estado final, com a tag `no ar` ou `previsto`, sem data
   e sem as alternativas descartadas. O racional completo mora no ADR enquanto ele estiver
   vigente, e a deliberação mora no git. PRD que vira decision log cresce sem fim e
   ninguém lê até o fim.

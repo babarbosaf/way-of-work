@@ -9,7 +9,7 @@ nomeia o comando que a aplica:
 
 | Regra | Quem cobra |
 |---|---|
-| Doc de estado fala do presente | `scripts/check-docs.py --estado <arquivo.md>` |
+| Doc de estado descreve o estado final, com tags | `scripts/check-docs.py --estado <arquivo.md>` |
 | Domínio do PRD se cita de volta | `scripts/check-docs.py --grafo <raiz>` |
 | Decisão vive enquanto vigente | `scripts/check-docs.py --ciclo <raiz>` |
 | Transiente tem prazo de validade | `scripts/check-docs.py --decay <raiz>` |
@@ -18,15 +18,22 @@ nomeia o comando que a aplica:
 | Teto do `AGENTS.md` | `hooks/claude_md_size_guard.py` |
 | Escrita sem slop | `skills/writing/scripts/check-writing.py` |
 
-## Dois tempos verbais, e só dois
+## Um tempo verbal, com duas tags
 
-Doc de estado descreve **o presente** ou **o futuro desejado**. Não existe terceiro
-tempo. O que foi decidido, tentado e descartado mora no git e no `CHANGELOG.md`, que é
-onde histórico tem leitor.
+Doc de estado descreve **o estado final**: o produto como ele vai ser depois das specs
+em aberto. Cada seção abre com uma tag, e numa seção mista a tag vai na linha:
 
-Isso mata três hábitos: seção datada, seção de log e texto riscado. Riscar é o pior dos
-três, porque mantém a versão velha na frente do leitor com uma marca que só o autor sabe
-ler. Estado presente se reescreve.
+- `no ar`: já funciona.
+- `previsto`: entra com spec em aberto.
+
+Não existe prosa de "hoje é assim, no alvo será assado". O leitor que quer saber o que
+funciona agora filtra por `no ar`; o agente age só pelo que está `no ar`. Quando a spec
+fecha, a tag vira `no ar` e nada mais muda no texto.
+
+O que foi decidido, tentado e descartado mora no git e no `CHANGELOG.md`, que é onde
+histórico tem leitor. Isso mata três hábitos: seção datada, seção de log e texto
+riscado. Riscar é o pior dos três, porque mantém a versão velha na frente do leitor com
+uma marca que só o autor sabe ler.
 
 O sinal é **estrutural, não lexical**: data em heading, não a palavra "histórico" no
 corpo. Buscar a palavra deu 21 ocorrências e 2 reais num PRD cujo domínio é dado
