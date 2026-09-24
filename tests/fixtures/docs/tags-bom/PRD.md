@@ -21,6 +21,14 @@ A busca devolve dez resultados.
 | resumo às 07:00 | `no ar` |
 | veto até as 18:00 | `previsto` |
 
-## 4. Restrições
+## 4. Consulta
+
+`parcialmente no ar`: hoje por grep; o comando é previsto.
+
+### Comportamento
+
+O contexto chega antes da resposta.
+
+## 5. Restrições
 
 - Teto de US$ 20 por mês.

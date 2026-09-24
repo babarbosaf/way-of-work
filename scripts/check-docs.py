@@ -293,7 +293,7 @@ def check_estado(path: Path, ach: Achados) -> None:
 # e trocar `previsto` por `no ar` quebraria todo link para a seção. Funcionalidade é a seção H2 do PRD
 # que tem "### Comportamento"; visão geral e restrição não levam tag. Os quatro
 # exemplos do kickoff passavam limpos com zero tag, porque nada cobrava a regra.
-TAG = re.compile(r"`(?:no ar|previsto)`")
+TAG = re.compile(r"`(?:parcialmente no ar|no ar|previsto)`")
 COBRA_TAG = {"PRD.md", "README.md"}
 
 
@@ -329,6 +329,11 @@ DESVIO = re.compile(r"^>\s*\*\*Desvio do molde:\*\*", re.M)
 TETO_CONVENTIONS = 150     # linhas; regra universal cabe nisso, funcionalidade não
 
 
+# PRD descreve o produto. Backlog tem estágio e decai; referência é pesquisa, com fonte
+# e data. Os dois dentro do PRD crescem sem dono e ninguém lê até o fim.
+SECAO_FORA_DO_PRD = re.compile(r"^##\s+(?:\d+\.\s*)?(Backlog|Refer[êe]ncias)\b", re.I)
+
+
 def check_molde(path: Path, ach: Achados) -> None:
     if path.name not in DOCS_RAIZ or path.name == "README.md":
         return
@@ -353,6 +358,14 @@ def check_molde(path: Path, ach: Achados) -> None:
             entradas += 1
             if entradas == 2:
                 ach.add(nome, n, "árvore de pastas fora do README; o mapa mora num lugar só")
+
+    if path.name == "PRD.md":
+        cercado = fenced_ranges(linhas)
+        for n, ln in enumerate(linhas, 1):
+            if n - 1 in cercado or not (m := SECAO_FORA_DO_PRD.match(ln)):
+                continue
+            destino = "TODOS.md, que decai" if m.group(1).lower() == "backlog" else "um estudo (docs/research/ ou a wiki)"
+            ach.add(nome, n, f"seção de {m.group(1).lower()} no PRD; o lugar dela é {destino}")
 
     if path.name == "CONVENTIONS.md" and len(linhas) > TETO_CONVENTIONS:
         ach.add(nome, len(linhas), f"CONVENTIONS com {len(linhas)} linhas, acima do teto de {TETO_CONVENTIONS}; o que é de uma funcionalidade vai para a seção dela no PRD")

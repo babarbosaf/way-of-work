@@ -57,6 +57,8 @@ esperado_limpo "roteamento do AGENTS nao e mapa" --molde molde-bom/AGENTS.md
 esperado_pega "mapa de docs fora do README" "mapa de docs"   --molde molde-ruim/PRD.md
 esperado_pega "arvore de pastas fora do README" "árvore"     --molde molde-ruim/CONVENTIONS.md
 esperado_pega "CONVENTIONS acima do teto" "teto"             --molde molde-ruim/CONVENTIONS.md
+esperado_pega "backlog no PRD" "backlog"               --molde molde-ruim/PRD.md
+esperado_pega "referencias no PRD" "referências"       --molde molde-ruim/PRD.md
 esperado_limpo "desvio declarado cala o molde" --molde molde-desvio/CONVENTIONS.md
 
 echo "estado limpo"

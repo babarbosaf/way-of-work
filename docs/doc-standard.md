@@ -19,7 +19,7 @@ nomeia o comando que a aplica:
 | Teto do `AGENTS.md` | `hooks/claude_md_size_guard.py` |
 | Escrita sem slop | `skills/writing/scripts/check-writing.py` |
 
-## Um tempo verbal, com duas tags
+## Um tempo verbal, com tags de estado
 
 Doc de estado descreve **o estado final**: o produto como ele vai ser depois das specs
 em aberto. **A tag marca a funcionalidade, não a seção:** seção inteira num estado leva a
@@ -27,11 +27,18 @@ tag na primeira linha, nunca no título, que é âncora e quebraria link a cada 
 seção mista marca cada item (linha, célula, etapa do diagrama). Nunca um
 bloco `no ar` e outro `previsto`, que é o "hoje contra alvo" com outra roupa.
 
-- `no ar`: já funciona.
-- `previsto`: entra com spec em aberto.
+- `no ar`: funciona como o doc descreve.
+- `parcialmente no ar`: parte entregue, parte ainda em spec ou issue. A primeira linha
+  diz qual parte já funciona.
+- `previsto`: nada no ar ainda; entra com spec em aberto.
+
+**A definição mora aqui, e só aqui.** No projeto, a legenda aparece uma vez, no papel do
+PRD, que é o doc que mais carrega tag; README, CONVENTIONS e AGENTS usam a tag sem
+redefinir.
 
 Não existe prosa de "hoje é assim, no alvo será assado". O leitor que quer saber o que
-funciona agora filtra por `no ar`; o agente age só pelo que está `no ar`. Quando a spec
+funciona agora filtra por `no ar`; o agente age só pelo que está `no ar`, e em
+`parcialmente no ar` só pela parte entregue. Quando a spec
 fecha, a tag vira `no ar` e nada mais muda no texto.
 
 O que foi decidido, tentado e descartado mora no git e no `CHANGELOG.md`, que é onde
