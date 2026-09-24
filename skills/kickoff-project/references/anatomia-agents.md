@@ -51,13 +51,13 @@ Fechar com a instrução: nenhuma feature se implementa sem ler a seção corres
 PRD; nenhuma tela se cria sem conferir ROUTES.md e DESIGN.md; nenhum código se escreve
 fora dos padrões do CONVENTIONS.md.
 
-### 2. Restrições invioláveis
+### 2. Restrições do agente
 
-Ecoar aqui as restrições capturadas na Fase 0 da entrevista (e registradas no PRD):
-regras, requisitos e limitações que não podem ser quebrados ou ultrapassados em nenhuma
-circunstância. Uma linha por restrição. Incluir a instrução: se uma tarefa pedida
-conflitar com uma restrição desta lista, o agente para e aponta o conflito em vez de
-executar.
+O que o agente não pode fazer sem o dono, capturado na Fase 4 da entrevista: apagar,
+publicar, escrever para fora, gastar acima do teto. Uma linha por restrição. A restrição
+do produto não se ecoa aqui: ela mora na seção do PRD que ela restringe, e o agente lê a
+seção antes de implementar. Incluir a instrução: se uma tarefa pedida conflitar com uma
+restrição, do agente ou do PRD, o agente para e aponta o conflito em vez de executar.
 
 ### 3. Execução
 
@@ -96,8 +96,8 @@ usuário se deve atualizar o documento correspondente, mantendo a fundação sem
 fonte de verdade:
 
 - Decisão de produto (uma regra mudou, um escopo entrou ou saiu, um número foi definido,
-  um ponto em aberto foi fechado): atualizar o `PRD.md`, com nota de escopo datada quando
-  substituir decisão anterior (ver `anatomia-prd.md`).
+  um ponto em aberto foi fechado): atualizar o `PRD.md` no estado final, sem nota de
+  escopo nem data (ver `anatomia-prd.md`).
 - Funcionalidade que entrou no ar: a tag vira `no ar` no PRD e no README, no mesmo PR.
 - Tela ou fluxo de navegação criado, alterado ou removido: atualizar o `ROUTES.md`.
 - Token, pattern ou regra visual que mudou no código: atualizar o `DESIGN.md`. É a regra

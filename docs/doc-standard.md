@@ -42,7 +42,8 @@ funciona agora filtra por `no ar`; o agente age só pelo que está `no ar`, e em
 fecha, a tag vira `no ar` e nada mais muda no texto.
 
 O que foi decidido, tentado e descartado mora no git e no `CHANGELOG.md`, que é onde
-histórico tem leitor. Isso mata três hábitos: seção datada, seção de log e texto
+histórico tem leitor. O doc também não anuncia o que não existe ("não há README de
+conector"): a negativa só entra quando, sem ela, o leitor faria o errado. Isso mata três hábitos: seção datada, seção de log e texto
 riscado. Riscar é o pior dos três, porque mantém a versão velha na frente do leitor com
 uma marca que só o autor sabe ler.
 
@@ -63,11 +64,24 @@ imperativo, sem a data e sem as alternativas descartadas.
 | PRD | uma seção por funcionalidade: comportamento, contrato e edge cases | regra universal |
 | CONVENTIONS | a regra universal: stack, código, branch, commit, lint, CI, evals; teto de 150 linhas | funcionalidade, mapa |
 
-- **Conector: negócio no PRD, fornecedor no config.** Comportamento e contrato curto do
-  conector vão numa linha da tabela de fontes do PRD, e ganham seção só com regra
-  exclusiva. Id, versão da API, credencial e gotcha vão no config do conector. O critério:
-  o que muda quando o fornecedor muda a API vai pro config; o que muda quando o dono muda
-  de ideia vai pro PRD.
+- **Consumidor é externo.** O doc de produto descreve o contrato que oferece, nunca o
+  agente ou sistema que o consome: o contrato do consumidor muda, e o texto apodrece.
+  Nome de consumidor só como instância ("hoje, dois agentes leem a wiki"), ou no AGENTS.md.
+- **Conector: uma linha no PRD, o resto no config.** O PRD traz uma linha por conector
+  ativo na tabela de fontes. Papel, restrição, id, versão da API, credencial e gotcha
+  moram no config do conector, que o código lê e valida. Seção própria no PRD só com regra
+  de negócio exclusiva dele.
+- **Restrição mora na seção que ela restringe.** Seção de restrições no fim duplica a regra
+  longe do que ela governa, e as duas cópias divergem. A restrição do agente mora no
+  AGENTS.md.
+- **PRD sem backlog, referências, métricas nem riscos.** Backlog vai pro `TODOS.md`, que
+  decai; referência vira estudo, em `docs/research/` ou na wiki; o número que governa uma
+  regra entra na tabela dela, e o que tem comando vira eval; risco com mitigação vira a
+  regra que protege, e sem mitigação vai pro `TODOS.md`. O `--molde` acusa a seção.
+- **O fluxo abre o PRD, em ASCII.** A visão geral traz um diagrama só, ligando as camadas:
+  CAIXA ALTA para camada ou peça, minúscula para ação, o `§` de cada peça e a tag por
+  etapa. Ciclo de vida, conversa e decisão também se desenham, na seção dona. Em prosa,
+  cada leitor monta um fluxo diferente. O `--molde` acusa a visão geral sem bloco cercado.
 - **Contrato grande no código.** DDL, schema e exemplo de config moram no arquivo que o
   código lê, e a seção do PRD linka. Antes do código, moram na spec.
 - **Sem README de pasta.** O que uma pasta precisa dizer mora no arquivo de contrato

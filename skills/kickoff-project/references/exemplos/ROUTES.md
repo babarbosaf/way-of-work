@@ -130,4 +130,4 @@ Acessíveis a qualquer pessoa, sem login. Pensadas para compartilhamento.
 
 ### Deep links de push
 
-Ver seção 15 do PRD para o mapeamento completo de evento → rota.
+Ver seção 13 do PRD para o mapeamento completo de evento → rota.

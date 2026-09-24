@@ -330,8 +330,19 @@ TETO_CONVENTIONS = 150     # linhas; regra universal cabe nisso, funcionalidade 
 
 
 # PRD descreve o produto. Backlog tem estágio e decai; referência é pesquisa, com fonte
-# e data. Os dois dentro do PRD crescem sem dono e ninguém lê até o fim.
-SECAO_FORA_DO_PRD = re.compile(r"^##\s+(?:\d+\.\s*)?(Backlog|Refer[êe]ncias)\b", re.I)
+# e data; métrica, risco e restrição soltos no fim ficam longe da regra que governam.
+# Todos crescem sem dono, e ninguém lê até o fim.
+SECAO_FORA_DO_PRD = re.compile(r"^##\s+(?:\d+\.\s*)?(Backlog|Refer[êe]ncias|M[ée]tricas|Riscos|Restri[çc][õo]es)\b", re.I)
+# Chave: as três primeiras letras do título, com e sem acento.
+FORA_DO_PRD = {
+    "bac": ("backlog", "TODOS.md, que decai"),
+    "ref": ("referências", "um estudo (docs/research/ ou a wiki)"),
+    "mét": ("métricas", "a tabela da funcionalidade que o número governa, ou o evals.yaml quando tem comando"),
+    "met": ("métricas", "a tabela da funcionalidade que o número governa, ou o evals.yaml quando tem comando"),
+    "ris": ("riscos", "a regra da seção que a mitigação protege; risco sem mitigação vai para o TODOS.md"),
+    "res": ("restrições", "a seção que ela restringe; a do agente, no AGENTS.md"),
+}
+H2 = re.compile(r"^##\s")
 
 
 def check_molde(path: Path, ach: Achados) -> None:
@@ -364,8 +375,16 @@ def check_molde(path: Path, ach: Achados) -> None:
         for n, ln in enumerate(linhas, 1):
             if n - 1 in cercado or not (m := SECAO_FORA_DO_PRD.match(ln)):
                 continue
-            destino = "TODOS.md, que decai" if m.group(1).lower() == "backlog" else "um estudo (docs/research/ ou a wiki)"
-            ach.add(nome, n, f"seção de {m.group(1).lower()} no PRD; o lugar dela é {destino}")
+            tipo, destino = FORA_DO_PRD[m.group(1).lower()[:3]]
+            ach.add(nome, n, f"seção de {tipo} no PRD; o lugar é {destino}")
+        # A visão geral abre com o fluxo desenhado, que liga as camadas; em prosa, cada
+        # leitor monta um diagrama diferente na cabeça.
+        secoes = [i for i, ln in enumerate(linhas) if H2.match(ln) and i not in cercado]
+        if secoes:
+            ini = secoes[0]
+            fim = secoes[1] if len(secoes) > 1 else len(linhas)
+            if not any(i in cercado for i in range(ini, fim)):
+                ach.add(nome, ini + 1, "visão geral sem diagrama; o fluxo que liga as camadas abre o PRD, em ASCII")
 
     if path.name == "CONVENTIONS.md" and len(linhas) > TETO_CONVENTIONS:
         ach.add(nome, len(linhas), f"CONVENTIONS com {len(linhas)} linhas, acima do teto de {TETO_CONVENTIONS}; o que é de uma funcionalidade vai para a seção dela no PRD")

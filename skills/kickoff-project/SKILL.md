@@ -17,7 +17,7 @@ escreve, em cadeia: o PRD nasce da entrevista, as rotas caem do PRD, o design se
 apoia nas telas que as rotas definiram, e as conventions consolidam a camada técnica que a
 entrevista e o PRD revelaram. Por fim, fecha a camada operacional: um CLAUDE.md que aponta
 para o AGENTS.md, e um AGENTS.md que amarra os documentos às regras de trabalho dos
-agentes (restrições invioláveis, registro de feedbacks, documentos sempre atualizados).
+agentes (restrições do agente, registro de feedbacks, documentos sempre atualizados).
 
 A régua de profundidade é o projeto Chutaí, cujos documentos completos vivem em
 `references/exemplos/`. O que se reproduz é o nível de detalhe e a disciplina de estrutura,
@@ -50,7 +50,7 @@ nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
 Ler `references/metodo-entrevista.md` e conduzir a entrevista. Ela cobre, em fases:
 enquadramento e stack, pilares de engajamento, deep-dive por feature (comportamento com
 regras exatas, contrato, edge cases, o que falta decidir), camadas transversais (dados e sync,
-notificações, performance, i18n, admin) e restrições invioláveis.
+notificações, performance, i18n, admin) e restrições invioláveis, cada uma na seção que ela restringe.
 
 Disciplina: um bloco de tema por mensagem, no máximo 1 a 3 perguntas por vez, forçar
 especificidade (números, tabelas, cadências), devolver um mini-resumo ao fechar cada bloco.
@@ -69,7 +69,7 @@ Ainda na Fase 0:
   podem ser quebrados).
 - Perguntar se a visão/direção do negócio merece documento próprio. Se sim, gerar um
   `STRATEGY.md` curto (por que o produto existe, apostas, norte) antes do PRD; se não, o
-  racional estratégico vive na seção de decisões do PRD. STRATEGY é opt-in, não default.
+  racional estratégico vive na visão geral do PRD. STRATEGY é opt-in, não default.
 - Perguntar se já existe um design system ou fundação de design já existente para herdar (design
   system de umbrella, kit de componentes, DESIGN.md de outro produto). Se existir, o usuário
   aponta o arquivo, que vira a base do DESIGN.md sem perda de informação: o documento gerado
@@ -86,7 +86,8 @@ detalhe de cada seção (abrir por seção, não carregar o arquivo inteiro de u
 
 Garantir os diferenciais: padrão de seção repetido (comportamento, contrato, edge cases),
 a tag `no ar` ou `previsto` em cada funcionalidade, `a definir` na célula em vez de bloco
-de pendências, a seção de restrições invioláveis no imperativo, e as seções transversais
+de pendências, cada restrição no imperativo dentro da seção dona, o diagrama ASCII na
+visão geral, e as seções transversais
 no mesmo padrão. O contrato de cada funcionalidade fica na seção dela; só a regra
 universal de construção levantada na entrevista vai para o Passo 5.
 
@@ -134,7 +135,7 @@ do projeto: stack, padrões e regras locais.
 
 Ler `references/anatomia-agents.md` e escrever os três arquivos: o CLAUDE.md mínimo, que
 só aponta para o AGENTS.md; o AGENTS.md com as cinco seções obrigatórias (documentos de
-referência PRD.md, ROUTES.md, DESIGN.md e CONVENTIONS.md; restrições invioláveis; execução;
+referência PRD.md, ROUTES.md, DESIGN.md e CONVENTIONS.md; restrições do agente; execução;
 registro de feedbacks; documentos vivos, com o agente perguntando antes de atualizar PRD,
 rotas, design ou conventions); e o scaffold de `FEEDBACK.md`, que o AGENTS.md importa via
 `@FEEDBACK.md` e que carrega no cabeçalho a regra de teto e promoção.

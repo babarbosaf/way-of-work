@@ -59,6 +59,11 @@ esperado_pega "arvore de pastas fora do README" "árvore"     --molde molde-ruim
 esperado_pega "CONVENTIONS acima do teto" "teto"             --molde molde-ruim/CONVENTIONS.md
 esperado_pega "backlog no PRD" "backlog"               --molde molde-ruim/PRD.md
 esperado_pega "referencias no PRD" "referências"       --molde molde-ruim/PRD.md
+esperado_pega "metricas no PRD" "métricas"             --molde molde-ruim/PRD.md
+esperado_pega "riscos no PRD" "riscos"                 --molde molde-ruim/PRD.md
+esperado_pega "restricoes em secao propria" "restrições" --molde molde-ruim/PRD.md
+# O fluxo desenhado na visão geral é o que liga as camadas; em prosa, cada leitor monta um.
+esperado_pega "visao geral sem diagrama" "sem diagrama" --molde molde-ruim/PRD.md
 esperado_limpo "desvio declarado cala o molde" --molde molde-desvio/CONVENTIONS.md
 
 echo "estado limpo"

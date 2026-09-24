@@ -152,7 +152,8 @@ produziu tirou 40% das linhas de um sub-doc de PRD e o deixou mais completo.
     dizer o que não cabe em célula. Teste: apaga a frase; se nenhuma informação sumiu da
     tabela, ela não era necessária.
 40. **Negativa que reafirma o positivo.** `um número inteiro deles, nunca uma fração`,
-    `obrigatório, e não opcional`, `só o admin, mais ninguém`. A segunda metade traduz a
+    `obrigatório, e não opcional`, `só o admin, mais ninguém`, `a prova fica no rodapé,
+    não no corpo` (vira `a evidência fica no rodapé`). A segunda metade traduz a
     primeira ao contrário e não acrescenta caso nenhum. A negativa merece o lugar quando
     exclui algo que o leitor colocaria ali por conta própria, como `o dia é o do fuso do
     cliente, nunca o do servidor`.
@@ -165,7 +166,7 @@ produziu tirou 40% das linhas de um sub-doc de PRD e o deixou mais completo.
 42. **Frase de efeito no lugar da frase simples.** A antítese que fecha bonito:
     `prompt_version é auditoria, não chave de cache`, `o gargalo é a latência, não o
     dinheiro`, `o que ele afirma é determinístico, e o que ele gera é a conversa`,
-    `decisão humana não é desfeita por máquina`. Diferente do padrão 40, onde a
+    `decisão humana não é desfeita por máquina`, `o conector é código, não conversa`. Diferente do padrão 40, onde a
     segunda metade só traduz a primeira ao contrário: aqui as duas metades dizem
     coisas diferentes, e ainda assim a forma pesa mais que o conteúdo, porque o
     leitor precisa desmontar a figura pra achar a instrução. Escreve o que a coisa

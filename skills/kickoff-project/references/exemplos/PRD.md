@@ -1,6 +1,8 @@
 # PRD: Bolão Copa do Mundo 2026
 
-> Exemplo adaptado do blueprint de Iago de Macedo (github.com/iagodemacedo/project-blueprint). As tags ilustram o molde.
+> **Papel deste doc.** A fonte da verdade do produto: uma seção por funcionalidade, com comportamento, contrato e edge cases. Rotas no [ROUTES.md](ROUTES.md), telas no [DESIGN.md](DESIGN.md), regra de construção no [CONVENTIONS.md](CONVENTIONS.md). Tags: `no ar` funciona como descrito; `parcialmente no ar`, a primeira linha diz a parte que funciona; `previsto` entra com spec em aberto.
+
+> Exemplo adaptado do blueprint de Iago de Macedo (github.com/iagodemacedo/project-blueprint).
 
 ## 1. Visão geral
 
@@ -11,6 +13,20 @@ O produto se sustenta em três motores principais de engajamento:
 1. **Palpites** que premiam tanto V/E/D quanto placar exato, com multiplicadores crescentes por fase do torneio `no ar`
 2. **Grupos privados entre amigos** com ranking de Liga e estatísticas sociais do grupo `no ar`
 3. **Álbum de figurinhas digital** com 154 figurinhas em 4 coleções, sistema de troca e drop diário `previsto`
+
+```
+BALLDONTLIE ──sync por minuto (§14)──▶ BANCO: jogos, jogo_detalhes          `no ar`
+                                          │
+JOGADOR ──palpita até o apito (§3–§5)──▶ PALPITES                            `no ar`
+                                          │ apura no fim do jogo
+                                          ▼
+                                        PONTOS ──soma──▶ LIGA (§7) ──▶ ESTATÍSTICAS (§8)   `no ar`
+                                          │
+                                          └──avisa──▶ NOTIFICAÇÕES (§13)     `no ar`
+
+JOGADOR ──entra por convite (§2, §6)──▶ GRUPO                               `no ar`
+JOGADOR ──abre o pacote do dia (§9, §10)──▶ ÁLBUM ──completude──▶ ranking de álbum (§7)   `previsto`
+```
 
 ## 2. Cadastro e identidade
 
@@ -99,7 +115,7 @@ Princípios da régua:
 - Pontuação cresce ao longo da Copa via multiplicadores
 - Acerto parcial conta (saldo correto ou um dos placares)
 - Long-term picks pesam, mas não decidem sozinhos a Liga
-- Sem pontos negativos: errar dá zero, sem ônus
+- Sem pontos negativos: errar dá zero, sem ônus. O produto é lúdico, e punir o erro afasta o jogador casual
 
 ### Contrato
 
@@ -116,7 +132,7 @@ O cálculo mora na engine JS `lib/pontuacao`, com os helpers puros `agregarPontu
 
 ### Comportamento
 
-Pergunta extra por jogo, validada automaticamente via provider de dados esportivos. Pool fixo definido antes da Copa, sem dependência de curadoria editorial.
+Pergunta extra por jogo, validada automaticamente via provider de dados esportivos. Pool fixo definido antes da Copa, sem curadoria editorial, que não escala na operação.
 
 | Pool | Perguntas |
 |---|---|
@@ -130,7 +146,7 @@ Pergunta extra por jogo, validada automaticamente via provider de dados esportiv
 
 ### Contrato
 
-A resposta certa se apura pelos eventos da partida em `jogo_detalhes.eventos` (seção 15).
+A resposta certa se apura pelos eventos da partida em `jogo_detalhes.eventos` (seção 14).
 
 ### Edge cases
 
@@ -214,7 +230,7 @@ Quando há empate, o ranking mostra qual critério está desempatando. Exemplo: 
 
 **Ranking de álbum** `previsto`: um seletor de tipo de ranking (pills) alterna **Palpites** (padrão) e **Álbum**. O de Álbum ordena os membros pela completude (% de figurinhas distintas sobre o catálogo), no mesmo card do ranking de pontos: posição, avatar, "X de 154 figurinhas" com barra de progresso e o % em destaque. Tocar num membro abre o álbum dele.
 
-- **Ranking puramente social, sem premiação:** completar o álbum não vale pontos na Liga (restrição da seção 13).
+- **Ranking puramente social, sem premiação:** completar o álbum não vale pontos na Liga: a economia do álbum e a competição não se misturam.
 - **Desempate simples:** mais figurinhas distintas; persistindo, ordem alfabética de apelido. Sem cascata, porque não há prêmio em jogo.
 
 ### Contrato
@@ -390,29 +406,14 @@ A tela do jogo (`/palpites/jogos/[id]/ao-vivo`) é rica em dados reais da BallDo
 
 ### Contrato
 
-O client faz polling de 20s do snapshot pela rota estável `GET /api/jogos/[id]/ao-vivo`. Os dados-fonte chegam minuto a minuto pelas edge functions da seção 15. As badges de substituição cruzam lineup com os eventos de substituição.
+O client faz polling de 20s do snapshot pela rota estável `GET /api/jogos/[id]/ao-vivo`. Os dados-fonte chegam minuto a minuto pelas edge functions da seção 14. As badges de substituição cruzam lineup com os eventos de substituição.
 
 ### Edge cases
 
 - **Deploy no meio da partida:** a rota de snapshot sobrevive à troca de build; após falhas consecutivas o client se recupera com um reload único e transparente.
 - **Gol anulado pelo VAR:** aparece riscado no feed, e o replace total de `jogo_detalhes` a cada sync resolve o placar sem reconciliar por id.
 
-## 13. Restrições invioláveis
-
-As regras que nenhuma feature pode quebrar. Estão no presente, no imperativo, sem a data e sem as alternativas descartadas: o racional caro de reverter mora no ADR, e a deliberação mora no git.
-
-- **Erro não tira ponto.** O produto é lúdico, e punição de erro afasta o jogador casual
-- **O álbum é colecionável puro.** Figurinha não dá vantagem na Liga: a economia social e a competição não se misturam
-- **Toda figurinha tem a mesma chance de drop.** Sem raridade: raridade penalizaria fechar o álbum e puxaria discussão regulatória sobre probabilidade pública
-- **Qualquer pessoa cria conta e cria grupo.** Quem cria o grupo vira admin e recebe um código de convite legível
-- **A saída do grupo é voluntária e reversível.** Ao sair, os pontos somem do ranking e o histórico de palpites fica; voltar exige convite novo
-- **Onboarding nunca bloqueia.** Os 6 passos pós-cadastro são puláveis e reabríveis
-- **A pergunta Plus vem de API, não de curadoria.** Curadoria editorial por jogo não escala na operação
-- **Lenda é ilustração estilizada por IA.** É o ponto de equilíbrio entre identidade visual e risco de imagem
-- **Idioma é preferência de usuário (PT/ES/EN), não rota.** Admin e conteúdo de usuário não são traduzidos. Ver seção 16
-- **Cada tela carrega em um roundtrip ao banco.** RPC consolidada, e o shell do app nunca espera query. Padrão obrigatório no `CONVENTIONS.md` §3
-
-## 14. Notificações
+## 13. Notificações
 
 ### Comportamento
 
@@ -452,7 +453,7 @@ A chave de dedupe é estável, `push-<tipo>:<id>`, e a `tag` da notificação re
 - **Primeiro deploy:** a janela de recência impede disparar histórico acumulado.
 - **Canal alternativo para quem não habilitou push:** `a definir`.
 
-## 15. Dados e sincronização (BallDontLie)
+## 14. Dados e sincronização (BallDontLie)
 
 `no ar`
 
@@ -492,7 +493,7 @@ Agendamento por `pg_cron` + `pg_net`. `sync-balldontlie`, o sync completo num jo
 - **Pré-Copa:** o job diário do `sync-standings` roda sempre e captura sorteio e ajustes; o de 10 min passa `{ onlyDuringCup: true }` e só atua na fase de grupos.
 - **Proteção das edge functions de sync:** `verify_jwt` com anon key; o header de shared-secret no lugar dele está `a definir`.
 
-## 16. Internacionalização (idiomas)
+## 15. Internacionalização (idiomas)
 
 ### Comportamento
 

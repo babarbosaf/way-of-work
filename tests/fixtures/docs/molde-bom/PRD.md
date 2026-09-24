@@ -4,7 +4,9 @@
 
 `previsto`
 
-Texto.
+```
+FONTE ──lê──▶ BANCO ──serve──▶ LEITOR
+```
 
 ## Relacionado
 

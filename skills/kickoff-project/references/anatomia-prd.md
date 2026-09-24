@@ -6,6 +6,15 @@ padrão na prática, em vez de carregar o arquivo inteiro toda vez.
 
 O PRD é o documento-raiz. As rotas, o design e as conventions se derivam dele.
 
+## Conteúdo
+
+- Regra de fronteira: um assunto, um lugar
+- O que faz um PRD deste nível
+- Esqueleto
+- Convenções
+- Quando o PRD vira vários
+- Como usar o exemplo
+
 ## Regra de fronteira: um assunto, um lugar
 
 **O que é de uma funcionalidade mora na seção dela no PRD, comportamento e contrato
@@ -35,7 +44,7 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
   `check-docs.py --estado` bloqueia a seção, e o padrão 35 do catálogo de escrita explica
   o porquê.
 - **Restrição no imperativo, nunca decisão logada.** A escolha difícil vira uma regra na
-  seção que possui o assunto ("o número publicado mora na tabela"), no estado final, com a tag `no ar` ou `previsto`, sem data
+  seção que possui o assunto ("o número publicado mora na tabela"), no estado final, com a tag, sem data
   e sem as alternativas descartadas. O racional completo mora no ADR enquanto ele estiver
   vigente, e a deliberação mora no git. PRD que vira decision log cresce sem fim e
   ninguém lê até o fim.
@@ -52,20 +61,22 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
 ```
 # PRD: <Nome do produto>
 
+> **Papel deste doc.** O que ele cobre, de quem depende, e a legenda das tags,
+  uma vez só (a definição mora no `doc-standard.md`).
+
 ## 1. Visão geral
    Uma a duas frases do que é e para quem. Depois os 2 a 4 pilares de engajamento
-   em lista, cada um com uma frase.
+   em lista, cada um com uma frase. Fecha com o diagrama único em ASCII: CAIXA ALTA
+   para camada ou peça, minúscula para ação, o § de cada peça e a tag por etapa.
 
 ## 2..N. <Uma seção por feature / pilar>
-   A tag `no ar` ou `previsto` marca a funcionalidade: na primeira linha, se a seção
-   inteira está num estado (no título não, que é âncora); em cada item, se mistura. Padrão interno de cada seção:
-   ### Comportamento    -> modelo e regras, com números exatos em tabela
+   A tag (`no ar`, `parcialmente no ar`, `previsto`) marca a funcionalidade: na primeira
+   linha, se a seção inteira está num estado (no título não, que é âncora); em cada
+   item, se mistura. Padrão interno de cada seção:
+   ### Comportamento    -> modelo e regras, com números exatos em tabela; a restrição
+                           inviolável da feature mora aqui, no imperativo
    ### Contrato         -> nomes e formatos de que outra peça depende; o grande, linkado
-   ### Edge cases       -> casos fora do fluxo feliz
-
-## <Restrições invioláveis>
-   Regras, requisitos e limitações capturados na Fase 0 que não podem ser quebrados
-   nem ultrapassados. Uma linha por restrição, com o racional quando houver.
+   ### Edge cases       -> casos fora do fluxo feliz; ciclo de vida em ASCII
 
 ## <Seções transversais>
    Notificações, Dados e sincronização, Internacionalização, Admin. Mesmo padrão:
@@ -74,6 +85,11 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
 ```
 
 A numeração é contínua. As seções transversais entram como seções numeradas ao fim.
+
+O PRD não tem seção de restrições, backlog, referências, métricas nem riscos: cada uma
+tem destino no `doc-standard.md` ("Um assunto, um lugar"), e o `check-docs.py --molde`
+acusa. O consumidor do produto (agente, sistema, integração) aparece pelo contrato que
+consome, nunca descrito por dentro.
 
 ## Convenções
 
