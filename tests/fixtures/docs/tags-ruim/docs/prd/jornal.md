@@ -2,6 +2,6 @@
 
 ## 1. Resumo
 
-### Comportamento
+### Propósito
 
 O resumo sai às 07:00.

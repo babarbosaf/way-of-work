@@ -74,14 +74,15 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
    `partially live`, `planned`, `open`) marca a funcionalidade: na primeira
    linha, se a seção inteira está num estado (no título não, que é âncora); em cada
    item, se mistura. Padrão interno de cada seção:
-   ### Comportamento    -> modelo e regras, com números exatos em tabela; a restrição
-                           inviolável da feature mora aqui, no imperativo
-   ### Contrato         -> nomes e formatos de que outra peça depende; o grande, linkado
-   ### Edge cases       -> casos fora do fluxo feliz; ciclo de vida em ASCII
+   ### Propósito        -> para que a funcionalidade existe, em uma a três linhas
+   ### Fluxo            -> a caminhada por ela, com as bifurcações; ciclo de vida em ASCII
+   ### Regras           -> o que o produto garante, em tabela: o número exato, o formato
+                           de que outra peça depende, o caso fora do fluxo feliz e a
+                           restrição inviolável. Cada regra diz o gatilho antes da claim
 
 ## <Seções transversais>
-   Notificações, Dados e sincronização, Internacionalização, Admin. Mesmo padrão:
-   comportamento e contrato na seção. Regra que vale para todo código (stack, estilo,
+   Notificações, Dados e sincronização, Internacionalização, Admin. Mesmo padrão: os
+   três atos na seção. Regra que vale para todo código (stack, estilo,
    performance obrigatória) não ganha seção: vive no CONVENTIONS.md.
 ```
 

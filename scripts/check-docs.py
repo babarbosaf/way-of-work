@@ -321,7 +321,6 @@ TAGS = (
     "partially live", "live", "planned", "open",
 )
 TAG = re.compile(r"`(?:" + "|".join(TAGS) + r")`", re.I)
-COMPORTAMENTO = re.compile(r"###\s+(?:Comportamento|Behaviou?r)\b", re.I)
 COBRA_TAG = {"PRD.md", "README.md"}
 
 
@@ -339,7 +338,7 @@ def check_tags(texto: str, nome: str, ach: Achados, exige_tag: bool) -> None:
         elif secoes:
             secoes[-1][2].append(ln)
     for n, titulo, corpo in secoes:
-        funcionalidade = any(COMPORTAMENTO.match(c) for c in corpo)
+        funcionalidade = any(PROPOSITO.match(c) for c in corpo)
         if funcionalidade and not TAG.search(titulo) and not any(TAG.search(c) for c in corpo):
             ach.add(nome, n, f"funcionalidade sem tag ({titulo[:44]!r}); marque o estado na primeira linha ou em cada item")
         if TAG.search(titulo):
@@ -347,6 +346,35 @@ def check_tags(texto: str, nome: str, ach: Achados, exige_tag: bool) -> None:
 
 
 # ---------------------------------------------------------------------- molde
+
+# Os três atos de uma funcionalidade, sempre os mesmos e sempre nesta ordem:
+# para que ela serve, como se caminha por ela, e o que ela garante. Faltar um é
+# especificar só o caminho feliz; trocar a ordem é pedir que o leitor monte a
+# garantia antes de conhecer o fluxo que ela governa.
+#
+# Regras absorve o que antes eram duas subseções soltas: o contrato, que já era
+# tabela de regra, e o edge case, que já era gatilho seguido de consequência. As
+# duas diziam "o produto garante isto" em lugares diferentes, e uma garantia só
+# tem um lugar.
+SUBSECOES = ("Propósito", "Fluxo", "Regras")
+SUB_IDIOMA = {
+    "propósito": 0, "proposito": 0, "purpose": 0,
+    "fluxo": 1, "flow": 1,
+    "regras": 2, "rules": 2,
+}
+SUB = re.compile(r"^###\s+(.+?)\s*$")
+# A presença do primeiro ato é o que faz de uma seção uma funcionalidade. Visão
+# geral, restrição e relacionados não descrevem uma, e não levam os três.
+PROPOSITO = re.compile(r"###\s+(?:Propósito|Proposito|Purpose)\b", re.I)
+
+# Doc que ainda não foi refatiado nos três atos. A lista é declarada e datada de
+# propósito: exemption silenciosa é como um padrão morre sem ninguém decidir
+# matá-lo. Vazia é o estado final.
+MIGRANDO = (
+    # Padrão-ouro do kickoff, 14 seções no corte antigo. Refatiar errado ensina
+    # errado, então ele atravessa em diff próprio. Declarado em 2026-09-25.
+    "skills/kickoff-project/references/exemplos/PRD.md",
+)
 
 DOCS_RAIZ = {"README.md", "AGENTS.md", "PRD.md", "CONVENTIONS.md", "ROUTES.md", "DESIGN.md"}
 LINK_DOC_RAIZ = re.compile(r"\]\((?:\./)?(" + "|".join(re.escape(d) for d in DOCS_RAIZ) + r")[#)]")
@@ -380,14 +408,48 @@ FORA_DO_PRD = {
 H2 = re.compile(r"^##\s")
 
 
+def check_subsecoes(linhas: list[str], cercado: set[int], nome: str, ach: Achados) -> None:
+    """Toda funcionalidade tem os três atos, todos, na ordem."""
+    cabecas = [i for i, ln in enumerate(linhas) if H2.match(ln) and i not in cercado]
+    for k, ini in enumerate(cabecas):
+        fim = cabecas[k + 1] if k + 1 < len(cabecas) else len(linhas)
+        vistos = [
+            (pos, i + 1)
+            for i in range(ini + 1, fim)
+            if i not in cercado and (m := SUB.match(linhas[i]))
+            and (pos := SUB_IDIOMA.get(m.group(1).lower())) is not None
+        ]
+        if not any(pos == 0 for pos, _ in vistos):
+            continue
+        titulo = NUMERACAO.sub("", linhas[ini][3:].strip())
+        presentes = {pos for pos, _ in vistos}
+        if faltam := [SUBSECOES[p] for p in range(len(SUBSECOES)) if p not in presentes]:
+            ach.add(nome, ini + 1, f"funcionalidade sem {' nem '.join(faltam)} ({titulo[:44]!r}); ela se descreve em {', '.join(SUBSECOES)}, os três")
+        maior = -1
+        for pos, linha in vistos:
+            if pos < maior:
+                ach.add(nome, linha, f"{SUBSECOES[pos]} depois de {SUBSECOES[maior]} ({titulo[:44]!r}); a ordem é {', '.join(SUBSECOES)}, e ela é o raciocínio")
+            maior = max(maior, pos)
+
+
 def check_molde(path: Path, ach: Achados) -> None:
-    if path.name not in DOCS_RAIZ or path.name == "README.md":
+    # Subdoc de domínio carrega funcionalidade como o PRD de raiz, e a forma dela
+    # é a mesma. O resto do molde (mapa, árvore, teto) é do doc de raiz.
+    subdoc = SUBDOCS in path.as_posix()
+    if not subdoc and (path.name not in DOCS_RAIZ or path.name == "README.md"):
+        return
+    if any(path.as_posix().endswith(m) for m in MIGRANDO):
         return
     texto = path.read_text(encoding="utf-8", errors="replace")
     if DESVIO.search("\n".join(texto.splitlines()[:15])):
         return
     nome = str(path)
     linhas = texto.splitlines()
+    cercado = fenced_ranges(linhas)
+
+    if subdoc:
+        check_subsecoes(linhas, cercado, nome, ach)
+        return
 
     em_tabela = entradas = 0
     for n, ln in enumerate(linhas, 1):
@@ -406,7 +468,7 @@ def check_molde(path: Path, ach: Achados) -> None:
                 ach.add(nome, n, "árvore de pastas fora do README; o mapa mora num lugar só")
 
     if path.name == "PRD.md":
-        cercado = fenced_ranges(linhas)
+        check_subsecoes(linhas, cercado, nome, ach)
         for n, ln in enumerate(linhas, 1):
             if n - 1 in cercado or not (m := SECAO_FORA_DO_PRD.match(ln)):
                 continue

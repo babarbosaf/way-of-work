@@ -8,7 +8,7 @@ An example product.
 
 `live`
 
-### Behaviour
+### Purpose
 
 What moved, and when.
 
@@ -28,6 +28,6 @@ The choice and the rationale behind each turn.
 
 `live`
 
-### Behaviour
+### Purpose
 
 It is ~~grep~~ an index now.

@@ -8,13 +8,13 @@ Um produto de exemplo.
 
 `no ar`
 
-### Comportamento
+### Propósito
 
 A busca devolve dez resultados.
 
 ## 3. Jornal
 
-### Comportamento
+### Propósito
 
 | Etapa | Estado |
 |---|---|
@@ -26,7 +26,7 @@ A busca devolve dez resultados.
 
 `parcialmente no ar`: hoje por grep; o comando é previsto.
 
-### Comportamento
+### Propósito
 
 O contexto chega antes da resposta.
 

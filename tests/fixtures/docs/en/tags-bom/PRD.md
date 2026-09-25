@@ -8,13 +8,13 @@ An example product.
 
 `live`
 
-### Behaviour
+### Purpose
 
 Search returns ten results.
 
 ## 3. Digest
 
-### Behaviour
+### Purpose
 
 | Step | State |
 |---|---|
@@ -26,6 +26,6 @@ Search returns ten results.
 
 `partially live`: grep today; the command is planned.
 
-### Behaviour
+### Purpose
 
 Context arrives before the answer.

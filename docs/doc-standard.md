@@ -37,7 +37,7 @@ bloco `no ar` e outro `previsto`, que é o "hoje contra alvo" com outra roupa.
 **Uma regra, dois vocabulários.** Doc em inglês usa `live`, `partially live`, `planned` e
 `open`, que são os mesmos quatro estados: o idioma segue o destino do repo (nuvem é
 inglês, máquina é PT-BR), e o `check-docs.py` cobra os dois sem precisar que alguém
-declare qual é. O mesmo vale para o resto do vocabulário que o lint lê — status de
+declare qual é. O mesmo vale para o resto do vocabulário que o lint lê: status de
 decisão, seção de log, rótulo do backlog, desvio declarado. Vocabulário de um idioma só
 deixaria o doc do outro passar sem check, que é o pior estado de um gate: verde por não
 ter olhado.
@@ -65,13 +65,32 @@ histórico.
 cortar a regra que ele carregava: a regra vai pro doc que possui o assunto, no
 imperativo, sem a data e sem as alternativas descartadas.
 
+## Os três atos de uma funcionalidade
+
+Toda seção de funcionalidade se lê igual, e sempre nesta ordem (cobra:
+`scripts/check-docs.py --molde <arquivo.md>`):
+
+- **Propósito**: para que ela existe, em uma a três linhas.
+- **Fluxo**: a caminhada por ela, com as bifurcações.
+- **Regras**: o que o produto garante, em tabela, e **cada regra diz o gatilho antes
+  da claim**: "quando X, o produto faz Y", nunca "o produto faz Y (se X)". Quem lê
+  procura a condição dele, não a consequência.
+
+Regras é um lugar só de propósito. O contrato de que outra peça depende já era tabela
+de regra, e o caso fora do fluxo feliz já era gatilho seguido de consequência: as duas
+diziam "o produto garante isto" em seções diferentes, e uma garantia tem um lugar. O
+que faz de uma seção uma funcionalidade é ter Propósito; visão geral e restrição não
+têm, e não levam os três.
+
+Em inglês são `Purpose`, `Flow` e `Rules`, os mesmos três atos.
+
 ## Um assunto, um lugar
 
 | Doc | Guarda | Não guarda |
 |---|---|---|
 | README | o que é, fluxo com tags, mapa de pastas e de docs, como começar | regra |
 | AGENTS | invariantes e roteamento do agente | detalhe de funcionalidade |
-| PRD | uma seção por funcionalidade: comportamento, contrato e edge cases | regra universal |
+| PRD | uma seção por funcionalidade, nos três atos: propósito, fluxo e regras | regra universal |
 | CONVENTIONS | a regra universal: stack, código, branch, commit, lint, CI, evals; teto de 150 linhas | funcionalidade, mapa |
 
 - **Consumidor é externo.** O doc de produto descreve o contrato que oferece, nunca o

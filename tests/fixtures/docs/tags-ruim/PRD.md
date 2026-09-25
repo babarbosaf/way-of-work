@@ -2,12 +2,12 @@
 
 ## 1. Busca `no ar`
 
-### Comportamento
+### Propósito
 
 A busca devolve dez resultados.
 
 ## 2. Jornal
 
-### Comportamento
+### Propósito
 
 O resumo sai às 07:00.

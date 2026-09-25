@@ -30,3 +30,27 @@ reranker
 ## Restrições invioláveis
 
 - Teto de US$ 20 por mês.
+
+## 13. Busca
+
+### Propósito
+
+Achar um item sem saber onde ele está.
+
+### Regras
+
+Consulta vazia devolve lista vazia.
+
+## 14. Jornal
+
+### Propósito
+
+Contar o dia sem que ninguém precise perguntar.
+
+### Regras
+
+Sem palpite, não sai resumo.
+
+### Fluxo
+
+O resumo sai às 07:00 para quem tem palpite aberto.

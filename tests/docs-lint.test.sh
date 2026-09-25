@@ -66,6 +66,20 @@ esperado_pega "restricoes em secao propria" "restrições" --molde molde-ruim/PR
 esperado_pega "visao geral sem diagrama" "sem diagrama" --molde molde-ruim/PRD.md
 esperado_limpo "desvio declarado cala o molde" --molde molde-desvio/CONVENTIONS.md
 
+echo "os três atos da funcionalidade"
+# Propósito, Fluxo, Regras: para que serve, como se caminha, o que garante. O
+# contrato e o edge case do corte antigo eram os dois "o produto garante isto"
+# em lugares diferentes, e garantia tem um lugar só.
+esperado_limpo "os três atos, na ordem" --molde molde-bom/PRD.md
+esperado_limpo "os três atos em inglês" --molde en/molde-bom/PRD.md
+esperado_pega "funcionalidade sem Fluxo"    "sem Fluxo"    --molde molde-ruim/PRD.md
+esperado_pega "ato fora de ordem"           "depois de"    --molde molde-ruim/PRD.md
+esperado_pega "sem Fluxo, em inglês"        "sem Fluxo"    --molde en/molde-ruim/PRD.md
+esperado_pega "ato fora de ordem, em inglês" "depois de"   --molde en/molde-ruim/PRD.md
+# Subdoc de domínio carrega funcionalidade como o PRD de raiz: sem ele no check,
+# quem parte o PRD em docs/prd/ escapa da regra inteira.
+esperado_pega "subdoc sem Regras" "sem Regras" --molde molde-ruim/docs/prd/dominio.md
+
 echo "estado limpo"
 esperado_limpo "PRD bom passa" --estado bom/PRD.md
 # O CHANGELOG é o log: cobrar dele que não tenha seção de histórico é cobrar
