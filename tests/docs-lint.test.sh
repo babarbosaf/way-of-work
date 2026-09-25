@@ -103,6 +103,13 @@ esperado_pega "funcionalidade sem tag" "Jornal"              --estado tags-ruim/
 esperado_pega "tag no titulo"          "tag no título"       --estado tags-ruim/PRD.md
 esperado_pega "README sem tag"         "sem tag"             --estado tags-ruim/README.md
 esperado_pega "subdoc de PRD sem tag"  "Resumo"              --estado tags-ruim/docs/prd/jornal.md
+# Seção inteira `em aberto` é item de backlog vestido de seção: o PRD ganha
+# três atos sobre um buraco, e a lacuna some da fila onde ela decairia.
+esperado_pega "seção inteira em aberto" "lacuna não é seção"  --estado secao-aberta/PRD.md
+# `a definir` na célula é o endereço certo da mesma lacuna, e `em aberto` num
+# item de seção decidida também: nenhum dos dois pode disparar, senão a regra
+# empurra a lacuna pra fora do doc em vez de pro lugar dela.
+esperado_limpo "lacuna na célula e no item" --estado secao-aberta-bom/PRD.md
 
 echo "o mesmo em inglês: uma regra, dois vocabulários"
 # O doc de repo com remoto nasce em inglês. A regra não muda com o idioma, e um
@@ -114,6 +121,7 @@ esperado_pega "tag no título, em inglês"  "tag no título"      --estado en/ta
 esperado_pega "data em heading, em inglês" "data em heading"   --estado en/ruim-estado/PRD.md
 esperado_pega "heading de histórico, em inglês" "Revision history" --estado en/ruim-estado/PRD.md
 esperado_pega "heading de decisões, em inglês" "Decisions"     --estado en/ruim-estado/PRD.md
+esperado_pega "seção inteira em aberto, em inglês" "lacuna não é seção" --estado en/secao-aberta/PRD.md
 esperado_pega "pontos em aberto, em inglês" "Open questions"   --estado en/ruim-estado/PRD.md
 esperado_pega "texto riscado, em inglês"  "riscado"            --estado en/ruim-estado/PRD.md
 esperado_pega "backlog no PRD, em inglês" "backlog"            --molde en/molde-ruim/PRD.md

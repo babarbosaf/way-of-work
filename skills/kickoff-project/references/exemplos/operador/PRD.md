@@ -39,8 +39,6 @@ COMPRADOR ──prepara a fila (§2)──▶ FILA DE LOJAS                     
                                      ├──confere o que voltou (§5)──▶ CONFERÊNCIA  `previsto`
                                      ▼
                                   RESERVA (§6) ──espera uma pessoa──▶ COMPROMISSO  `previsto`
-                                     │
-                                     └──filtra por critério (§7)                  `em aberto`
 ```
 
 ## 2. Preparo
@@ -193,25 +191,4 @@ Cada lote é confirmado separadamente. Confirmar um não autoriza o seguinte.
 | a pessoa confirma um lote | a autorização vale para aquele lote, e o próximo pede confirmação de novo |
 | a escrita falha no meio de um lote | o painel diz o que foi e o que não foi escrito, item a item, porque "falhou" sem detalhe obriga a conferir tudo à mão no portal |
 | o comprador cancela no preview | nada é enviado, e o estado no portal fica como estava |
-
-## 7. Critérios de seleção
-
-`em aberto`
-
-### Propósito
-
-Decidir automaticamente quais lotes entram na reserva, em vez de o comprador escolher um
-a um.
-
-### Fluxo
-
-`em aberto`, e quem decide é o comprador-chefe da rede. O desenho depende de responder
-antes se o critério é da rede inteira, de cada loja ou de cada categoria, e essa resposta
-muda a tela e o armazenamento.
-
-### Regras
-
-| Quando | O produto garante |
-|---|---|
-| o critério é definido | `a definir` |
-| um lote não atende ao critério | `a definir` |
+| o produto escolhe sozinho quais lotes entram | `a definir`, e quem decide é o comprador-chefe da rede: antes disso é preciso responder se o critério vale para a rede inteira, para cada loja ou para cada categoria, e a resposta muda a tela e o armazenamento |

@@ -88,7 +88,8 @@ do PRD-alvo.
 2. **Estrutura.** Quais as partes, os tipos, os estados possíveis?
 3. **Regras exatas.** Números, tabelas, pontuação, janelas de tempo, limites, cadências.
    Aqui é onde se força a saída de tabelas. Se o usuário titubear num número, registrar
-   como ponto em aberto em vez de inventar.
+   como ponto em aberto em vez de inventar: `a definir` na célula, e o item no `TODOS.md`
+   quando o que falta decidir é a funcionalidade toda, não só o número.
 4. **Edge cases.** O que acontece fora do fluxo feliz? Provocar ativamente: e se for anulado,
    adiado, empatar, o usuário esquecer, o dado não chegar, dois eventos colidirem, a janela
    fechar no meio? Um PRD forte lista esses casos por feature.

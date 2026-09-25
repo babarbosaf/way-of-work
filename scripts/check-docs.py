@@ -323,6 +323,13 @@ TAGS = (
 TAG = re.compile(r"`(?:" + "|".join(TAGS) + r")`", re.I)
 COBRA_TAG = {"PRD.md", "README.md"}
 
+# Tag sozinha na primeira linha marca a seção inteira. Só `em aberto` é barrado
+# aí: seção cujo estado inteiro é "nem decidido" não tem o que descrever, e os
+# três atos saem preenchidos com `a definir`. Isso é item de backlog vestido de
+# seção, e o preço é duplo: o PRD engorda com prosa sobre um buraco, e a lacuna
+# sai da fila, que é o único lugar onde ela decai e cobra dono.
+SO_TAG_ABERTA = re.compile(r"^`(?:em aberto|open)`\s*$", re.I)
+
 
 def check_tags(texto: str, nome: str, ach: Achados, exige_tag: bool) -> None:
     if exige_tag and not TAG.search(texto):
@@ -343,6 +350,10 @@ def check_tags(texto: str, nome: str, ach: Achados, exige_tag: bool) -> None:
             ach.add(nome, n, f"funcionalidade sem tag ({titulo[:44]!r}); marque o estado na primeira linha ou em cada item")
         if TAG.search(titulo):
             ach.add(nome, n, f"tag no título ({titulo[:44]!r}); o slug é âncora e quebra na troca de estado: tag na primeira linha")
+        primeira = next((c.strip() for c in corpo if c.strip()), "")
+        if funcionalidade and SO_TAG_ABERTA.match(primeira):
+            ach.add(nome, n, f"seção inteira `em aberto` ({titulo[:44]!r}); lacuna não é seção de PRD: "
+                             "vira linha no TODOS ou spec, e `a definir` na célula onde ela morde")
 
 
 # ---------------------------------------------------------------------- molde

@@ -34,6 +34,13 @@ bloco `no ar` e outro `previsto`, que é o "hoje contra alvo" com outra roupa.
 - `em aberto`: nem decidido. Sem esta tag, intenção e spec caem no mesmo balde, e o
   leitor não sabe de qual das duas está lendo a descrição.
 
+**`em aberto` marca item, nunca seção inteira.** Funcionalidade cujo estado todo é "nem
+decidido" não tem o que descrever: os três atos saem preenchidos com `a definir`, e o
+doc ganha prosa sobre um buraco. Ela mora onde decai e cobra dono, que é o `TODOS.md`,
+o `INBOX.md` ou uma spec, e o doc de estado só a menciona onde ela morde: `a definir` na
+célula exata, ou a tag no item de uma seção que no resto está decidida. O
+`check-docs.py --estado` barra a seção inteira e deixa passar as duas formas de menção.
+
 **Uma regra, dois vocabulários.** Doc em inglês usa `live`, `partially live`, `planned` e
 `open`, que são os mesmos quatro estados: o idioma segue o destino do repo (nuvem é
 inglês, máquina é PT-BR), e o `check-docs.py` cobra os dois sem precisar que alguém

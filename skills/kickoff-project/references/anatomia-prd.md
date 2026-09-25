@@ -46,7 +46,11 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
   da seção, que some da vista e apodrece sem dono nem prazo. Vira `a definir` na célula
   exata da tabela, onde quem for implementar esbarra, ou item no backlog, que decai. O
   `check-docs.py --estado` bloqueia a seção, e o padrão 35 do catálogo de escrita explica
-  o porquê.
+  o porquê. **Isso vale inteiro para a seção:** funcionalidade cujo estado todo é `em
+  aberto` não é seção deste doc. Ela é linha do `TODOS.md`, do `INBOX.md` ou de uma spec,
+  e aqui aparece só nominalmente, na célula que ela trava. Seção com os três atos
+  preenchidos de `a definir` é item de backlog vestido de PRD: engorda o doc e tira a
+  lacuna da única fila que cobra dono e prazo.
 - **Restrição no imperativo, nunca decisão logada.** A escolha difícil vira uma regra na
   seção que possui o assunto ("o número publicado mora na tabela"), no estado final, com a tag, sem data
   e sem as alternativas descartadas. O racional completo mora no ADR enquanto ele estiver
@@ -76,7 +80,8 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
    A tag (`no ar`, `parcialmente no ar`, `previsto`, `em aberto`; em inglês `live`,
    `partially live`, `planned`, `open`) marca a funcionalidade: na primeira
    linha, se a seção inteira está num estado (no título não, que é âncora); em cada
-   item, se mistura. Padrão interno de cada seção:
+   item, se mistura. `em aberto` só marca item: seção inteira nesse estado não
+   nasce aqui, nasce no `TODOS.md`. Padrão interno de cada seção:
    ### Propósito        -> para que a funcionalidade existe, em uma a três linhas
    ### Fluxo            -> a caminhada por ela, com as bifurcações; ciclo de vida em ASCII
    ### Regras           -> o que o produto garante, em tabela: o número exato, o formato
@@ -139,7 +144,7 @@ escolher pelo assunto:
 | Exemplo | Produto | O que ele ensina melhor |
 |---|---|---|
 | `exemplos/consumo/PRD.md` | Chutaí, um bolão de futebol | régua numérica em tabela, economia de engajamento, muitas funcionalidades independentes |
-| `exemplos/operador/PRD.md` | Prateleira, extensão de comprador dentro do portal de um terceiro | fila sem vigilância, caminho de escrita que espera pessoa, restrição que nasce de credencial de terceiro, lacuna `em aberto` com dono |
+| `exemplos/operador/PRD.md` | Prateleira, extensão de comprador dentro do portal de um terceiro | fila sem vigilância, caminho de escrita que espera pessoa, restrição que nasce de credencial de terceiro, lacuna citada na célula em vez de virar seção |
 
 Os dois produtos são inventados. Exemplo é onde nome real de cliente entra sem ninguém
 notar, e este repo é público: quando o molde vier de um trabalho real, o domínio se troca
