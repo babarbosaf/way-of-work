@@ -19,6 +19,9 @@ import subprocess
 import sys
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from lint_common import Achados  # noqa: E402
+
 # Teto oficial do corpo do SKILL.md. Acima disso a orientação é quebrar em
 # arquivo de referência, porque o corpo entra inteiro no contexto quando a skill
 # dispara.
@@ -66,38 +69,6 @@ def tem_indice(conteudo: str) -> bool:
         return False
     casam = sum(1 for i in itens if any(i in s or s in i for s in secoes))
     return casam >= 1 and casam * 2 >= len(itens)
-
-
-class Achados:
-    """Bloqueante trava o gate; aviso só informa (pode ser leitura legítima)."""
-
-    def __init__(self) -> None:
-        self.itens: list[tuple[str, int, str, bool]] = []
-
-    def add(self, arquivo: str, linha: int, msg: str, aviso: bool = False) -> None:
-        self.itens.append((arquivo, linha, msg, aviso))
-
-    def report(self) -> int:
-        for arquivo, linha, msg, aviso in self.itens:
-            local = f"{arquivo}:{linha}" if linha else arquivo
-            print(f"{local}: {'aviso: ' if aviso else ''}{msg}")
-
-        bloqueiam = sum(1 for *_, aviso in self.itens if not aviso)
-        avisos = len(self.itens) - bloqueiam
-
-        if bloqueiam:
-            resumo = f"{bloqueiam} achado{'s' if bloqueiam > 1 else ''}"
-            if avisos:
-                resumo += f", {avisos} aviso{'s' if avisos > 1 else ''}"
-            print(f"\n{resumo}.")
-            return 1
-
-        if avisos:
-            print(f"\nsem bloqueio; {avisos} aviso{'s' if avisos > 1 else ''} pra conferir.")
-            return 0
-
-        print("limpo.")
-        return 0
 
 
 def frontmatter(texto: str) -> tuple[dict[str, str], str, int]:
@@ -197,7 +168,7 @@ def check_skill(raiz: Path, ach: Achados) -> None:
     # Link relativo morto, no SKILL.md e em cada referência.
     md = [sk] + sorted(p for p in raiz.rglob("*.md") if p != sk)
     for p in md:
-        prel = f"{rel}/{p.relative_to(raiz)}"
+        prel = f"{rel}/{p.relative_to(raiz).as_posix()}"
         conteudo = p.read_text(encoding="utf-8")
         corpo_p = frontmatter(conteudo)[1] if p == sk else conteudo
         for m in LINK_MD.finditer(corpo_p):
@@ -209,10 +180,13 @@ def check_skill(raiz: Path, ach: Achados) -> None:
     for p in md:
         if p == sk:
             continue
-        prel = f"{rel}/{p.relative_to(raiz)}"
+        prel = f"{rel}/{p.relative_to(raiz).as_posix()}"
         conteudo = p.read_text(encoding="utf-8")
         nl = conteudo.count("\n")
-        chave = str(p.relative_to(raiz))
+        # `as_posix()` e não `str()`: no Windows o separador vem `\`, e a régua
+        # abaixo casa caminho com `/`. Chave por plataforma faz o mesmo arquivo
+        # ser amostra num sistema e referência no outro.
+        chave = p.relative_to(raiz).as_posix()
 
         # Referência que aponta pra outra referência: o agente pode ler as duas
         # por partes e ficar com informação pela metade.

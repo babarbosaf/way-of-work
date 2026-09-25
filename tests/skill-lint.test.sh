@@ -109,9 +109,12 @@ d=$(planta desc-longa)
 python3 - "$d/SKILL.md" <<'PY'
 import sys
 p = sys.argv[1]
-t = open(p).read()
+# `encoding` declarado: sem ele o Python pega o default da plataforma, no
+# Windows lê o `ó` da fixture como dois caracteres, e o replace abaixo não casa.
+# O teste então roda contra a fixture intacta e passa achando que cobriu o teto.
+t = open(p, encoding="utf-8").read()
 t = t.replace("Monta um artefato de teste a partir de um diretório.", "Monta " + "x" * 1100 + ".")
-open(p, "w").write(t)
+open(p, "w", encoding="utf-8").write(t)
 PY
 esperado_pega "description acima de 1024 chars" "teto de 1024" "$d"
 
