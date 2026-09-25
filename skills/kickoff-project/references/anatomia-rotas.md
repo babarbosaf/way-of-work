@@ -1,6 +1,6 @@
 # Anatomia do documento de rotas
 
-Descreve o mapa de telas. Exemplo canônico em `exemplos/ROUTES.md` (Chutaí).
+Descreve o mapa de telas. Exemplo canônico em `exemplos/consumo/ROUTES.md` (Chutaí).
 
 O documento de rotas se DERIVA do PRD. Cada feature do PRD implica telas; cada estado de
 uma feature implica uma rota. Escrever este documento depois do PRD, lendo feature por

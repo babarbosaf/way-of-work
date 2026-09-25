@@ -1,8 +1,9 @@
 # Anatomia do PRD
 
-Descreve a estrutura e o nível de profundidade do PRD-alvo. O exemplo canônico completo
-está em `exemplos/PRD.md` (Chutaí). Consultar o exemplo por seção quando precisar ver o
-padrão na prática, em vez de carregar o arquivo inteiro toda vez.
+Descreve a estrutura e o nível de profundidade do PRD-alvo. Há dois exemplos canônicos:
+`exemplos/consumo/PRD.md` (Chutaí, produto de consumo) e `exemplos/operador/PRD.md`
+(Prateleira, ferramenta de operador). Consultar por seção quando precisar ver o padrão na
+prática, em vez de carregar o arquivo inteiro toda vez.
 
 O PRD é o documento-raiz. As rotas, o design e as conventions se derivam dele.
 
@@ -128,7 +129,18 @@ fecho transitivo é o PRD inteiro de volta.
 
 ## Como usar o exemplo
 
-`exemplos/PRD.md` é o padrão-ouro. Ao escrever uma seção nova, abrir a seção equivalente
-do exemplo e reproduzir o nível de detalhe, não o conteúdo. O exemplo é de um bolão de
-futebol; o produto em mãos pode ser qualquer coisa. O que se copia é a disciplina:
-propósito, fluxo, regras e a tag em cada funcionalidade.
+Ao escrever uma seção nova, abrir a seção equivalente de um dos exemplos e reproduzir o
+nível de detalhe, não o conteúdo. O que se copia é a disciplina: propósito, fluxo, regras
+e a tag em cada funcionalidade.
+
+Os dois padrões-ouro cobrem formatos diferentes, e escolher pelo formato é mais útil que
+escolher pelo assunto:
+
+| Exemplo | Produto | O que ele ensina melhor |
+|---|---|---|
+| `exemplos/consumo/PRD.md` | Chutaí, um bolão de futebol | régua numérica em tabela, economia de engajamento, muitas funcionalidades independentes |
+| `exemplos/operador/PRD.md` | Prateleira, extensão de comprador dentro do portal de um terceiro | fila sem vigilância, caminho de escrita que espera pessoa, restrição que nasce de credencial de terceiro, lacuna `em aberto` com dono |
+
+Os dois produtos são inventados. Exemplo é onde nome real de cliente entra sem ninguém
+notar, e este repo é público: quando o molde vier de um trabalho real, o domínio se troca
+inteiro, não só os nomes. A forma da operação identifica sozinha.

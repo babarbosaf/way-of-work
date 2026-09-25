@@ -1,7 +1,7 @@
 # Anatomia do CONVENTIONS.md
 
 Descreve a estrutura e o nível de profundidade do CONVENTIONS.md-alvo. O exemplo canônico
-está em `exemplos/CONVENTIONS.md` (Chutaí). Consultar por seção, como nos demais.
+está em `exemplos/consumo/CONVENTIONS.md` (Chutaí). Consultar por seção, como nos demais.
 
 O CONVENTIONS.md é a regra universal de construção: o que vale em qualquer tarefa do
 projeto, seja qual for a funcionalidade. Stack, regras de código, branch, commit, lint,
@@ -64,6 +64,6 @@ específico: stack, padrões e regras locais. Não re-narrar o modelo compartilh
 
 ## Como usar o exemplo
 
-`exemplos/CONVENTIONS.md` é o padrão-ouro, extraído do mesmo Chutaí do PRD de exemplo.
+`exemplos/consumo/CONVENTIONS.md` é o padrão-ouro, extraído do mesmo Chutaí do PRD de exemplo.
 Reproduzir o nível de detalhe (nomes de função, cron exato, padrão de segurança), não o
 conteúdo.

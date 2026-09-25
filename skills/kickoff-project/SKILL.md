@@ -19,9 +19,12 @@ entrevista e o PRD revelaram. Por fim, fecha a camada operacional: um CLAUDE.md 
 para o AGENTS.md, e um AGENTS.md que amarra os documentos às regras de trabalho dos
 agentes (restrições do agente, registro de feedbacks, documentos sempre atualizados).
 
-A régua de profundidade é o projeto Chutaí, cujos documentos completos vivem em
-`references/exemplos/`. O que se reproduz é o nível de detalhe e a disciplina de estrutura,
-nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
+A régua de profundidade são dois projetos em `references/exemplos/`, e os dois são
+inventados. `consumo/` é o Chutaí, um bolão de futebol, com o conjunto completo de
+documentos. `operador/` é a Prateleira, uma ferramenta de comprador dentro do portal de
+um terceiro, com fila, dinheiro real e portão humano, e traz só o PRD. Escolher pelo
+formato do produto em mãos, não pelo assunto. O que se reproduz é o nível de detalhe e a
+disciplina de estrutura, nunca o conteúdo.
 
 ## Princípios inegociáveis
 
@@ -81,8 +84,10 @@ Ainda na Fase 0:
 ### Passo 2: PRD
 
 Ler `references/anatomia-prd.md` e escrever o PRD a partir do material da entrevista.
-Consultar a seção equivalente de `references/exemplos/PRD.md` para calibrar o nível de
-detalhe de cada seção (abrir por seção, não carregar o arquivo inteiro de uma vez).
+Consultar a seção equivalente de `references/exemplos/consumo/PRD.md`, ou de
+`references/exemplos/operador/PRD.md` quando o produto for ferramenta interna, para
+calibrar o nível de detalhe de cada seção (abrir por seção, não carregar o arquivo
+inteiro de uma vez).
 
 Garantir os diferenciais: os três atos em cada seção (propósito, fluxo, regras),
 a tag de estado em cada funcionalidade, `a definir` na célula em vez de bloco
@@ -96,7 +101,7 @@ universal de construção levantada na entrevista vai para o Passo 5.
 Ler `references/anatomia-rotas.md`. Derivar o mapa de telas do PRD, feature por feature,
 agrupando por estado de acesso (pré-auth, pós-auth com navegação principal, públicas, camada
 global) e escrevendo a lógica condicional de navegação em cada descrição. Calibrar por
-`references/exemplos/ROUTES.md`.
+`references/exemplos/consumo/ROUTES.md`.
 
 ### Passo 4: Design
 
@@ -105,7 +110,7 @@ dial values, modo de cor, stack visual), identificar os patterns de componente q
 exigem, e escrever o design system: identidade, **constraints** (workflows a suportar em
 ordem de frequência, estados obrigatórios, pisos invioláveis), tokens exatos, patterns com
 código, a regra de showcase e as duas listas de guarda-corpo (anti-slop checklist e lista
-negra). Calibrar por `references/exemplos/DESIGN.md`. Para a stack visual default, ver
+negra). Calibrar por `references/exemplos/consumo/DESIGN.md`. Para a stack visual default, ver
 `references/stack-default.md`.
 
 As constraints vêm antes dos tokens: são elas que permitem avaliar um desenho sem cair em
@@ -168,5 +173,7 @@ entrada de constraint. Sem esse endereço, papercut vira spot-fix.
 - `references/anatomia-agents.md`: estrutura do CLAUDE.md, do AGENTS.md e do FEEDBACK.md,
   e as regras operacionais que eles carregam.
 - `references/stack-default.md`: o molde da stack default e como adaptar ao trocar.
-- `references/exemplos/{PRD,ROUTES,DESIGN,CONVENTIONS,README}.md`: o padrão-ouro do Chutaí, a
-  régua de profundidade. Consultar por seção.
+- `references/exemplos/consumo/{PRD,ROUTES,DESIGN,CONVENTIONS,README}.md`: o padrão-ouro do
+  Chutaí, produto de consumo, conjunto completo. Consultar por seção.
+- `references/exemplos/operador/PRD.md`: o padrão-ouro da Prateleira, ferramenta de
+  operador sobre o portal de um terceiro. Mesmo nível de detalhe, outro formato de produto.

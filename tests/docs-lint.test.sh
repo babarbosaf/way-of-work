@@ -134,10 +134,14 @@ unset DECAY_HOJE
 echo "exemplos do kickoff"
 # O padrão-ouro que o kickoff mostra precisa passar no molde que ele ensina: os
 # quatro exemplos passavam limpos com zero tag enquanto a regra não era cobrada.
+# O glob é por pasta de exemplo, não recursivo: exemplo novo que nasça fora de
+# uma delas escaparia do check, e é por isso que a lista é explícita.
 EX="$HERE/../skills/kickoff-project/references/exemplos"
-esperado_limpo "exemplos no estado final com tag" --estado "$EX"/*.md
-esperado_limpo "exemplos no molde" --molde "$EX"/*.md
-if out=$(python3 "$HERE/../skills/writing/scripts/check-writing.py" "$EX"/*.md 2>&1) && [ -z "$out" ]; then
+esperado_limpo "exemplo de consumo no estado final com tag" --estado "$EX"/consumo/*.md
+esperado_limpo "exemplo de consumo no molde" --molde "$EX"/consumo/*.md
+esperado_limpo "exemplo de operador no estado final com tag" --estado "$EX"/operador/*.md
+esperado_limpo "exemplo de operador no molde" --molde "$EX"/operador/*.md
+if out=$(python3 "$HERE/../skills/writing/scripts/check-writing.py" "$EX"/*/*.md 2>&1) && [ -z "$out" ]; then
   ok "exemplos sem slop"
 else
   fail "exemplos sem slop — veio: $out"

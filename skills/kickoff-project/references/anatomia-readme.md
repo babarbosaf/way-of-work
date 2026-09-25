@@ -5,7 +5,7 @@ onde está cada coisa, como começar. Não carrega regra: regra de agente é AGE
 construção é CONVENTIONS, funcionalidade é PRD.
 
 É o único doc com mapa de pastas e mapa de docs (`check-docs.py --molde`).
-O exemplo canônico é `exemplos/README.md` (Chutaí).
+O exemplo canônico é `exemplos/consumo/README.md` (Chutaí).
 
 ## Esqueleto
 

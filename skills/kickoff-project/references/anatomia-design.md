@@ -1,6 +1,6 @@
 # Anatomia do documento de design
 
-Descreve o design system. Exemplo canônico em `exemplos/DESIGN.md` (Chutaí, "Neon Night").
+Descreve o design system. Exemplo canônico em `exemplos/consumo/DESIGN.md` (Chutaí, "Neon Night").
 
 O design se DERIVA das telas que as rotas definiram. Só se sabe quais patterns de componente
 o produto precisa depois de saber quais telas existem. Escrever este documento por último.
