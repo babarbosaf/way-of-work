@@ -49,6 +49,24 @@ ITEM_LISTA = re.compile(r"^[ \t]*(?:[-*+]|\d+\.)[ \t]+(.+?)\s*$")
 HEADING = re.compile(r"^#{2,4}[ \t]+(.+?)\s*$", re.M)
 
 
+MOLDE = ("exemplos", "fixtures", "assets")
+
+
+def eh_molde(p: Path, raiz: Path) -> bool:
+    """Arquivo que imita um artefato em vez de ensinar o agente a navegar.
+
+    `exemplos/` e `fixtures/` imitam um projeto de verdade, então linkam os
+    próprios arquivos e não carregam índice. `assets/` é o que a skill **copia
+    ou preenche, e não lê** (`docs/skill-authoring.md`): um scaffold de projeto
+    novo linka arquivos que só passam a existir depois da cópia, e cobrar link
+    vivo dele bloquearia a skill por um link correto.
+
+    A comparação é por componente de caminho, e não por prefixo de string,
+    porque no Windows o separador vem `\\` e um prefixo `"assets/"` nunca casa.
+    """
+    return any(parte in MOLDE for parte in p.relative_to(raiz).parts)
+
+
 def tem_indice(conteudo: str) -> bool:
     """Índice de verdade: título de índice seguido de itens que são seções daqui."""
     m = TITULO_INDICE.search(conteudo[:1200])
@@ -197,6 +215,11 @@ def check_skill(raiz: Path, ach: Achados) -> None:
     # Link relativo morto, no SKILL.md e em cada referência.
     md = [sk] + sorted(p for p in raiz.rglob("*.md") if p != sk)
     for p in md:
+        # Só `assets/` sai daqui: scaffold linka o que o projeto **vai** ter
+        # depois da cópia. `exemplos/` e `fixtures/` continuam cobrados, porque
+        # ali o link morto é erro de verdade.
+        if p != sk and "assets" in p.relative_to(raiz).parts:
+            continue
         prel = f"{rel}/{p.relative_to(raiz)}"
         conteudo = p.read_text(encoding="utf-8")
         corpo_p = frontmatter(conteudo)[1] if p == sk else conteudo
@@ -219,7 +242,7 @@ def check_skill(raiz: Path, ach: Achados) -> None:
         # Amostra de artefato (`exemplos/`, `fixtures/`) é molde: ela imita um
         # projeto de verdade, então linka os próprios arquivos e não carrega
         # índice. Cobrar navegação de molde é cobrar que ele pare de ser molde.
-        amostra = chave.startswith(("exemplos/", "fixtures/")) or "/exemplos/" in chave
+        amostra = eh_molde(p, raiz)
 
         if not amostra:
             for m in LINK_MD.finditer(conteudo):
@@ -230,7 +253,7 @@ def check_skill(raiz: Path, ach: Achados) -> None:
         if nl > REF_INDICE and not amostra and not tem_indice(conteudo):
             ach.add(prel, 1, f"{nl} linhas sem índice no topo: leitura parcial não vê o escopo", aviso=True)
 
-        meta = p.name == "README.md" or chave.startswith("fixtures/")
+        meta = p.name == "README.md" or eh_molde(p, raiz)
         if not meta and not citada(corpo, chave, p.name):
             ach.add(prel, 0, "não é citada pelo SKILL.md: ou entra na navegação, ou sai", aviso=True)
 

@@ -69,3 +69,10 @@ _tmp/
 # fixture de lint precisa de um _tmp de mentira pra provar o decaimento
 !tests/fixtures/docs/*/_tmp/
 !tests/fixtures/docs/*/_tmp/**
+
+# O scaffold que o kickoff copia pra projeto novo carrega de propósito os
+# diretórios que as regras acima ignoram sem âncora (`_tmp/` e `specs/` casam em
+# qualquer profundidade). Sem esta exceção, 6 dos 17 arquivos somem do `git add`
+# em silêncio: o arquivo existe no disco, não aparece no status, e o clone nasce
+# sem ele. É o mesmo bug que a fixture de spec do `to-spec` já custou uma vez.
+!skills/kickoff-project/assets/scaffold/**
