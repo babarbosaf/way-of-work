@@ -7,7 +7,7 @@ que está aqui.
 
 ## Invariantes
 
-- **Comportamento novo nasce com teste, e suite verde é pré-condição de commit.** RED antes do código, GREEN mínimo, REFACTOR simplificando com a suíte verde. Bug ganha regressão antes da correção. "Parece certo" não é done, e AC de rodar à mão vira script com assert.
+- **Comportamento novo nasce com teste, e suíte verde é pré-condição de commit.** RED antes do código, GREEN mínimo, REFACTOR simplificando com a suíte verde. **Antes do RED, escrever como aquilo quebra**: teste escrito a partir da implementação reafirma a implementação e passa sempre. Bug ganha regressão antes da correção, e o debug para na causa raiz, não no sintoma ("deduplicar no resultado" é sintoma; "query errada" é causa). "Parece certo" não é done, e AC de rodar à mão vira script com assert.
 - **Abstração só na 3ª repetição.** Helper extraído na 1ª duplicação é corte, e antes de escrever um, procurar o que já existe: stdlib, lib do projeto, codebase.
 - **Zero feature especulativa, e diff pequeno > diff completo.** Adicionar depois é trivial, remover depois que espalhou não é. Deletar conta como progresso, e estender artefato existente vem antes de criar paralelo (`docs/evolve-over-create.md`). Vale pra UI: elemento só quando constraint exige.
 - **Fonte acessível se mede, não se opina.** Com API, banco ou arquivo na mão, medir vem antes de afirmar.
