@@ -39,7 +39,7 @@ O `AGENTS.md` tem cinco seções obrigatórias:
 
 1. **Documentos de referência.** Nenhuma feature se implementa sem ler a seção correspondente do PRD; nenhuma tela se cria sem conferir `ROUTES.md` e `DESIGN.md`; nenhum código se escreve fora dos padrões do `CONVENTIONS.md`.
 2. **Restrições invioláveis.** Ecoadas da entrevista. Se uma tarefa conflitar com uma restrição, o agente para e aponta o conflito em vez de executar.
-3. **Execução.** TDD (3 regras), YAGNI, spec curta para feature grande, design-workflow para componente visual novo.
+3. **Execução.** `test-and-debug` (modos de falha antes do RED, causa raiz no debug), YAGNI, spec curta para feature grande, design-workflow para componente visual novo.
 4. **Registro de feedbacks.** Todo feedback corretivo do usuário entra em `FEEDBACK.md` com data, contexto e instrução acionável. O `AGENTS.md` importa o arquivo via `@FEEDBACK.md`, então os feedbacks entram no contexto de toda sessão automaticamente, e um erro registrado não pode se repetir. O arquivo é buffer com teto: entrada que virou norma é promovida ao doc permanente e apagada.
 5. **Documentos vivos.** A cada decisão nova durante o desenvolvimento, o agente pergunta se deve atualizar o documento correspondente: decisão de produto atualiza o `PRD.md`, tela ou fluxo novo atualiza o `ROUTES.md`, mudança de token ou pattern atualiza o `DESIGN.md`, padrão técnico novo atualiza o `CONVENTIONS.md` (e decisão cara de reverter vira ADR).
 

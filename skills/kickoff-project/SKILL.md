@@ -75,7 +75,8 @@ Ainda na Fase 0:
   aponta o arquivo, que vira a base do DESIGN.md sem perda de informação: o documento gerado
   declara a fonte e registra só os desvios.
 - Na confirmação de stack, capturar também as convenções de construção: estrutura de pastas,
-  padrões de nomenclatura, regras de teste, padrões de erro e o que mais o dono já pratica.
+  padrões de nomenclatura, o dialeto de teste do projeto (framework, onde o arquivo mora,
+  comando da suíte, fronteira de mock), padrões de erro e o que mais o dono já pratica.
   Esse material alimenta o CONVENTIONS.md no Passo 5.
 
 ### Passo 2: PRD
