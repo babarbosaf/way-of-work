@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -172,8 +173,14 @@ ID_OK = re.compile(r"^(?:nenhum|none|-)$|^#\d+$")
 def tiers_por_task() -> dict[str, set[str]]:
     """Tier que cada task-type aceita, lido da policy: ela é a fonte, e não uma
     tupla aqui. `padrao` é o implícito, que a policy nunca declara porque é o
-    próprio `tasks.<task>`. Policy ilegível não bloqueia ticket."""
-    pol = Path.home() / ".claude" / "config" / "model-policy.json"
+    próprio `tasks.<task>`. Policy ilegível não bloqueia ticket.
+
+    `MODEL_POLICY_JSON` aponta outra policy. É o que a suíte usa: sem isso o
+    teste lê o config da máquina de quem roda, e o mesmo commit fica verde num
+    lugar e vermelho no outro por causa de um arquivo que não está no repo.
+    """
+    env = os.environ.get("MODEL_POLICY_JSON")
+    pol = Path(env) if env else Path.home() / ".claude" / "config" / "model-policy.json"
     try:
         tiers = json.loads(pol.read_text(encoding="utf-8")).get("tiers", {})
     except (OSError, ValueError):
