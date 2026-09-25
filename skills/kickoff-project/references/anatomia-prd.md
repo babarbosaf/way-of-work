@@ -70,7 +70,8 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
    para camada ou peça, minúscula para ação, o § de cada peça e a tag por etapa.
 
 ## 2..N. <Uma seção por feature / pilar>
-   A tag (`no ar`, `parcialmente no ar`, `previsto`) marca a funcionalidade: na primeira
+   A tag (`no ar`, `parcialmente no ar`, `previsto`, `em aberto`; em inglês `live`,
+   `partially live`, `planned`, `open`) marca a funcionalidade: na primeira
    linha, se a seção inteira está num estado (no título não, que é âncora); em cada
    item, se mistura. Padrão interno de cada seção:
    ### Comportamento    -> modelo e regras, com números exatos em tabela; a restrição

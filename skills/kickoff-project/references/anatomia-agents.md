@@ -38,7 +38,7 @@ A fonte única de instruções operacionais do projeto. Cinco seções obrigató
 Apresentar os quatro documentos da fundação e o papel de cada um:
 
 - `PRD.md`: fonte de verdade do produto. Uma seção por funcionalidade: comportamento,
-  contrato, edge cases e a tag `no ar` ou `previsto`.
+  contrato, edge cases e a tag de estado (`no ar`, `previsto`, `em aberto`).
   Consultar a seção correspondente antes de implementar qualquer funcionalidade.
 - `ROUTES.md`: mapa de telas e navegação condicional. Consultar ao criar ou alterar
   telas e fluxos.

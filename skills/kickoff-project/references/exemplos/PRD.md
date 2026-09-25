@@ -1,6 +1,6 @@
 # PRD: Bolão Copa do Mundo 2026
 
-> **Papel deste doc.** A fonte da verdade do produto: uma seção por funcionalidade, com comportamento, contrato e edge cases. Rotas no [ROUTES.md](ROUTES.md), telas no [DESIGN.md](DESIGN.md), regra de construção no [CONVENTIONS.md](CONVENTIONS.md). Tags: `no ar` funciona como descrito; `parcialmente no ar`, a primeira linha diz a parte que funciona; `previsto` entra com spec em aberto.
+> **Papel deste doc.** A fonte da verdade do produto: uma seção por funcionalidade, com comportamento, contrato e edge cases. Rotas no [ROUTES.md](ROUTES.md), telas no [DESIGN.md](DESIGN.md), regra de construção no [CONVENTIONS.md](CONVENTIONS.md). Tags: `no ar` funciona como descrito; `parcialmente no ar`, a primeira linha diz a parte que funciona; `previsto` está decidido e não construído; `em aberto` nem foi decidido.
 
 > Exemplo adaptado do blueprint de Iago de Macedo (github.com/iagodemacedo/project-blueprint).
 

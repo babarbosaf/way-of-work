@@ -258,7 +258,8 @@ handoffs vivos na mesma pasta é achado.
 ### Comportamento
 
 Doc de estado descreve **o estado final**, o produto depois das specs em aberto,
-e cada funcionalidade leva `no ar` ou `previsto`. Não existe prosa de "hoje"
+e cada funcionalidade leva `no ar`, `previsto` ou `em aberto`, nesses termos ou nos
+gêmeos em inglês (`live`, `planned`, `open`). Não existe prosa de "hoje"
 contra "no alvo". O que foi decidido, tentado e descartado mora no git e no
 `CHANGELOG.md`, que é onde histórico tem leitor. Cada assunto mora num doc só; a
 régua completa é o [`docs/doc-standard.md`](docs/doc-standard.md).

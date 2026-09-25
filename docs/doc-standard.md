@@ -30,7 +30,17 @@ bloco `no ar` e outro `previsto`, que é o "hoje contra alvo" com outra roupa.
 - `no ar`: funciona como o doc descreve.
 - `parcialmente no ar`: parte entregue, parte ainda em spec ou issue. A primeira linha
   diz qual parte já funciona.
-- `previsto`: nada no ar ainda; entra com spec em aberto.
+- `previsto`: decidido e não construído; entra com spec aberta.
+- `em aberto`: nem decidido. Sem esta tag, intenção e spec caem no mesmo balde, e o
+  leitor não sabe de qual das duas está lendo a descrição.
+
+**Uma regra, dois vocabulários.** Doc em inglês usa `live`, `partially live`, `planned` e
+`open`, que são os mesmos quatro estados: o idioma segue o destino do repo (nuvem é
+inglês, máquina é PT-BR), e o `check-docs.py` cobra os dois sem precisar que alguém
+declare qual é. O mesmo vale para o resto do vocabulário que o lint lê — status de
+decisão, seção de log, rótulo do backlog, desvio declarado. Vocabulário de um idioma só
+deixaria o doc do outro passar sem check, que é o pior estado de um gate: verde por não
+ter olhado.
 
 **A definição mora aqui, e só aqui.** No projeto, a legenda aparece uma vez, no papel do
 PRD, que é o doc que mais carrega tag; README, CONVENTIONS e AGENTS usam a tag sem

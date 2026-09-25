@@ -150,10 +150,20 @@ STATUS_YAML = re.compile(r"^status:\s*(.+)$", re.I | re.M)
 
 # Vivo continua na árvore; morto vai pro archive. O vocabulário morto reusa o
 # DEAD_STATUSES do lint do llm-wiki, mais as formas de "substituída por".
-STATUS_VIVO = {"proposta", "proposto", "aceita", "aceito", "vigente"}
+#
+# O vocabulário é bilíngue por união, e cada termo tem gêmeo no outro idioma: a
+# regra é uma, e só o idioma muda. Repo com remoto nasce em inglês, repo que fica
+# na máquina é PT-BR, e o mesmo linter cobra os dois. Declarar o idioma num campo
+# seria uma segunda fonte de verdade sobre o que o texto já diz, e o campo
+# desatualizado calaria o check em vez de acusar.
+STATUS_VIVO = {
+    "proposta", "proposto", "aceita", "aceito", "vigente",
+    "proposed", "accepted", "current",
+}
 STATUS_MORTO = {
     "substituída", "substituído", "substituida", "substituido",
     "superada", "superado", "morta", "morto", "revogada", "revogado",
+    "superseded", "obsolete", "dead", "revoked",
 }
 
 # Fixture é entrada de teste e memória é estado do agente: nenhuma das duas é
@@ -231,16 +241,22 @@ def check_ciclo(raiz: Path, ach: Achados) -> None:
 
 # --------------------------------------------------------------------- estado
 
+MES = r"(?:jan|fev|feb|mar|abr|apr|mai|may|jun|jul|ago|aug|set|sep|out|oct|nov|dez|dec)\w*"
+
 DATA_HEADING = re.compile(
     r"\b(?:\d{1,2}[/-]\d{1,2}[/-]\d{2,4}"
     r"|\d{4}-\d{2}-\d{2}"
-    r"|\d{1,2}\s*[/-]?\s*(?:jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\w*\s*[/-]?\s*\d{2,4})\b",
+    r"|\d{1,2}\s*[/-]?\s*" + MES + r"\s*[/-]?\s*\d{2,4}"
+    # Ordem inglesa, mês primeiro: "Jan 5, 2026".
+    r"|" + MES + r"\s+\d{1,2},?\s+\d{4})\b",
     re.I,
 )
 
 HEADING_LOG = re.compile(
     r"^(?:hist[óo]ric\w*|changelog|log\b|decis\w+\s+(?:estrat[ée]gic\w+\s+)?registrad\w+"
-    r"|decis\w+\s+tomad\w+|mudan[çc]as\b|vers[õo]es\b)",
+    r"|decis\w+\s+tomad\w+|mudan[çc]as\b|vers[õo]es\b"
+    r"|histor\w*|revision\s+histor\w*|decisions?\s+(?:made|recorded|taken|log)\b"
+    r"|changes\b|versions\b)",
     re.I,
 )
 
@@ -253,9 +269,13 @@ NUMERACAO = re.compile(r"^\s*\d+[.)]\s*")
 # escrita. Some da vista e apodrece, porque item sem dono e sem prazo não é
 # cobrado por ninguém. O lugar dele é o backlog, que decai, ou a célula exata da
 # tabela onde quem for implementar esbarra.
+# Seção chamada "em aberto" é depósito; a tag `em aberto` marca uma
+# funcionalidade que ainda não foi decidida. São coisas diferentes, e a tag mora
+# entre crases, então os dois checks não se cruzam.
 HEADING_ABERTO = re.compile(
     r"^(pontos?\s+(a\s+definir|em\s+aberto)|quest(õ|o)es\s+em\s+aberto"
-    r"|a\s+definir|d[úu]vidas\s+em\s+aberto|tbd|open\s+questions)\b",
+    r"|a\s+definir|d[úu]vidas\s+em\s+aberto|tbd"
+    r"|open\s+(questions|points|items)|to\s+be\s+(defined|decided))\b",
     re.I,
 )
 
@@ -293,13 +313,21 @@ def check_estado(path: Path, ach: Achados) -> None:
 # e trocar `previsto` por `no ar` quebraria todo link para a seção. Funcionalidade é a seção H2 do PRD
 # que tem "### Comportamento"; visão geral e restrição não levam tag. Os quatro
 # exemplos do kickoff passavam limpos com zero tag, porque nada cobrava a regra.
-TAG = re.compile(r"`(?:parcialmente no ar|no ar|previsto)`")
+# `previsto` é decidido e não construído; `em aberto` é o que ainda nem foi
+# decidido. Sem os dois, tudo que não está no ar cai em `previsto`, e o leitor
+# não distingue o que tem spec do que tem só intenção.
+TAGS = (
+    "parcialmente no ar", "no ar", "previsto", "em aberto",
+    "partially live", "live", "planned", "open",
+)
+TAG = re.compile(r"`(?:" + "|".join(TAGS) + r")`", re.I)
+COMPORTAMENTO = re.compile(r"###\s+(?:Comportamento|Behaviou?r)\b", re.I)
 COBRA_TAG = {"PRD.md", "README.md"}
 
 
 def check_tags(texto: str, nome: str, ach: Achados, exige_tag: bool) -> None:
     if exige_tag and not TAG.search(texto):
-        ach.add(nome, 0, "doc de estado sem tag; cada funcionalidade leva `no ar` ou `previsto`")
+        ach.add(nome, 0, "doc de estado sem tag; cada funcionalidade leva `no ar`, `previsto` ou `em aberto` (`live`, `planned`, `open`)")
         return
     secoes: list[tuple[int, str, list[str]]] = []
     cerca = False
@@ -311,9 +339,9 @@ def check_tags(texto: str, nome: str, ach: Achados, exige_tag: bool) -> None:
         elif secoes:
             secoes[-1][2].append(ln)
     for n, titulo, corpo in secoes:
-        funcionalidade = any(re.match(r"###\s+Comportamento\b", c) for c in corpo)
+        funcionalidade = any(COMPORTAMENTO.match(c) for c in corpo)
         if funcionalidade and not TAG.search(titulo) and not any(TAG.search(c) for c in corpo):
-            ach.add(nome, n, f"funcionalidade sem tag ({titulo[:44]!r}); marque `no ar` ou `previsto` na primeira linha ou em cada item")
+            ach.add(nome, n, f"funcionalidade sem tag ({titulo[:44]!r}); marque o estado na primeira linha ou em cada item")
         if TAG.search(titulo):
             ach.add(nome, n, f"tag no título ({titulo[:44]!r}); o slug é âncora e quebra na troca de estado: tag na primeira linha")
 
@@ -325,22 +353,29 @@ LINK_DOC_RAIZ = re.compile(r"\]\((?:\./)?(" + "|".join(re.escape(d) for d in DOC
 # Entrada de árvore é "├── nome", sem seta. Diagrama de fluxo usa os mesmos traços
 # ("└────┘", "├── falta algo ──▶"), e dois PRDs do kirara acusavam por isso.
 ARVORE = re.compile(r"[├└]── [\w.\-]+/?\s*(#.*)?$")
-DESVIO = re.compile(r"^>\s*\*\*Desvio do molde:\*\*", re.M)
+DESVIO = re.compile(r"^>\s*\*\*(?:Desvio do molde|Deviation from the template):\*\*", re.M)
 TETO_CONVENTIONS = 150     # linhas; regra universal cabe nisso, funcionalidade não
 
 
 # PRD descreve o produto. Backlog tem estágio e decai; referência é pesquisa, com fonte
 # e data; métrica, risco e restrição soltos no fim ficam longe da regra que governam.
 # Todos crescem sem dono, e ninguém lê até o fim.
-SECAO_FORA_DO_PRD = re.compile(r"^##\s+(?:\d+\.\s*)?(Backlog|Refer[êe]ncias|M[ée]tricas|Riscos|Restri[çc][õo]es)\b", re.I)
-# Chave: as três primeiras letras do título, com e sem acento.
+SECAO_FORA_DO_PRD = re.compile(
+    r"^##\s+(?:\d+\.\s*)?(Backlog|Refer[êe]ncias|References|M[ée]tricas|Metrics"
+    r"|Riscos|Risks|Restri[çc][õo]es|Constraints)\b",
+    re.I,
+)
+# Chave: as três primeiras letras do título, com e sem acento, nos dois idiomas.
+_METRICA = ("métricas", "a tabela da funcionalidade que o número governa, ou o evals.yaml quando tem comando")
+_RESTRICAO = ("restrições", "a seção que ela restringe; a do agente, no AGENTS.md")
 FORA_DO_PRD = {
     "bac": ("backlog", "TODOS.md, que decai"),
     "ref": ("referências", "um estudo (docs/research/ ou a wiki)"),
-    "mét": ("métricas", "a tabela da funcionalidade que o número governa, ou o evals.yaml quando tem comando"),
-    "met": ("métricas", "a tabela da funcionalidade que o número governa, ou o evals.yaml quando tem comando"),
+    "mét": _METRICA,
+    "met": _METRICA,
     "ris": ("riscos", "a regra da seção que a mitigação protege; risco sem mitigação vai para o TODOS.md"),
-    "res": ("restrições", "a seção que ela restringe; a do agente, no AGENTS.md"),
+    "res": _RESTRICAO,
+    "con": _RESTRICAO,
 }
 H2 = re.compile(r"^##\s")
 
@@ -400,10 +435,17 @@ TETO_PROXIMOS = 20
 IDADE_INBOX = 30           # dias parado antes de a captura virar lixo
 IDADE_POOL = 90
 
-SECOES_TODOS = ("Próximos", "Pool")
+# Os dois degraus do backlog, pelo rótulo de cada idioma. O nome canônico é a
+# chave interna; o que o arquivo escreve é só o rótulo.
+ORDENADO, POOL = "ordenado", "pool"
+SECOES_TODOS = {
+    "próximos": ORDENADO, "proximos": ORDENADO, "next": ORDENADO,
+    "pool": POOL,
+}
+ROTULOS = "Próximos (ou Next) e Pool"
 ISO = re.compile(r"(\d{4}-\d{2}-\d{2})")
 ITEM = re.compile(r"^[-*]\s+(.*\S)\s*$")
-MORRE_EM = re.compile(r"^\s*(?:[-*]\s*)?\*{0,2}Morre em:?\*{0,2}:?\s*(\S+)", re.I | re.M)
+MORRE_EM = re.compile(r"^\s*(?:[-*]\s*)?\*{0,2}(?:Morre em|Dies on|Expires):?\*{0,2}:?\s*(\S+)", re.I | re.M)
 
 
 def hoje() -> date:
@@ -491,15 +533,19 @@ def check_decay(raiz: Path, ach: Achados) -> None:
     if todos.exists():
         secoes = itens_por_secao(todos)
         for nome, (linha_h, _) in secoes.items():
-            if not nome or nome in SECOES_TODOS:
+            if not nome or nome.lower() in SECOES_TODOS:
                 continue
-            ach.add("TODOS.md", linha_h, f"seção {nome!r} fora do padrão; o backlog tem {' e '.join(SECOES_TODOS)}, e mais eixo é mais paralisia")
+            ach.add("TODOS.md", linha_h, f"seção {nome!r} fora do padrão; o backlog tem {ROTULOS}, e mais eixo é mais paralisia")
 
-        proximos = secoes.get("Próximos", (0, []))[1]
+        def degrau(qual: str) -> list[tuple[int, str]]:
+            return [x for n, (_, lista) in secoes.items()
+                    if SECOES_TODOS.get(n.lower()) == qual for x in lista]
+
+        proximos = degrau(ORDENADO)
         if len(proximos) > TETO_PROXIMOS:
             ach.add("TODOS.md", 0, f"Próximos com {len(proximos)} itens, teto {TETO_PROXIMOS}; a posição é a prioridade, e lista longa não tem posição")
 
-        for linha, texto in secoes.get("Pool", (0, []))[1]:
+        for linha, texto in degrau(POOL):
             d = data_iso(texto)
             if d is None:
                 ach.add("TODOS.md", linha, f"item do Pool sem data ({texto[:36]!r}); sem data não decai")
@@ -529,7 +575,9 @@ PONTEIRO_SPEC = re.compile(r"(docs/specs/[\w./-]+|\bspec-\d{4}-\d{2,4}[\w-]*)")
 SEM_PALAVRA = re.compile(r"[^0-9a-zà-ÿ]+")
 IRRELEVANTE = {"a", "o", "as", "os", "de", "da", "do", "das", "dos", "e", "em",
                "no", "na", "nos", "nas", "um", "uma", "que", "pra", "para",
-               "com", "por", "se", "ao", "aos"}
+               "com", "por", "se", "ao", "aos",
+               "the", "an", "of", "to", "in", "on", "for", "and", "or", "with",
+               "by", "at", "from", "is", "it", "that", "this"}
 SEMELHANCA = 0.75      # Jaccard: reescrita curta ainda é o mesmo item
 MIN_TOKENS = 4         # abaixo disso, coincidência de vocabulário vira falso positivo
 

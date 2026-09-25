@@ -90,6 +90,33 @@ esperado_pega "tag no titulo"          "tag no título"       --estado tags-ruim
 esperado_pega "README sem tag"         "sem tag"             --estado tags-ruim/README.md
 esperado_pega "subdoc de PRD sem tag"  "Resumo"              --estado tags-ruim/docs/prd/jornal.md
 
+echo "o mesmo em inglês: uma regra, dois vocabulários"
+# O doc de repo com remoto nasce em inglês. A regra não muda com o idioma, e um
+# vocabulário só em PT deixava o doc em inglês passar sem ser checado: o pior
+# caso de um gate, que é o gate que não acusa nada.
+esperado_limpo "tag em inglês passa" --estado en/tags-bom/PRD.md en/tags-bom/README.md
+esperado_pega "funcionalidade sem tag, em inglês" "Digest"     --estado en/tags-ruim/PRD.md
+esperado_pega "tag no título, em inglês"  "tag no título"      --estado en/tags-ruim/PRD.md
+esperado_pega "data em heading, em inglês" "data em heading"   --estado en/ruim-estado/PRD.md
+esperado_pega "heading de histórico, em inglês" "Revision history" --estado en/ruim-estado/PRD.md
+esperado_pega "heading de decisões, em inglês" "Decisions"     --estado en/ruim-estado/PRD.md
+esperado_pega "pontos em aberto, em inglês" "Open questions"   --estado en/ruim-estado/PRD.md
+esperado_pega "texto riscado, em inglês"  "riscado"            --estado en/ruim-estado/PRD.md
+esperado_pega "backlog no PRD, em inglês" "backlog"            --molde en/molde-ruim/PRD.md
+esperado_pega "referências no PRD, em inglês" "referências"    --molde en/molde-ruim/PRD.md
+esperado_pega "métricas no PRD, em inglês" "métricas"          --molde en/molde-ruim/PRD.md
+esperado_pega "riscos no PRD, em inglês"  "riscos"             --molde en/molde-ruim/PRD.md
+esperado_pega "restrições no PRD, em inglês" "restrições"      --molde en/molde-ruim/PRD.md
+esperado_limpo "desvio declarado em inglês cala o molde" --molde en/molde-desvio/CONVENTIONS.md
+esperado_limpo "status vivo em inglês passa" --ciclo en/ciclo-bom
+esperado_pega "status morto em inglês na árvore" "fora do archive" --ciclo en/ciclo-ruim
+esperado_pega "decisão viva em inglês no archive" "viva dentro do archive" --ciclo en/ciclo-ruim
+# O handoff venceu pelo nome (2026-08-01 + 14 dias) e sobrevive pela data que
+# declara: sem ler `Dies on`, este caso acusa vencido.
+export DECAY_HOJE=2026-09-15
+esperado_limpo "decay em inglês: Dies on e Next" --decay en/decay-bom
+unset DECAY_HOJE
+
 echo "exemplos do kickoff"
 # O padrão-ouro que o kickoff mostra precisa passar no molde que ele ensina: os
 # quatro exemplos passavam limpos com zero tag enquanto a regra não era cobrada.

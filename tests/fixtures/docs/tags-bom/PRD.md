@@ -20,6 +20,7 @@ A busca devolve dez resultados.
 |---|---|
 | resumo às 07:00 | `no ar` |
 | veto até as 18:00 | `previsto` |
+| consolidado semanal | `em aberto` |
 
 ## 4. Consulta
 

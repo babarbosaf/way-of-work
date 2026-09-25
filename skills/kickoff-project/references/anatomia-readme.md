@@ -15,7 +15,7 @@ O exemplo canônico é `exemplos/README.md` (Chutaí).
 Uma a duas frases: o que é e para quem.
 
 ## Como funciona
-   Um diagrama curto do fluxo, com a tag `no ar` ou `previsto` em cada etapa.
+   Um diagrama curto do fluxo, com a tag de estado em cada etapa.
    Explicação em bullets, a tag em cada funcionalidade.
 
 ## Estrutura
