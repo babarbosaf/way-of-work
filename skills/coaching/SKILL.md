@@ -123,7 +123,7 @@ Ação ainda vaga: *"essa está vaga, quer refinar antes de registrar?"*
 
 | Resultado | Destino |
 |---|---|
-| Cabe numa sessão | direto pro código, com TDD |
+| Cabe numa sessão | direto pro código, com `test-and-debug` |
 | Feature grande em projeto existente | `/to-spec` |
 | Produto de software novo, várias telas | `/kickoff-project` |
 | Artefato num sistema externo (Notion, planilha, Slack, Drive) | construir lá. No instante em que existe, o sistema externo é a verdade: o rascunho local recebe o endereço do artefato ou é apagado |

@@ -60,7 +60,7 @@ Revisão pesada e ciclos de ajuste acontecem **local, antes do push**, nunca "pu
 Um checklist, uma passada. **Critical aberto bloqueia o ship.**
 
 - [ ] **Intenção:** o diff faz o que a spec/pedido descreve? Hunk que não casa = refactor não-relacionado → commit separado.
-- [ ] **Testes:** suite completa verde; comportamento novo tem teste; bug corrigido tem teste de regressão. AC "rodar manualmente" é anti-padrão → reescrever como script com assert.
+- [ ] **Testes, e a evidência de que o vermelho existiu:** suíte completa verde, e no histórico da branch o teste aparece **antes** do código que o faz passar. Teste que nasceu junto com o fix não prova nada: ele foi escrito olhando a implementação. Regra e ofício na skill `test-and-debug`, que este gate não repete. AC "rodar manualmente" é anti-padrão → reescrever como script com assert.
 - [ ] **`/simplify` sobre o diff** (builtin do Claude Code), recomendado, não bloqueante. Caça: regra de 3 violada (helper na 1ª duplicação), abstração sem 2º consumidor real, indireção que serve só ao caso atual, código morto "por garantia". Anti-purismo: abstração com 2+ consumidores reais não é prematura; duplicação com semântica diferente não vira DRY forçado.
 - [ ] **Segurança:** `references/security-checklist.md`, inputs validados, sem credenciais no diff, logs sem dado sensível, erros genéricos pro usuário.
 - [ ] **Docs vivos:** comportamento de produto mudou → `PRD.md` atualizado; fluxo → `ROUTES.md`; padrão visual → `DESIGN.md`; padrão técnico → `CONVENTIONS.md`; decisão cara de reverter → ADR em `docs/adrs/`.

@@ -108,7 +108,7 @@ Prefactor antes: "make the change easy, then make the easy change".
 
 ## Red flags do build
 
-- 🚩 Mais de 100 linhas sem rodar teste → parar, escrever teste.
+- 🚩 Mais de 100 linhas sem rodar teste → parar, e voltar pro `test-and-debug`.
 - 🚩 Editando arquivo fora dos `files:` do ticket → parar e perguntar. Não é zelo,
   é o ownership de outro ticket.
 - 🚩 "Vou arrumar isso aqui também" → não; abre ticket.

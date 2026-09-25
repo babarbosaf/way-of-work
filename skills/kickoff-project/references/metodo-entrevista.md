@@ -52,8 +52,13 @@ Objetivo: preencher a Visão Geral e travar as premissas de plataforma e stack.
 - Stack: manter o default declarado (ver `stack-default.md`) ou trocar? Se trocar, capturar
   a stack nova, porque ela muda as seções transversais do PRD e o CONVENTIONS.md.
 - Convenções de construção: além da stack, o que o dono já pratica? Estrutura de pastas,
-  nomenclatura, padrões de teste, padrões de erro, regras obrigatórias ("sem mocks",
+  nomenclatura, padrões de erro, regras obrigatórias ("sem mocks",
   "regra de negócio nunca em SQL"). Esse material alimenta o CONVENTIONS.md.
+- Teste: perguntar o **dialeto**, não o ofício. Qual framework, onde o arquivo mora, qual
+  o comando que roda a suíte, qual é a fronteira que se mocka aqui, e qual o corte de
+  cobertura se houver. Como escrever um bom teste é a skill `test-and-debug`, igual em
+  todo projeto; re-perguntar isso na entrevista faz cada kickoff redecidir o que já
+  está decidido.
 - Estratégia: a visão/direção do negócio merece documento próprio? Se sim, gerar um
   `STRATEGY.md` curto antes do PRD (opt-in, não default); se não, o racional estratégico
   vive na seção de decisões do PRD.

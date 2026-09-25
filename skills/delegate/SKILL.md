@@ -155,6 +155,8 @@ Task: <título e descrição da task, copiados da spec>
 Critérios de aceite: <ACs da task>
 Contexto: <trechos do AGENTS.md + arquivos que a task toca>
 Restrições: edite apenas os arquivos da task; rode os testes se existirem.
+Método: siga a skill `test-and-debug`. Liste os modos de falha antes do
+primeiro teste, e commite o RED e o GREEN separados.
 EOF
 ```
 
@@ -179,8 +181,12 @@ isolada pra estragar, e a confinação continua sendo a worktree.
 **Protocolo de integração (obrigatório, nunca pular):**
 0. `git status` na **árvore principal**. Worker que escapou aparece aqui, e
    descobrir isso depois de rodar teste custa muito mais.
-1. `git diff main...delegate/<slug>`, revisar o diff inteiro; qualquer arquivo
-   fora do escopo da task = rejeitar a branch.
+1. `git log --oneline main..delegate/<slug>` **antes** do diff, e depois
+   `git diff main...delegate/<slug>` inteiro. Qualquer arquivo fora do escopo da
+   task = rejeitar a branch. O histórico vem primeiro porque é a única coisa que
+   mostra se o teste nasceu antes do código. O worker commita
+   **RED e GREEN em commits separados**, e diff final com os dois fundidos não
+   distingue teste escrito antes de teste escrito olhando a implementação pronta.
 2. Rodar o `verify_cmd`/testes da task na worktree.
 3. Verde e no escopo → integrar (merge/cherry-pick conforme o fluxo do repo),
    marcando a task como delegada nas notas da spec.

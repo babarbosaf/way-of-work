@@ -21,6 +21,13 @@ Se o projeto vive num umbrella com um CONVENTIONS.md compartilhado (o modelo de 
 comum a todos os projetos), o documento do projeto **abre declarando que o estende** e registra só o que é
 específico: stack, padrões e regras locais. Não re-narrar o modelo compartilhado.
 
+O mesmo corte vale contra a doutrina que vive nas skills. Universal **deste projeto**
+entra aqui; universal de todo projeto não, senão ele é recopiado em cada kickoff e
+diverge em metade deles. Em teste a divisão é dialeto contra ofício: framework, onde o
+arquivo de teste mora, comando da suíte, fronteira de mock e corte de cobertura são
+daqui; como se escreve um teste que não fica verde com o código errado é a skill
+`test-and-debug`.
+
 ## Esqueleto
 
 ```
