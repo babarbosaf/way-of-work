@@ -84,8 +84,8 @@ Ler `references/anatomia-prd.md` e escrever o PRD a partir do material da entrev
 Consultar a seção equivalente de `references/exemplos/PRD.md` para calibrar o nível de
 detalhe de cada seção (abrir por seção, não carregar o arquivo inteiro de uma vez).
 
-Garantir os diferenciais: padrão de seção repetido (comportamento, contrato, edge cases),
-a tag `no ar` ou `previsto` em cada funcionalidade, `a definir` na célula em vez de bloco
+Garantir os diferenciais: os três atos em cada seção (propósito, fluxo, regras),
+a tag de estado em cada funcionalidade, `a definir` na célula em vez de bloco
 de pendências, cada restrição no imperativo dentro da seção dona, o diagrama ASCII na
 visão geral, e as seções transversais
 no mesmo padrão. O contrato de cada funcionalidade fica na seção dela; só a regra

@@ -369,12 +369,8 @@ PROPOSITO = re.compile(r"###\s+(?:Propósito|Proposito|Purpose)\b", re.I)
 
 # Doc que ainda não foi refatiado nos três atos. A lista é declarada e datada de
 # propósito: exemption silenciosa é como um padrão morre sem ninguém decidir
-# matá-lo. Vazia é o estado final.
-MIGRANDO = (
-    # Padrão-ouro do kickoff, 14 seções no corte antigo. Refatiar errado ensina
-    # errado, então ele atravessa em diff próprio. Declarado em 2026-09-25.
-    "skills/kickoff-project/references/exemplos/PRD.md",
-)
+# matá-lo. Chegou vazia em 2026-09-25, e o estado vazio é o certo.
+MIGRANDO: tuple[str, ...] = ()
 
 DOCS_RAIZ = {"README.md", "AGENTS.md", "PRD.md", "CONVENTIONS.md", "ROUTES.md", "DESIGN.md"}
 LINK_DOC_RAIZ = re.compile(r"\]\((?:\./)?(" + "|".join(re.escape(d) for d in DOCS_RAIZ) + r")[#)]")

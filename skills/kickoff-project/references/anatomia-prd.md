@@ -22,10 +22,11 @@ juntos. O CONVENTIONS guarda só a regra universal de construção; o README, s�
 Separar por público (o que o usuário percebe, o que só o dev percebe) punha o mesmo
 assunto em dois arquivos, e os dois divergiam.
 
-- **Comportamento:** o que acontece, com números em tabela (a notificação chega em até
-  1h, o corte é 0,8).
-- **Contrato:** os nomes e formatos que outra peça depende (a tabela, o evento, o campo, a
-  pergunta do classificador), curto.
+- **Propósito:** para que a funcionalidade existe, em uma a três linhas.
+- **Fluxo:** a caminhada por ela, com as bifurcações.
+- **Regras:** o que o produto garante, em tabela, com o gatilho antes da claim (a
+  notificação chega em até 1h, o corte é 0,8). Aqui também entram os nomes e formatos
+  de que outra peça depende: a tabela, o evento, o campo, a pergunta do classificador.
 - **Contrato grande no código.** DDL, JSON schema e exemplo de config moram no arquivo que
   o código lê (`migrations/`, `*.schema.json`), e a seção linka. Copiar código em doc é
   redundância que diverge. Antes do código existir, o contrato grande mora na spec.
@@ -34,10 +35,12 @@ assunto em dois arquivos, e os dois divergiam.
 
 Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
 
-- **Padrão de seção repetido.** Cada feature segue: comportamento (o modelo conceitual e
-  as regras em tabela), depois contrato, depois edge cases explícitos.
-- **Edge cases por feature.** Fluxo feliz é o mínimo. O valor está nos casos de borda
-  listados: o que anula, o que adia, o que empata, o que acontece no esquecimento.
+- **Padrão de seção repetido.** Cada feature segue os três atos: propósito, fluxo,
+  regras.
+- **Caso de borda é regra, não apêndice.** Fluxo feliz é o mínimo, e o valor está no que
+  anula, no que adia, no que empata e no que acontece no esquecimento. Cada um vira uma
+  linha de **Regras** com o gatilho na frente, e não um bloco separado no fim: quem lê
+  procura a condição dele, e ela precisa estar na mesma tabela.
 - **Lacuna declarada onde ela morde.** O que ainda não foi decidido não vira bloco no fim
   da seção, que some da vista e apodrece sem dono nem prazo. Vira `a definir` na célula
   exata da tabela, onde quem for implementar esbarra, ou item no backlog, que decai. O
@@ -49,9 +52,8 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
   vigente, e a deliberação mora no git. PRD que vira decision log cresce sem fim e
   ninguém lê até o fim.
 - **Seções transversais.** Ao fim, as camadas que atravessam o produto (notificações,
-  sincronização de dados, i18n), no mesmo padrão: comportamento, contrato e edge cases na
-  seção. Só a regra que vale pra todo código vai pro CONVENTIONS.md (regra de fronteira
-  acima).
+  sincronização de dados, i18n), nos mesmos três atos. Só a regra que vale pra todo
+  código vai pro CONVENTIONS.md (regra de fronteira acima).
 - **Nível de leitura duplo.** Um PM que não lê código consegue seguir a prosa; um dev
   consegue executar a partir dela. Descrever arquitetura (tabelas, jobs, rotinas, cadências)
   conceitualmente, nomeando as peças, sem exigir que o leitor leia código.
@@ -129,4 +131,4 @@ fecho transitivo é o PRD inteiro de volta.
 `exemplos/PRD.md` é o padrão-ouro. Ao escrever uma seção nova, abrir a seção equivalente
 do exemplo e reproduzir o nível de detalhe, não o conteúdo. O exemplo é de um bolão de
 futebol; o produto em mãos pode ser qualquer coisa. O que se copia é a disciplina:
-comportamento, contrato, edge cases e a tag em cada funcionalidade.
+propósito, fluxo, regras e a tag em cada funcionalidade.
