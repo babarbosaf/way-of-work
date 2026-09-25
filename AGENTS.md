@@ -25,7 +25,8 @@ que está aqui.
 | Repo que já existe | inventário é o primeiro entregável: o que tem, onde estão os buracos, o que sai. Bloco de escolhas antes do mapa faz o dono escolher no escuro |
 | Feature grande: várias sessões, muitos arquivos, toca contrato ou prod | `/to-spec` → `/to-tickets` → `/execute`. Na dúvida vai direto, e promove se crescer: plano que passou de 5 passos, ou que o dono quis salvar, já é spec |
 | Pedido de *como*, com o *quê* fechado e mais de uma forma defensável | plan mode: cada passo nomeia arquivo tocado, o que prova, e o que foi descartado |
-| Todo o resto | direto no código, com TDD |
+| Todo o resto | direto no código, com `test-and-debug` |
+| Teste que não quebra quando devia, ou bug que só o sintoma explica | `test-and-debug` |
 | Spec fechando | **1 spec = 1 PR, 1 ticket = 1 commit verde.** A PR é a entrega de valor que o dono audita e valida antes de ir pra prod |
 | Ideia solta no meio da conversa | uma linha no `INBOX.md`, sem análise. Decai em 30 dias |
 | Gap entre o que o PRD promete e o que existe | uma linha no `TODOS.md` até haver contexto. Com contexto: spec (grande) ou ticket (pequeno), **e o item sai do `TODOS.md`** |

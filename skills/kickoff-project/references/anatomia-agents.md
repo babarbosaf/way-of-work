@@ -62,9 +62,12 @@ executar.
 
 A disciplina de construção que vale em qualquer tarefa do projeto:
 
-- **Testes (3 regras):** comportamento novo nasce com teste (RED antes do código, GREEN
-  mínimo, REFACTOR mantendo verde); todo bug ganha teste de regressão antes da correção,
-  e o debug para na causa raiz, não no sintoma; suite verde é pré-condição de commit.
+- **Testes:** comportamento novo nasce com teste, e antes do RED vem a lista de como
+  aquilo quebra (teste escrito a partir da implementação reafirma a implementação e passa
+  sempre); GREEN mínimo, REFACTOR mantendo verde; todo bug ganha teste de regressão antes
+  da correção, e o debug para na causa raiz, não no sintoma; suíte verde é pré-condição de
+  commit. O ofício inteiro está na skill `test-and-debug`, e o AGENTS.md do projeto a cita
+  em vez de recopiar: regra repetida em três arquivos é regra que ninguém abre.
 - **YAGNI:** abstração só na 3ª repetição; zero feature especulativa; antes de escrever
   helper, procurar função existente; evoluir artefato existente antes de criar paralelo.
 - **Feature grande** (várias sessões, muitos arquivos, toca contrato ou prod): escrever

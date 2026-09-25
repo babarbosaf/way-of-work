@@ -56,7 +56,10 @@ Loop, um ticket ou uma leva `[P]` por vez:
 2. **Executar.** Worker: `delegate.sh --task <type> --tier <tier> --worktree <repo> -`
    com o ticket inteiro no prompt, mais regras do `AGENTS.md` e `files:` como
    limite. O `--tier` repassa o campo do ticket, sem reclassificar na hora.
-   Inline: TDD nos `files:` do ticket, na branch de integração.
+   Inline: `test-and-debug` nos `files:` do ticket, na branch de integração.
+   **A skill roda antes do código**, e a lista de modos de falha que ela produz
+   entra no comentário de abertura do ticket. É o que torna o RED auditável
+   depois: o diff final não mostra em que ordem as coisas nasceram.
 3. **Integrar.** Protocolo do `delegate` (status da árvore principal, diff no
    escopo, `verify` verde), depois merge serial na branch de integração e
    `verify` de novo. Worktree e branch do worker morrem aqui.

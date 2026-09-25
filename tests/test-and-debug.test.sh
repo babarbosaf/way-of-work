@@ -91,11 +91,13 @@ echo "== fiação: o gate de ship cobra evidência, não repete a regra =="
 
 # O checklist de ship duplicava as regras de teste palavra por palavra. Regra
 # repetida em três lugares é regra que ninguém abre.
-if grep -q "RED antes do código" "$ROOT/skills/git-workflow-and-versioning/SKILL.md"; then
-  fail "git-workflow não repete o ciclo RED/GREEN"
+GW="$ROOT/skills/git-workflow-and-versioning/SKILL.md"
+if grep -qF "comportamento novo tem teste; bug corrigido tem teste de regressão" "$GW"; then
+  fail "git-workflow não recopia as regras de teste"
 else
-  ok "git-workflow não repete o ciclo RED/GREEN"
+  ok "git-workflow não recopia as regras de teste"
 fi
+cita "$GW" "antes** do código que o faz passar" "git-workflow cobra a ordem no histórico"
 
 echo "== fiação: delegate separa RED de GREEN =="
 
