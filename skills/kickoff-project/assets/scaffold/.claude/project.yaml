@@ -1,0 +1,33 @@
+# project.yaml — metadata machine-readable do projeto.
+# As skills resolvem config nesta ordem: .claude/project.yaml → CLAUDE.md
+# project-level → prompt humano. Preencha e remova estes comentários.
+# Use placeholders só até ter os valores reais; nenhum ID de board/DB fica no
+# repo público — mantenha-os aqui (privado ao projeto) ou em *.local.yaml.
+
+# Tracker canônico de execução (a fonte da verdade das tasks; TODOS.md é só
+# a fila local curta). Lido por: spec-and-plan (desdobra slices em issues),
+# ship-review (confere issue fechada).
+tracker:
+  backend: none            # github | notion | linear | none
+  database: "<board-ou-db-id>"     # placeholder — id real fica fora do público
+  initiative: "<nome-da-iniciativa>"
+
+# States em que loop/delegate podem pegar a task; o resto é lixo, não executa.
+# Lido por: spec-and-plan (autonomy), delegate.
+executable_states: [ready-for-agent]
+
+# Lido por: git-workflow-and-versioning (trunk-based, prefixo de branch).
+repo:
+  trunk: main
+  branch_prefix: feature
+
+# Comando que roda o aceite de um slice. Lido por: spec-and-plan (Gate 2),
+# test-and-debug, e loops autônomos como stop-condition de máquina.
+verify_cmd: "<comando de teste, ex.: pytest -q>"
+
+# --- opcionais (descomente se o projeto tiver pipeline/deploy) ---
+# Smoke E2E pós-deploy. Lido por: ship-review, quando o diff toca pipeline_paths.
+# smoke_cmd: "<comando de smoke E2E>"
+#
+# Diretórios cujo diff exige rodar smoke_cmd antes do ship. Lido por: ship-review.
+# pipeline_paths: ["pipelines/", "handlers/"]

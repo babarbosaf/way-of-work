@@ -45,6 +45,20 @@ nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
 
 ## Fluxo de trabalho
 
+### Passo 0: Scaffold
+
+Copiar `assets/scaffold/` para a raiz do projeto novo, renomeando na cópia:
+`gitignore` vira `.gitignore` e `gitattributes` vira `.gitattributes`. Os dois
+sobem sem ponto porque, com ponto, eles passariam a valer dentro deste repo.
+
+O scaffold traz só o que nenhuma skill emite: os dois dotfiles, o
+`.claude/project.yaml`, os moldes de ADR, receita, pesquisa, runbook e spec, o
+esqueleto de `docs/specs/` e os docs finos de processo (`CHANGELOG`,
+`CONTRIBUTING`, `SECURITY`, `STRATEGY`). `PRD`, `ROUTES`, `DESIGN`, `CONVENTIONS`,
+`AGENTS` e `README` **não** vêm prontos: eles nascem da entrevista, nos passos
+abaixo, e esqueleto vazio deles seria uma terceira cópia de um contrato que já
+tem anatomia e linter.
+
 ### Passo 1: Entrevista
 
 Ler `references/metodo-entrevista.md` e conduzir a entrevista. Ela cobre, em fases:

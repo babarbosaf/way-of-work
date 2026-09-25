@@ -27,7 +27,10 @@ def main():
     ruins = []
     for f in files:
         # Fixture é entrada de teste, não doc: a ruim quebra link de propósito.
-        if f.startswith("tests/fixtures/") or f == "CHANGELOG.md":
+        # `assets/` é molde que a skill copia: o link aponta pro arquivo que o
+        # projeto vai ter depois da cópia, e cobrar aqui seria cobrar que o
+        # scaffold deixasse de ser scaffold.
+        if f.startswith("tests/fixtures/") or f == "CHANGELOG.md" or "/assets/" in f:
             continue
         base = os.path.dirname(f)
         for n, line in enumerate(open(f, encoding="utf-8"), 1):
