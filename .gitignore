@@ -66,6 +66,7 @@ hooks/__pycache__/
 
 # transient handoffs / scratch (doutrina _tmp)
 _tmp/
-# fixture de lint precisa de um _tmp de mentira pra provar o decaimento
-!tests/fixtures/docs/*/_tmp/
-!tests/fixtures/docs/*/_tmp/**
+# fixture de lint precisa de um _tmp de mentira pra provar o decaimento, em
+# qualquer profundidade: a árvore por idioma põe a fixture um nível mais fundo
+!tests/fixtures/docs/**/_tmp/
+!tests/fixtures/docs/**/_tmp/**

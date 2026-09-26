@@ -1,19 +1,18 @@
 # Anatomia do CONVENTIONS.md
 
 Descreve a estrutura e o nível de profundidade do CONVENTIONS.md-alvo. O exemplo canônico
-está em `exemplos/CONVENTIONS.md` (Chutaí). Consultar por seção, como nos demais.
+está em `exemplos/consumo/CONVENTIONS.md` (Chutaí). Consultar por seção, como nos demais.
 
-O CONVENTIONS.md é o "como se constrói" do projeto: stack, padrões de arquitetura, regras
-obrigatórias de implementação. Ele nasce da mesma entrevista que gerou o PRD, a camada
-técnica das seções transversais e as convenções de construção capturadas na Fase 0, e é
-escrito depois do design, quando toda a superfície do produto já é conhecida.
+O CONVENTIONS.md é a regra universal de construção: o que vale em qualquer tarefa do
+projeto, seja qual for a funcionalidade. Stack, regras de código, branch, commit, lint,
+CI e evals. Teto de 150 linhas, cobrado por `check-docs.py --molde`.
 
-## Regra de fronteira com o PRD
+## Regra de fronteira
 
-Espelho da regra na `anatomia-prd.md`: **o que o usuário percebe é PRD; o que só o dev
-percebe é CONVENTIONS.** Aqui vive o detalhamento (tabelas, jobs, RPCs, libs, padrões de
-cache, checklist de processo); no PRD fica o comportamento prometido, com link pra cá.
-Não duplicar a promessa aqui, nem o detalhamento lá.
+Espelho da `anatomia-prd.md`: **um assunto, um lugar.** O contrato de uma funcionalidade
+(tabela, job, RPC, evento) mora na seção dela no PRD, e não aqui. O mapa de pastas e de
+docs mora no README, e não aqui. Se uma regra só vale para uma funcionalidade, ela não é
+universal.
 
 ## Dois níveis
 
@@ -38,16 +37,12 @@ específico: stack, padrões e regras locais. Não re-narrar o modelo compartilh
    atualização"; "regra de negócio em código, nunca em SQL"; "RPC de leitura respeita
    RLS".
 
-## 3..N. <Uma seção por camada técnica>
-   O detalhamento das camadas transversais do PRD e dos sistemas que o produto exige.
-   Tipicamente: dados e sincronização (arquitetura de cache, jobs com cadência em
-   tabela), notificações (infra de entrega, anti-spam), i18n (implementação), performance
-   (padrões obrigatórios com o porquê). Cada seção nomeia as peças (tabelas, functions,
-   crons) e registra o padrão, não o tutorial.
+## 3. Processo
+   Branch, commit, PR, o que rodar antes de propor commit, convenção de migration.
 
-## <Processo>
-   Checklists curtos que evitam regressão: o que toda tela/endpoint novo precisa ter,
-   convenções de migration, o que rodar antes de propor commit.
+## 4. Lint, CI e evals
+   O que o CI roda em todo PR, e o `evals.yaml`: cada eval com gatilho por caminho,
+   comando e corte.
 
 ## <Índice de ADRs>
    Decisão técnica cara de reverter vira ADR em docs/adrs/ (uma decisão por arquivo,
@@ -59,14 +54,16 @@ específico: stack, padrões e regras locais. Não re-narrar o modelo compartilh
 
 - **Padrão, não tutorial.** Cada seção registra a regra e as peças nomeadas; não ensina
   a implementar do zero. Quem lê é um agente com acesso ao código.
-- **Tabela para cadência e mapa.** Jobs de sync, crons, matriz do que roda onde: tabela.
+- **Tabela para matriz.** O que roda onde, o que o CI roda, cada eval: tabela. Cron e job
+  de uma funcionalidade moram na seção dela no PRD.
 - **O código vence.** Como no DESIGN.md: padrão que mudou no código atualiza o doc no
-  mesmo PR. CONVENTIONS.md descreve o estado atual, não a história (história é ADR).
+  mesmo PR. CONVENTIONS.md descreve o estado final com tags, como todo doc de estado; a
+  história mora no git.
 - **Racional embutido.** Regra sem porquê vira cargo cult; uma linha de racional basta
   (ex.: a regra "1 página = 1 roundtrip" nasceu de um diagnóstico de 5-7s de navegação).
 
 ## Como usar o exemplo
 
-`exemplos/CONVENTIONS.md` é o padrão-ouro, extraído do mesmo Chutaí do PRD de exemplo.
+`exemplos/consumo/CONVENTIONS.md` é o padrão-ouro, extraído do mesmo Chutaí do PRD de exemplo.
 Reproduzir o nível de detalhe (nomes de função, cron exato, padrão de segurança), não o
 conteúdo.

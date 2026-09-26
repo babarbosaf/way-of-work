@@ -10,6 +10,12 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$HERE/../skills/to-spec" || exit 2
 
 LINT="python3 $HERE/../scripts/check-spec.py"
+
+# A régua de tier é dado, e o dado tem que vir do repo. Sem isto o lint lê
+# `~/.claude/config/model-policy.json`, que não está versionado: a suíte passa
+# a medir o config de quem roda, e três casos aqui só ficavam verdes na máquina
+# que por acaso declarasse os tiers certos.
+export MODEL_POLICY_JSON="$HERE/../skills/to-spec/fixtures/model-policy.json"
 falhas=0
 
 passou=0
@@ -85,13 +91,19 @@ echo "coerência: o exemplo das references passa no próprio lint"
 TMP=$(mktemp -d)
 python3 - "$TMP" <<'PY'
 import re, sys, os
+from functools import partial
+# `encoding` declarado em toda abertura: sem ele o Python pega o default da
+# plataforma, e no Windows a leitura do exemplo acentuado estoura antes de
+# escrever qualquer arquivo. Os dois casos abaixo então falham dizendo que a
+# spec não existe, o que manda procurar defeito no lint em vez de no harness.
+abrir = partial(open, encoding="utf-8")
 d = sys.argv[1]
 os.makedirs(f"{d}/spec"); os.makedirs(f"{d}/tickets")
-spec = re.findall(r"```markdown\n(.*?)\n```", open("references/exemplo.md").read(), re.S)
-open(f"{d}/spec/spec.md", "w").write(spec[0])
-tk = re.findall(r"```markdown\n(.*?)\n```", open("../to-tickets/references/exemplo.md").read(), re.S)
+spec = re.findall(r"```markdown\n(.*?)\n```", abrir("references/exemplo.md").read(), re.S)
+abrir(f"{d}/spec/spec.md", "w").write(spec[0])
+tk = re.findall(r"```markdown\n(.*?)\n```", abrir("../to-tickets/references/exemplo.md").read(), re.S)
 for i, b in enumerate(tk, 1):
-    open(f"{d}/tickets/{i:02d}.md", "w").write(b)
+    abrir(f"{d}/tickets/{i:02d}.md", "w").write(b)
 PY
 esperado_limpo "spec do exemplo"    --spec "$TMP/spec/spec.md"
 esperado_limpo "tickets do exemplo" --tickets "$TMP/tickets"

@@ -16,6 +16,8 @@ memória durável entre sessões.
 
 ## O que tem dentro
 
+`no ar`, tudo o que a tabela lista.
+
 | Área | O que é |
 |------|---------|
 | `AGENTS.md` | Instrução viva, agnóstica, lida por Codex, Cursor e qualquer harness que siga o padrão. `CLAUDE.md` só aponta pra ele. Terse, sem changelog, cada linha passa no teste "cortar isso faria o agente errar?". |
@@ -33,17 +35,13 @@ memória durável entre sessões.
 
 Histórico de release em [`CHANGELOG.md`](CHANGELOG.md).
 
-Convenções estruturais:
-- **README descreve, `AGENTS.md` manda.** Este arquivo é pra quem chega de fora decidir se adota e como instalar. O `AGENTS.md` é pra quem já está dentro executar. Teste por linha: muda o que o agente faz? Vai pro `AGENTS.md`. Régua completa em [`docs/doc-standard.md`](docs/doc-standard.md).
+Convenções estruturais (a régua de cada doc está em [`docs/doc-standard.md`](docs/doc-standard.md), e a de construção no [`CONVENTIONS.md`](CONVENTIONS.md)):
 - **`AGENTS.md` é a fonte, `CLAUDE.md` aponta pra ele.** Editar sempre o `AGENTS.md`.
   Neste repo o ponteiro é symlink; em projeto, é um `CLAUDE.md` de uma linha com
   `@AGENTS.md`. O import é explícito, sobrevive a Windows, zip e export, e lê bem
   no diff de PR, coisas que o symlink não garante.
-- **`.gitignore` é allowlist:** ignora tudo (`*`), libera com `!`. O que é pessoal (scope pago, paths, roteamento) vive em `config/*.local.json`, gitignored, deep-merge em runtime.
 - **Artefato gitignored sobe como molde, nunca como conteúdo.** `INBOX.md`, `TODOS.md` e `FEEDBACK.md` são contexto de um projeto só, então o repo versiona o `.example.md` de mesmo nome e o real fica de fora. A regra vale pra tudo que o método usa e o git não guarda: se a doutrina manda escrever num arquivo, o molde desse arquivo está aqui, senão quem clona lê uma instrução que aponta pro nada.
 - **O método também é um produto, e tem PRD.** [`PRD.md`](PRD.md) descreve o que o modelo de trabalho promete, domínio por domínio, e [`CONVENTIONS.md`](CONVENTIONS.md) carrega o como. Os dois se somam à divisão de sempre: o `README.md` descreve pra quem chega de fora, o `AGENTS.md` manda em quem já está dentro, e `docs/` guarda o detalhe de cada doutrina.
-- **Memória (`memory/`) não é versionada.** É comportamento do agente, específico da máquina.
-- **Instrução viva, não changelog.** Docs de start-up não guardam histórico (→ `CHANGELOG.md`, ADR, memória).
 
 ### Skills
 

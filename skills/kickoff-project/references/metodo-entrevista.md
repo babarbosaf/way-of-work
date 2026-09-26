@@ -6,7 +6,8 @@ escrever qualquer documento.
 
 A entrevista alimenta principalmente o PRD. As rotas e o design se derivam do PRD depois, com
 entrevistas curtas e complementares (ver `anatomia-rotas.md` e `anatomia-design.md`), e o
-CONVENTIONS.md consolida a camada técnica levantada aqui (ver `anatomia-conventions.md`).
+CONVENTIONS.md recebe só a regra universal de construção levantada aqui (ver
+`anatomia-conventions.md`). O contrato de cada funcionalidade fica na seção dela no PRD.
 
 ## Conteúdo
 
@@ -40,7 +41,7 @@ CONVENTIONS.md consolida a camada técnica levantada aqui (ver `anatomia-convent
 - **Adaptar.** As fases abaixo são um checklist de dimensões a cobrir, não um script rígido.
   Nem todo produto tem álbum, tela ao vivo ou múltiplos idiomas. Pular o que não se aplica,
   mas nunca pular: pilares, restrições invioláveis, regras+edge cases+pontos em aberto por
-  feature, fluxo de dados, e o registro de decisões.
+  feature, fluxo de dados, e o racional das escolhas.
 
 ## Fase 0, Enquadramento
 
@@ -56,13 +57,13 @@ Objetivo: preencher a Visão Geral e travar as premissas de plataforma e stack.
   "regra de negócio nunca em SQL"). Esse material alimenta o CONVENTIONS.md.
 - Estratégia: a visão/direção do negócio merece documento próprio? Se sim, gerar um
   `STRATEGY.md` curto antes do PRD (opt-in, não default); se não, o racional estratégico
-  vive na seção de decisões do PRD.
+  vive na visão geral do PRD.
 - Modelo de acesso e identidade: cadastro aberto, só convite, login social? Há papéis
   diferentes (usuário comum, admin)?
 - Restrições invioláveis: existem restrições, regras, requisitos ou limitações que não
   podem ser quebrados ou ultrapassados (técnicas, legais, de negócio, de prazo, de
-  orçamento, de compliance)? Registrar cada uma textualmente: elas ganham seção própria
-  no PRD e são ecoadas no AGENTS.md.
+  orçamento, de compliance)? Registrar cada uma textualmente: a do produto entra na
+  seção do PRD que ela restringe, e a do agente (o que ele não faz sem o dono) no AGENTS.md.
 - Design system existente: já existe um design system criado, ou uma fundação de design
   já existente para herdar (design system de umbrella, kit de componentes, DESIGN.md de outro
   produto)? Se sim, pedir que o usuário aponte o arquivo. Ele vira a base do DESIGN.md e nenhuma informação dele pode ser
@@ -87,7 +88,8 @@ do PRD-alvo.
 2. **Estrutura.** Quais as partes, os tipos, os estados possíveis?
 3. **Regras exatas.** Números, tabelas, pontuação, janelas de tempo, limites, cadências.
    Aqui é onde se força a saída de tabelas. Se o usuário titubear num número, registrar
-   como ponto em aberto em vez de inventar.
+   como ponto em aberto em vez de inventar: `a definir` na célula, e o item no `TODOS.md`
+   quando o que falta decidir é a funcionalidade toda, não só o número.
 4. **Edge cases.** O que acontece fora do fluxo feliz? Provocar ativamente: e se for anulado,
    adiado, empatar, o usuário esquecer, o dado não chegar, dois eventos colidirem, a janela
    fechar no meio? Um PRD forte lista esses casos por feature.
@@ -100,8 +102,8 @@ Repetir o loop para cada feature. Fechar cada uma com o mini-resumo antes de ir 
 ## Fase 3: camadas transversais
 
 Objetivo: as seções que não pertencem a uma feature só, mas atravessam o produto inteiro.
-No PRD-alvo são as seções finais (notificações, dados/sync, i18n): comportamento no PRD,
-detalhamento técnico no CONVENTIONS.md (regra de fronteira). Cobrir as que se aplicam:
+No PRD-alvo são as seções finais (notificações, dados/sync, i18n), com comportamento,
+contrato e edge cases na própria seção (regra de fronteira). Cobrir as que se aplicam:
 
 - **Dados e sincronização.** De onde vêm os dados? Há fonte externa ou API? Qual a cadência
   de atualização de cada tipo de dado (o que muda a cada minuto vs o que muda por semana)?
@@ -110,7 +112,7 @@ detalhamento técnico no CONVENTIONS.md (regra de fronteira). Cobrir as que se a
   anti-spam, janelas de recência, preferências por categoria?
 - **Performance.** Há requisito de velocidade? Alguma regra de ouro (ex.: cada tela
   carrega em um roundtrip)? Isso costuma nascer de uma dor concreta já vivida. Vira
-  restrição no PRD e padrão obrigatório no CONVENTIONS.md.
+  regra na seção da feature e padrão obrigatório no CONVENTIONS.md.
 - **Internacionalização.** Quantos idiomas? O que é traduzido e o que não é (UGC, admin)?
 - **Admin.** Existe painel administrativo? O que ele cria, edita, mede?
 
@@ -126,7 +128,8 @@ fase mais negligenciada e a que mais agrega.
 Cada uma vira **uma regra no presente**, na seção que possui o assunto: "erro não tira
 ponto", não "decidimos não punir o erro". O racional entra quando muda uma decisão
 futura, e só então; quando for caro de reverter, o lugar dele é um ADR. O que foi
-descartado não vira linha: ele está no git.
+descartado não vira linha: ele está no git. O que o agente não pode fazer sem o dono
+(apagar, publicar, escrever para fora, gastar) vai para o AGENTS.md.
 
 ## Saída da entrevista
 

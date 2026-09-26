@@ -9,7 +9,8 @@ nomeia o comando que a aplica:
 
 | Regra | Quem cobra |
 |---|---|
-| Doc de estado fala do presente | `scripts/check-docs.py --estado <arquivo.md>` |
+| Doc de estado descreve o estado final, com tags | `scripts/check-docs.py --estado <arquivo.md>` |
+| Um assunto, um lugar; mapa só no README | `scripts/check-docs.py --molde <arquivo.md>` |
 | Domínio do PRD se cita de volta | `scripts/check-docs.py --grafo <raiz>` |
 | Decisão vive enquanto vigente | `scripts/check-docs.py --ciclo <raiz>` |
 | Transiente tem prazo de validade | `scripts/check-docs.py --decay <raiz>` |
@@ -18,15 +19,50 @@ nomeia o comando que a aplica:
 | Teto do `AGENTS.md` | `hooks/claude_md_size_guard.py` |
 | Escrita sem slop | `skills/writing/scripts/check-writing.py` |
 
-## Dois tempos verbais, e só dois
+## Um tempo verbal, com tags de estado
 
-Doc de estado descreve **o presente** ou **o futuro desejado**. Não existe terceiro
-tempo. O que foi decidido, tentado e descartado mora no git e no `CHANGELOG.md`, que é
-onde histórico tem leitor.
+Doc de estado descreve **o estado final**: o produto como ele vai ser depois das specs
+em aberto. **A tag marca a funcionalidade, não a seção:** seção inteira num estado leva a
+tag na primeira linha, nunca no título, que é âncora e quebraria link a cada troca;
+seção mista marca cada item (linha, célula, etapa do diagrama). Nunca um
+bloco `no ar` e outro `previsto`, que é o "hoje contra alvo" com outra roupa.
 
-Isso mata três hábitos: seção datada, seção de log e texto riscado. Riscar é o pior dos
-três, porque mantém a versão velha na frente do leitor com uma marca que só o autor sabe
-ler. Estado presente se reescreve.
+- `no ar`: funciona como o doc descreve.
+- `parcialmente no ar`: parte entregue, parte ainda em spec ou issue. A primeira linha
+  diz qual parte já funciona.
+- `previsto`: decidido e não construído; entra com spec aberta.
+- `em aberto`: nem decidido. Sem esta tag, intenção e spec caem no mesmo balde, e o
+  leitor não sabe de qual das duas está lendo a descrição.
+
+**`em aberto` marca item, nunca seção inteira.** Funcionalidade cujo estado todo é "nem
+decidido" não tem o que descrever: os três atos saem preenchidos com `a definir`, e o
+doc ganha prosa sobre um buraco. Ela mora onde decai e cobra dono, que é o `TODOS.md`,
+o `INBOX.md` ou uma spec, e o doc de estado só a menciona onde ela morde: `a definir` na
+célula exata, ou a tag no item de uma seção que no resto está decidida. O
+`check-docs.py --estado` barra a seção inteira e deixa passar as duas formas de menção.
+
+**Uma regra, dois vocabulários.** Doc em inglês usa `live`, `partially live`, `planned` e
+`open`, que são os mesmos quatro estados: o idioma segue o destino do repo (nuvem é
+inglês, máquina é PT-BR), e o `check-docs.py` cobra os dois sem precisar que alguém
+declare qual é. O mesmo vale para o resto do vocabulário que o lint lê: status de
+decisão, seção de log, rótulo do backlog, desvio declarado. Vocabulário de um idioma só
+deixaria o doc do outro passar sem check, que é o pior estado de um gate: verde por não
+ter olhado.
+
+**A definição mora aqui, e só aqui.** No projeto, a legenda aparece uma vez, no papel do
+PRD, que é o doc que mais carrega tag; README, CONVENTIONS e AGENTS usam a tag sem
+redefinir.
+
+Não existe prosa de "hoje é assim, no alvo será assado". O leitor que quer saber o que
+funciona agora filtra por `no ar`; o agente age só pelo que está `no ar`, e em
+`parcialmente no ar` só pela parte entregue. Quando a spec
+fecha, a tag vira `no ar` e nada mais muda no texto.
+
+O que foi decidido, tentado e descartado mora no git e no `CHANGELOG.md`, que é onde
+histórico tem leitor. O doc também não anuncia o que não existe ("não há README de
+conector"): a negativa só entra quando, sem ela, o leitor faria o errado. Isso mata três hábitos: seção datada, seção de log e texto
+riscado. Riscar é o pior dos três, porque mantém a versão velha na frente do leitor com
+uma marca que só o autor sabe ler.
 
 O sinal é **estrutural, não lexical**: data em heading, não a palavra "histórico" no
 corpo. Buscar a palavra deu 21 ocorrências e 2 reais num PRD cujo domínio é dado
@@ -35,6 +71,59 @@ histórico.
 **Deliberação morre no git; restrição sobrevive colhida.** Cortar o decision log não é
 cortar a regra que ele carregava: a regra vai pro doc que possui o assunto, no
 imperativo, sem a data e sem as alternativas descartadas.
+
+## Os três atos de uma funcionalidade
+
+Toda seção de funcionalidade se lê igual, e sempre nesta ordem (cobra:
+`scripts/check-docs.py --molde <arquivo.md>`):
+
+- **Propósito**: para que ela existe, em uma a três linhas.
+- **Fluxo**: a caminhada por ela, com as bifurcações.
+- **Regras**: o que o produto garante, em tabela, e **cada regra diz o gatilho antes
+  da claim**: "quando X, o produto faz Y", nunca "o produto faz Y (se X)". Quem lê
+  procura a condição dele, não a consequência.
+
+Regras é um lugar só de propósito. O contrato de que outra peça depende já era tabela
+de regra, e o caso fora do fluxo feliz já era gatilho seguido de consequência: as duas
+diziam "o produto garante isto" em seções diferentes, e uma garantia tem um lugar. O
+que faz de uma seção uma funcionalidade é ter Propósito; visão geral e restrição não
+têm, e não levam os três.
+
+Em inglês são `Purpose`, `Flow` e `Rules`, os mesmos três atos.
+
+## Um assunto, um lugar
+
+| Doc | Guarda | Não guarda |
+|---|---|---|
+| README | o que é, fluxo com tags, mapa de pastas e de docs, como começar | regra |
+| AGENTS | invariantes e roteamento do agente | detalhe de funcionalidade |
+| PRD | uma seção por funcionalidade, nos três atos: propósito, fluxo e regras | regra universal |
+| CONVENTIONS | a regra universal: stack, código, branch, commit, lint, CI, evals; teto de 150 linhas | funcionalidade, mapa |
+
+- **Consumidor é externo.** O doc de produto descreve o contrato que oferece, nunca o
+  agente ou sistema que o consome: o contrato do consumidor muda, e o texto apodrece.
+  Nome de consumidor só como instância ("hoje, dois agentes leem a wiki"), ou no AGENTS.md.
+- **Conector: uma linha no PRD, o resto no config.** O PRD traz uma linha por conector
+  ativo na tabela de fontes. Papel, restrição, id, versão da API, credencial e gotcha
+  moram no config do conector, que o código lê e valida. Seção própria no PRD só com regra
+  de negócio exclusiva dele.
+- **Restrição mora na seção que ela restringe.** Seção de restrições no fim duplica a regra
+  longe do que ela governa, e as duas cópias divergem. A restrição do agente mora no
+  AGENTS.md.
+- **PRD sem backlog, referências, métricas nem riscos.** Backlog vai pro `TODOS.md`, que
+  decai; referência vira estudo, em `docs/research/` ou na wiki; o número que governa uma
+  regra entra na tabela dela, e o que tem comando vira eval; risco com mitigação vira a
+  regra que protege, e sem mitigação vai pro `TODOS.md`. O `--molde` acusa a seção.
+- **O fluxo abre o PRD, em ASCII.** A visão geral traz um diagrama só, ligando as camadas:
+  CAIXA ALTA para camada ou peça, minúscula para ação, o `§` de cada peça e a tag por
+  etapa. Ciclo de vida, conversa e decisão também se desenham, na seção dona. Em prosa,
+  cada leitor monta um fluxo diferente. O `--molde` acusa a visão geral sem bloco cercado.
+- **Contrato grande no código.** DDL, schema e exemplo de config moram no arquivo que o
+  código lê, e a seção do PRD linka. Antes do código, moram na spec.
+- **Sem README de pasta.** O que uma pasta precisa dizer mora no arquivo de contrato
+  dela (o schema, o config) ou no docstring. README é um só, o da raiz.
+- **Desvio do molde é declarado.** `> **Desvio do molde:** <motivo>` nas primeiras linhas
+  do doc cala o `--molde` naquele arquivo. Desvio sem a linha é acidente, e o lint pega.
 
 ## O grafo de domínios
 

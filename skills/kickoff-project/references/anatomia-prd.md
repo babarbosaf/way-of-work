@@ -1,43 +1,64 @@
 # Anatomia do PRD
 
-Descreve a estrutura e o nível de profundidade do PRD-alvo. O exemplo canônico completo
-está em `exemplos/PRD.md` (Chutaí). Consultar o exemplo por seção quando precisar ver o
-padrão na prática, em vez de carregar o arquivo inteiro toda vez.
+Descreve a estrutura e o nível de profundidade do PRD-alvo. Há dois exemplos canônicos:
+`exemplos/consumo/PRD.md` (Chutaí, produto de consumo) e `exemplos/operador/PRD.md`
+(Prateleira, ferramenta de operador). Consultar por seção quando precisar ver o padrão na
+prática, em vez de carregar o arquivo inteiro toda vez.
 
 O PRD é o documento-raiz. As rotas, o design e as conventions se derivam dele.
 
-## Regra de fronteira com o CONVENTIONS.md
+## Conteúdo
 
-**O que o usuário percebe é PRD; o que só o dev percebe é CONVENTIONS.** O comportamento
-(a notificação chega em até 1h, o dado é sempre real, o app abre instantâneo) fica no PRD.
-O como (a edge function, o cron, a RPC, a lib de i18n, o padrão de cache) vai para o
-CONVENTIONS.md. Onde o PRD encostar em técnica, fecha com um link para a seção
-correspondente do CONVENTIONS.md, nunca duplica o detalhamento. Decisão estratégica de
-teor técnico permanece na seção de decisões do PRD (decisão é produto); só o detalhamento
-migra.
+- Regra de fronteira: um assunto, um lugar
+- O que faz um PRD deste nível
+- Esqueleto
+- Convenções
+- Quando o PRD vira vários
+- Como usar o exemplo
+
+## Regra de fronteira: um assunto, um lugar
+
+**O que é de uma funcionalidade mora na seção dela no PRD, comportamento e contrato
+juntos. O CONVENTIONS guarda só a regra universal de construção; o README, só o mapa.**
+Separar por público (o que o usuário percebe, o que só o dev percebe) punha o mesmo
+assunto em dois arquivos, e os dois divergiam.
+
+- **Propósito:** para que a funcionalidade existe, em uma a três linhas.
+- **Fluxo:** a caminhada por ela, com as bifurcações.
+- **Regras:** o que o produto garante, em tabela, com o gatilho antes da claim (a
+  notificação chega em até 1h, o corte é 0,8). Aqui também entram os nomes e formatos
+  de que outra peça depende: a tabela, o evento, o campo, a pergunta do classificador.
+- **Contrato grande no código.** DDL, JSON schema e exemplo de config moram no arquivo que
+  o código lê (`migrations/`, `*.schema.json`), e a seção linka. Copiar código em doc é
+  redundância que diverge. Antes do código existir, o contrato grande mora na spec.
 
 ## O que faz um PRD deste nível
 
 Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
 
-- **Padrão de seção repetido.** Cada feature segue: modelo conceitual, depois estrutura,
-  depois as regras em tabela, depois edge cases explícitos.
-- **Edge cases por feature.** Fluxo feliz é o mínimo. O valor está nos casos de borda
-  listados: o que anula, o que adia, o que empata, o que acontece no esquecimento.
+- **Padrão de seção repetido.** Cada feature segue os três atos: propósito, fluxo,
+  regras.
+- **Caso de borda é regra, não apêndice.** Fluxo feliz é o mínimo, e o valor está no que
+  anula, no que adia, no que empata e no que acontece no esquecimento. Cada um vira uma
+  linha de **Regras** com o gatilho na frente, e não um bloco separado no fim: quem lê
+  procura a condição dele, e ela precisa estar na mesma tabela.
 - **Lacuna declarada onde ela morde.** O que ainda não foi decidido não vira bloco no fim
   da seção, que some da vista e apodrece sem dono nem prazo. Vira `a definir` na célula
   exata da tabela, onde quem for implementar esbarra, ou item no backlog, que decai. O
   `check-docs.py --estado` bloqueia a seção, e o padrão 35 do catálogo de escrita explica
-  o porquê.
+  o porquê. **Isso vale inteiro para a seção:** funcionalidade cujo estado todo é `em
+  aberto` não é seção deste doc. Ela é linha do `TODOS.md`, do `INBOX.md` ou de uma spec,
+  e aqui aparece só nominalmente, na célula que ela trava. Seção com os três atos
+  preenchidos de `a definir` é item de backlog vestido de PRD: engorda o doc e tira a
+  lacuna da única fila que cobra dono e prazo.
 - **Restrição no imperativo, nunca decisão logada.** A escolha difícil vira uma regra na
-  seção que possui o assunto ("o número publicado mora na tabela"), no presente, sem data
+  seção que possui o assunto ("o número publicado mora na tabela"), no estado final, com a tag, sem data
   e sem as alternativas descartadas. O racional completo mora no ADR enquanto ele estiver
   vigente, e a deliberação mora no git. PRD que vira decision log cresce sem fim e
   ninguém lê até o fim.
 - **Seções transversais.** Ao fim, as camadas que atravessam o produto (notificações,
-  sincronização de dados, i18n) descritas em nível de comportamento: o que o usuário vê,
-  quais eventos existem, o que é ou não coberto. O detalhamento de arquitetura de cada uma
-  vive no CONVENTIONS.md, linkado ao fim da seção (regra de fronteira acima).
+  sincronização de dados, i18n), nos mesmos três atos. Só a regra que vale pra todo
+  código vai pro CONVENTIONS.md (regra de fronteira acima).
 - **Nível de leitura duplo.** Um PM que não lê código consegue seguir a prosa; um dev
   consegue executar a partir dela. Descrever arquitetura (tabelas, jobs, rotinas, cadências)
   conceitualmente, nomeando as peças, sem exigir que o leitor leia código.
@@ -47,30 +68,38 @@ Não é uma lista de features. Cada feature é arquitetada. O que diferencia:
 ```
 # PRD: <Nome do produto>
 
+> **Papel deste doc.** O que ele cobre, de quem depende, e a legenda das tags,
+  uma vez só (a definição mora no `doc-standard.md`).
+
 ## 1. Visão geral
    Uma a duas frases do que é e para quem. Depois os 2 a 4 pilares de engajamento
-   em lista, cada um com uma frase.
+   em lista, cada um com uma frase. Fecha com o diagrama único em ASCII: CAIXA ALTA
+   para camada ou peça, minúscula para ação, o § de cada peça e a tag por etapa.
 
 ## 2..N. <Uma seção por feature / pilar>
-   Padrão interno de cada seção:
-   ### Modelo           -> como funciona conceitualmente
-   ### Estrutura        -> partes, tipos, estados
-   ### Regras / tabelas -> números exatos em tabela (pontuação, janelas, limites)
-   ### Edge cases       -> casos fora do fluxo feliz
-
-## <Restrições invioláveis>
-   Regras, requisitos e limitações capturados na Fase 0 que não podem ser quebrados
-   nem ultrapassados. Uma linha por restrição, com o racional quando houver.
+   A tag (`no ar`, `parcialmente no ar`, `previsto`, `em aberto`; em inglês `live`,
+   `partially live`, `planned`, `open`) marca a funcionalidade: na primeira
+   linha, se a seção inteira está num estado (no título não, que é âncora); em cada
+   item, se mistura. `em aberto` só marca item: seção inteira nesse estado não
+   nasce aqui, nasce no `TODOS.md`. Padrão interno de cada seção:
+   ### Propósito        -> para que a funcionalidade existe, em uma a três linhas
+   ### Fluxo            -> a caminhada por ela, com as bifurcações; ciclo de vida em ASCII
+   ### Regras           -> o que o produto garante, em tabela: o número exato, o formato
+                           de que outra peça depende, o caso fora do fluxo feliz e a
+                           restrição inviolável. Cada regra diz o gatilho antes da claim
 
 ## <Seções transversais>
-   Notificações, Dados e sincronização, Internacionalização, Admin. Cada uma no nível
-   de comportamento (eventos, escopo, promessas ao usuário), com tabela quando fizer
-   sentido, fechando com link para a seção correspondente do CONVENTIONS.md.
-   Performance e demais padrões puramente técnicos não ganham seção no PRD: vivem no
-   CONVENTIONS.md, citados na restrição que os torna requisito.
+   Notificações, Dados e sincronização, Internacionalização, Admin. Mesmo padrão: os
+   três atos na seção. Regra que vale para todo código (stack, estilo,
+   performance obrigatória) não ganha seção: vive no CONVENTIONS.md.
 ```
 
 A numeração é contínua. As seções transversais entram como seções numeradas ao fim.
+
+O PRD não tem seção de restrições, backlog, referências, métricas nem riscos: cada uma
+tem destino no `doc-standard.md` ("Um assunto, um lugar"), e o `check-docs.py --molde`
+acusa. O consumidor do produto (agente, sistema, integração) aparece pelo contrato que
+consome, nunca descrito por dentro.
 
 ## Convenções
 
@@ -105,7 +134,18 @@ fecho transitivo é o PRD inteiro de volta.
 
 ## Como usar o exemplo
 
-`exemplos/PRD.md` é o padrão-ouro. Ao escrever uma seção nova, abrir a seção equivalente
-do exemplo e reproduzir o nível de detalhe, não o conteúdo. O exemplo é de um bolão de
-futebol; o produto em mãos pode ser qualquer coisa. O que se copia é a disciplina:
-modelo, estrutura, tabela de regras e edge cases.
+Ao escrever uma seção nova, abrir a seção equivalente de um dos exemplos e reproduzir o
+nível de detalhe, não o conteúdo. O que se copia é a disciplina: propósito, fluxo, regras
+e a tag em cada funcionalidade.
+
+Os dois padrões-ouro cobrem formatos diferentes, e escolher pelo formato é mais útil que
+escolher pelo assunto:
+
+| Exemplo | Produto | O que ele ensina melhor |
+|---|---|---|
+| `exemplos/consumo/PRD.md` | Chutaí, um bolão de futebol | régua numérica em tabela, economia de engajamento, muitas funcionalidades independentes |
+| `exemplos/operador/PRD.md` | Prateleira, extensão de comprador dentro do portal de um terceiro | fila sem vigilância, caminho de escrita que espera pessoa, restrição que nasce de credencial de terceiro, lacuna citada na célula em vez de virar seção |
+
+Os dois produtos são inventados. Exemplo é onde nome real de cliente entra sem ninguém
+notar, e este repo é público: quando o molde vier de um trabalho real, o domínio se troca
+inteiro, não só os nomes. A forma da operação identifica sozinha.

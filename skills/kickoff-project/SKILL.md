@@ -1,7 +1,7 @@
 ---
 name: kickoff-project
 description: |
-  Cria a fundação documental de um projeto novo por entrevista dirigida, em cadeia: PRD, documento de rotas, design system, CONVENTIONS.md, CLAUDE.md, AGENTS.md, FEEDBACK.md e TODOS.md. Oito arquivos por default, cada um derivando do anterior; pula algum só se for pedido.
+  Cria a fundação documental de um projeto novo por entrevista dirigida, em cadeia: PRD, documento de rotas, design system, CONVENTIONS.md, README.md, CLAUDE.md, AGENTS.md, FEEDBACK.md e TODOS.md. Nove arquivos por default, cada um derivando do anterior; pula algum só se for pedido.
   Invoque quando o usuário for começar ou estruturar um projeto novo, ou pedir "kickoff", "fundação do projeto", "planta do projeto", "documentação base", "blueprint", ou o PRD, as rotas, o design ou as convenções de um produto.
   Não invoque para: feature dentro de projeto que já tem fundação (é `to-spec`), doc avulso sem projeto novo por trás, ou ajuste em documento que já existe.
 ---
@@ -17,11 +17,14 @@ escreve, em cadeia: o PRD nasce da entrevista, as rotas caem do PRD, o design se
 apoia nas telas que as rotas definiram, e as conventions consolidam a camada técnica que a
 entrevista e o PRD revelaram. Por fim, fecha a camada operacional: um CLAUDE.md que aponta
 para o AGENTS.md, e um AGENTS.md que amarra os documentos às regras de trabalho dos
-agentes (restrições invioláveis, registro de feedbacks, documentos sempre atualizados).
+agentes (restrições do agente, registro de feedbacks, documentos sempre atualizados).
 
-A régua de profundidade é o projeto Chutaí, cujos documentos completos vivem em
-`references/exemplos/`. O que se reproduz é o nível de detalhe e a disciplina de estrutura,
-nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
+A régua de profundidade são dois projetos em `references/exemplos/`, e os dois são
+inventados. `consumo/` é o Chutaí, um bolão de futebol, com o conjunto completo de
+documentos. `operador/` é a Prateleira, uma ferramenta de comprador dentro do portal de
+um terceiro, com fila, dinheiro real e portão humano, e traz só o PRD. Escolher pelo
+formato do produto em mãos, não pelo assunto. O que se reproduz é o nível de detalhe e a
+disciplina de estrutura, nunca o conteúdo.
 
 ## Princípios inegociáveis
 
@@ -31,9 +34,9 @@ nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
   se apoia no anterior. Produzir um de cada vez, na ordem. Não é preciso um portão formal de
   aprovação entre eles, mas cada documento é entregue antes de começar o próximo, o que abre
   espaço natural para correção.
-- **Fronteira PRD × CONVENTIONS:** o que o usuário percebe é PRD; o que só o dev percebe é
-  CONVENTIONS. Onde o PRD encostar em técnica, vira link para a seção correspondente do
-  CONVENTIONS.md, nunca duplicação.
+- **Um assunto, um lugar:** funcionalidade, com comportamento e contrato, é seção do PRD;
+  regra universal de construção é CONVENTIONS; mapa de pastas e de docs é README.
+  `check-docs.py --molde` cobra, e desvio só vale declarado no topo do doc.
 - **Entrega padrão são os quatro documentos mais CLAUDE.md, AGENTS.md, o scaffold de
   FEEDBACK.md e um TODOS.md vazio.** Só pular algum se o usuário pedir explicitamente.
 - **Português por padrão**, acompanhando o idioma do usuário.
@@ -48,9 +51,9 @@ nunca o conteúdo (o produto em mãos pode ser qualquer coisa).
 ### Passo 1: Entrevista
 
 Ler `references/metodo-entrevista.md` e conduzir a entrevista. Ela cobre, em fases:
-enquadramento e stack, pilares de engajamento, deep-dive por feature (modelo, estrutura,
-regras exatas, edge cases, pontos a definir), camadas transversais (dados e sync,
-notificações, performance, i18n, admin) e restrições invioláveis.
+enquadramento e stack, pilares de engajamento, deep-dive por feature (comportamento com
+regras exatas, contrato, edge cases, o que falta decidir), camadas transversais (dados e sync,
+notificações, performance, i18n, admin) e restrições invioláveis, cada uma na seção que ela restringe.
 
 Disciplina: um bloco de tema por mensagem, no máximo 1 a 3 perguntas por vez, forçar
 especificidade (números, tabelas, cadências), devolver um mini-resumo ao fechar cada bloco.
@@ -69,7 +72,7 @@ Ainda na Fase 0:
   podem ser quebrados).
 - Perguntar se a visão/direção do negócio merece documento próprio. Se sim, gerar um
   `STRATEGY.md` curto (por que o produto existe, apostas, norte) antes do PRD; se não, o
-  racional estratégico vive na seção de decisões do PRD. STRATEGY é opt-in, não default.
+  racional estratégico vive na visão geral do PRD. STRATEGY é opt-in, não default.
 - Perguntar se já existe um design system ou fundação de design já existente para herdar (design
   system de umbrella, kit de componentes, DESIGN.md de outro produto). Se existir, o usuário
   aponta o arquivo, que vira a base do DESIGN.md sem perda de informação: o documento gerado
@@ -81,21 +84,24 @@ Ainda na Fase 0:
 ### Passo 2: PRD
 
 Ler `references/anatomia-prd.md` e escrever o PRD a partir do material da entrevista.
-Consultar a seção equivalente de `references/exemplos/PRD.md` para calibrar o nível de
-detalhe de cada seção (abrir por seção, não carregar o arquivo inteiro de uma vez).
+Consultar a seção equivalente de `references/exemplos/consumo/PRD.md`, ou de
+`references/exemplos/operador/PRD.md` quando o produto for ferramenta interna, para
+calibrar o nível de detalhe de cada seção (abrir por seção, não carregar o arquivo
+inteiro de uma vez).
 
-Garantir os diferenciais: padrão de seção repetido (modelo, estrutura, regras em tabela,
-edge cases, pontos a definir), a seção de restrições invioláveis no imperativo, e
-as seções transversais em nível de comportamento. O detalhamento técnico delas nasce aqui
-na conversa, mas o texto final aponta para o CONVENTIONS.md (regra de fronteira na
-anatomia). Guardar o material técnico levantado para o Passo 5.
+Garantir os diferenciais: os três atos em cada seção (propósito, fluxo, regras),
+a tag de estado em cada funcionalidade, `a definir` na célula em vez de bloco
+de pendências, cada restrição no imperativo dentro da seção dona, o diagrama ASCII na
+visão geral, e as seções transversais
+no mesmo padrão. O contrato de cada funcionalidade fica na seção dela; só a regra
+universal de construção levantada na entrevista vai para o Passo 5.
 
 ### Passo 3: Rotas
 
 Ler `references/anatomia-rotas.md`. Derivar o mapa de telas do PRD, feature por feature,
 agrupando por estado de acesso (pré-auth, pós-auth com navegação principal, públicas, camada
 global) e escrevendo a lógica condicional de navegação em cada descrição. Calibrar por
-`references/exemplos/ROUTES.md`.
+`references/exemplos/consumo/ROUTES.md`.
 
 ### Passo 4: Design
 
@@ -104,7 +110,7 @@ dial values, modo de cor, stack visual), identificar os patterns de componente q
 exigem, e escrever o design system: identidade, **constraints** (workflows a suportar em
 ordem de frequência, estados obrigatórios, pisos invioláveis), tokens exatos, patterns com
 código, a regra de showcase e as duas listas de guarda-corpo (anti-slop checklist e lista
-negra). Calibrar por `references/exemplos/DESIGN.md`. Para a stack visual default, ver
+negra). Calibrar por `references/exemplos/consumo/DESIGN.md`. Para a stack visual default, ver
 `references/stack-default.md`.
 
 As constraints vêm antes dos tokens: são elas que permitem avaliar um desenho sem cair em
@@ -116,12 +122,15 @@ escrever: ele é a base do DESIGN.md e nenhuma informação dele pode ser perdid
 "Quando já existe um design system" em `references/anatomia-design.md`). A entrevista de
 design curta se reduz ao que o arquivo não cobre.
 
-### Passo 5: Conventions
+### Passo 5: Conventions e README
 
-Ler `references/anatomia-conventions.md` e escrever o CONVENTIONS.md consolidando a camada
-técnica: a stack confirmada na Fase 0, as convenções de construção capturadas na entrevista
-e o detalhamento de arquitetura das seções transversais do PRD (dados e sync, notificações,
-i18n, performance). Calibrar por `references/exemplos/CONVENTIONS.md`.
+Ler `references/anatomia-conventions.md` e escrever o CONVENTIONS.md só com a regra
+universal: a stack confirmada na Fase 0 e as convenções de construção capturadas na
+entrevista. O detalhamento técnico de cada funcionalidade já foi para o Contrato da seção
+dela no PRD.
+
+Depois, ler `references/anatomia-readme.md` e escrever o README.md: o que é, o fluxo com
+tags, o mapa de pastas e o mapa de docs.
 
 Se o projeto vive num umbrella com um CONVENTIONS.md compartilhado (modelo de trabalho da
 casa), o documento gerado abre declarando que o estende, e registra só o que é específico
@@ -131,7 +140,7 @@ do projeto: stack, padrões e regras locais.
 
 Ler `references/anatomia-agents.md` e escrever os três arquivos: o CLAUDE.md mínimo, que
 só aponta para o AGENTS.md; o AGENTS.md com as cinco seções obrigatórias (documentos de
-referência PRD.md, ROUTES.md, DESIGN.md e CONVENTIONS.md; restrições invioláveis; execução;
+referência PRD.md, ROUTES.md, DESIGN.md e CONVENTIONS.md; restrições do agente; execução;
 registro de feedbacks; documentos vivos, com o agente perguntando antes de atualizar PRD,
 rotas, design ou conventions); e o scaffold de `FEEDBACK.md`, que o AGENTS.md importa via
 `@FEEDBACK.md` e que carrega no cabeçalho a regra de teto e promoção.
@@ -139,7 +148,7 @@ rotas, design ou conventions); e o scaffold de `FEEDBACK.md`, que o AGENTS.md im
 ### Passo 7: Entrega
 
 Salvar os arquivos na raiz do projeto atual: `PRD.md`, `ROUTES.md`, `DESIGN.md`,
-`CONVENTIONS.md`, `CLAUDE.md`, `AGENTS.md`, `FEEDBACK.md` e `TODOS.md` (mais `STRATEGY.md`
+`CONVENTIONS.md`, `README.md`, `CLAUDE.md`, `AGENTS.md`, `FEEDBACK.md` e `TODOS.md` (mais `STRATEGY.md`
 se foi opt-in na Fase 0). CLAUDE.md, AGENTS.md e FEEDBACK.md precisam estar na raiz, senão
 os agentes não os carregam. Se não houver um diretório de projeto claro, perguntar o destino
 antes de salvar. Quando a skill rodar no claude.ai (sem projeto local), salvar em
@@ -158,10 +167,13 @@ entrada de constraint. Sem esse endereço, papercut vira spot-fix.
 - `references/anatomia-prd.md`: estrutura e convenções do PRD.
 - `references/anatomia-rotas.md`: estrutura do documento de rotas e como derivá-lo do PRD.
 - `references/anatomia-design.md`: estrutura do design system e como derivá-lo das rotas.
+- `references/anatomia-readme.md`: estrutura do README.md, o único doc com mapa.
 - `references/anatomia-conventions.md`: estrutura do CONVENTIONS.md e a regra de fronteira
   com o PRD.
 - `references/anatomia-agents.md`: estrutura do CLAUDE.md, do AGENTS.md e do FEEDBACK.md,
   e as regras operacionais que eles carregam.
 - `references/stack-default.md`: o molde da stack default e como adaptar ao trocar.
-- `references/exemplos/{PRD,ROUTES,DESIGN,CONVENTIONS}.md`: o padrão-ouro do Chutaí, a
-  régua de profundidade. Consultar por seção.
+- `references/exemplos/consumo/{PRD,ROUTES,DESIGN,CONVENTIONS,README}.md`: o padrão-ouro do
+  Chutaí, produto de consumo, conjunto completo. Consultar por seção.
+- `references/exemplos/operador/PRD.md`: o padrão-ouro da Prateleira, ferramenta de
+  operador sobre o portal de um terceiro. Mesmo nível de detalhe, outro formato de produto.

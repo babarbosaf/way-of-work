@@ -57,13 +57,17 @@ kickoff-project/
     ├── anatomia-agents.md            # Estrutura do CLAUDE.md, AGENTS.md e FEEDBACK.md
     ├── stack-default.md              # Molde da stack default e como adaptar ao trocar
     └── exemplos/
-        ├── PRD.md                    # Padrão-ouro de PRD (projeto Chutaí)
-        ├── ROUTES.md                 # Padrão-ouro de rotas
-        ├── DESIGN.md                 # Padrão-ouro de design system
-        └── CONVENTIONS.md            # Padrão-ouro de conventions (cisão do PRD Chutaí)
+        ├── consumo/                  # Chutaí, um bolão de futebol: produto de consumo
+        │   ├── PRD.md                # Padrão-ouro de PRD
+        │   ├── ROUTES.md             # Padrão-ouro de rotas
+        │   ├── DESIGN.md             # Padrão-ouro de design system
+        │   ├── CONVENTIONS.md        # Padrão-ouro de conventions (cisão do PRD)
+        │   └── README.md             # Padrão-ouro de README
+        └── operador/                 # Prateleira: ferramenta interna sobre portal de terceiro
+            └── PRD.md                # Padrão-ouro de PRD, outro formato de produto
 ```
 
-Os exemplos do projeto Chutaí (um bolão de futebol) servem de régua de profundidade: a skill reproduz o nível de detalhe e a disciplina de estrutura deles, nunca o conteúdo.
+Os dois projetos são inventados e servem de régua de profundidade: a skill reproduz o nível de detalhe e a disciplina de estrutura deles, nunca o conteúdo. O de consumo tem o conjunto completo de documentos; o de operador traz só o PRD, e ensina fila sem vigilância, caminho de escrita que espera uma pessoa e lacuna declarada com dono.
 
 ## Uso
 

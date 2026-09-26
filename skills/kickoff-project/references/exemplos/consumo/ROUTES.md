@@ -1,18 +1,21 @@
-# Árvore de rotas, Chutaí
+# Rotas, Chutaí
 
-Mapa completo das telas do app. Complementa o PRD (referência de navegação e estrutura de URLs).
+> Exemplo adaptado do blueprint de Iago de Macedo (github.com/iagodemacedo/project-blueprint).
+
+As telas do app e a navegação entre elas. O que cada tela faz mora na seção da funcionalidade no PRD.
 
 ## Pré-autenticação
 
-Sem bottom nav. Duas portas de entrada: convite (única forma de criar conta) e login (reentrada).
+Sem bottom nav. Três portas de entrada: cadastro aberto, convite e login (reentrada).
 
 | Rota | Descrição |
 |---|---|
-| `/` | Abertura sem sessão e sem convite. CTA "Entrar" → `/login`. Texto secundário: "Novas contas são por convite" |
+| `/` | Abertura sem sessão. CTAs "Criar conta" → `/cadastro` e "Entrar" → `/login` |
 | `/entrar/:codigo` | Deep link de convite. Código válido + sem sessão → `/cadastro`. Código válido + com sessão → sheet "Entrar no grupo X?" → `/grupo/liga`. Código inválido/expirado/cheio/encerrado → `/entrar/erro` |
 | `/entrar/erro` | Motivo do código inválido. Instrui pedir novo link |
-| `/cadastro` | Única tela de cadastro, acessível apenas com token de convite. Campos: nome, apelido, email, senha. Atalhos: Google, Apple |
+| `/cadastro` | Única tela de cadastro, aberta a qualquer um; o convite chega com o código já preenchido. Campos: nome, apelido, email, senha. Atalhos: Google, Apple |
 | `/cadastro/email-confirmacao` | Confirmação de email (se aplicável) |
+| `/convite` | Pós-cadastro, sem grupo: entra com um código ou cria um grupo novo |
 | `/boas-vindas` | Onboarding pós-cadastro (6 passos, somente primeira vez) |
 | `/boas-vindas/1` | Palpites |
 | `/boas-vindas/2` | Grupo e Liga |
@@ -71,7 +74,7 @@ Sub-abas: Liga, Estatísticas.
 | `/grupo/liga` | Ranking com pontuação. Indicador de critério de desempate. Filtros: geral, por fase, por dia |
 | `/grupo/liga/membro/:id` | Perfil público do membro com estatísticas |
 | `/grupo/estatisticas` | Estatísticas do grupo (PRD §8): termômetro, quem palpitou hoje + cutucada, destaques do dia, raio X dos jogos, zebra/consenso, álbum do grupo |
-| `/grupo/mural` | Removida (12/06/2026). Redirect → `/grupo/estatisticas` |
+| `/grupo/mural` | Redirect permanente → `/grupo/estatisticas` |
 | `/grupo/info` | Nome, descrição, admin, lista de membros, **sair do grupo** |
 | `/grupo/trocar` | Seletor (quando o usuário está em mais de um grupo) |
 | `/grupo/entrar` | Inserir código de convite manualmente |
@@ -127,4 +130,4 @@ Acessíveis a qualquer pessoa, sem login. Pensadas para compartilhamento.
 
 ### Deep links de push
 
-Ver seção 15 do PRD para o mapeamento completo de evento → rota.
+Ver seção 13 do PRD para o mapeamento completo de evento → rota.

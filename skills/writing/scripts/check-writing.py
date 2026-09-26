@@ -10,6 +10,14 @@ O julgamento fica em references/padroes.md; aqui só entra regra sem falso posit
 import re
 import sys
 
+# O console do Windows entrega cp1252, e o achado sai como `travess?o`: a regra
+# que mais dispara aqui é justamente a de caractere acentuado, então mensagem
+# ilegível é achado perdido. Este script não importa o `lint_common` de
+# propósito, para a skill seguir rodando fora do repo.
+for _fluxo in (sys.stdout, sys.stderr):
+    if hasattr(_fluxo, "reconfigure"):
+        _fluxo.reconfigure(encoding="utf-8")
+
 HTML_COMMENT = re.compile(r"<!--.*?-->", re.S)
 FENCE = re.compile(r"^\s*(```|~~~)")
 INLINE_CODE = re.compile(r"`[^`\n]*`")

@@ -9,7 +9,8 @@ pedir, ou oferecer quando o diff/spec **toca prod ou é caro de reverter**
 ## Invocação
 
 ```bash
-~/.claude/scripts/peer-review.sh spec <path-to-spec.md> [--findings <prev.md>] [--model auto|codex|gemini]
+~/.claude/scripts/peer-review.sh spec <path.md> [--findings <prev.md>] [--model auto|codex|gemini]
+~/.claude/scripts/peer-review.sh doc  <path.md>   # sinônimo: qualquer markdown, não só spec
 ~/.claude/scripts/peer-review.sh diff [git-ref] [--findings <prev.md>] [--spec <spec.md>] [--model ...]
 ```
 
@@ -40,6 +41,11 @@ path dos arquivos alterados, com peso maior:
 Área não tocada não gera lente: bloco que não veio é sinal, não omissão.
 
 ## Cascata de reviewers
+
+A ordem é dura: começar pelo degrau 3 com os dois primeiros de pé troca um
+reviewer independente por um que carrega o viés da sessão, e ninguém vê a troca
+acontecer. Reviewer indisponível se mede com `command -v` e com o cooldown, não
+se presume pelo tipo do alvo.
 
 1. **codex.** Primário. Requer `codex` CLI no PATH.
 2. **gemini.** Segundo. Requer `gemini` CLI (`npm i -g @google/gemini-cli`).

@@ -7,7 +7,15 @@ precisam da mesma saída: `arquivo:linha: mensagem`, achado bloqueia, aviso não
 from __future__ import annotations
 
 import re
+import sys
 import unicodedata
+
+# O console do Windows entrega cp1252, e o achado em português sai como
+# `refer?ncias`. Mensagem ilegível é achado perdido: o linter fala UTF-8 em toda
+# plataforma, e quem chama não precisa lembrar de PYTHONIOENCODING.
+for _fluxo in (sys.stdout, sys.stderr):
+    if hasattr(_fluxo, "reconfigure"):
+        _fluxo.reconfigure(encoding="utf-8")
 
 
 class Achados:

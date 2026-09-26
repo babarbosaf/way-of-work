@@ -1,0 +1,11 @@
+{
+  "$comment": "Policy da suíte, apontada por MODEL_POLICY_JSON. Só o recorte que o lint de ticket lê: quais task-types declaram tier. `implement` declara, `scan` não, e é esse par que as fixtures de ticket exercem. `padrao` nunca aparece aqui porque é o implícito de todo task-type.",
+  "version": 1,
+  "tiers": {
+    "implement": {
+      "amplo": {
+        "$comment": "Tier extra de implement. O valor não é lido: o lint só pergunta quais chaves existem."
+      }
+    }
+  }
+}

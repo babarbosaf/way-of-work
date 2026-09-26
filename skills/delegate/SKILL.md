@@ -1,17 +1,19 @@
 ---
 name: delegate
 description: >-
-  Despacha tarefas delegáveis para workers de plano e de cota grátis (codex, agy,
-  claude headless) via ~/.claude/scripts/delegate.sh, guiado por
-  ~/.claude/config/model-policy.json.
+  Despacha tarefas delegáveis a workers externos (codex, agy, claude headless)
+  via ~/.claude/scripts/delegate.sh, guiado por config/model-policy.json.
   Invoque SEMPRE que: for executar task de spec com o campo `delega:` preenchido;
   precisar de varredura de codebase grande, segunda opinião de lógica/arquitetura,
-  boilerplate/testes mecânicos ou review extra; quando o `read_size_guard` ou o
-  `bash_read_guard` bloquearem uma leitura e mandarem pro worker; ou quando uma
-  tarefa mecânica acima de 10 min não exigir o contexto da sessão. Invoque também quando o usuário
-  pedir economia de consumo ("modo economia", "economiza", "otimiza o consumo",
-  "tô perto do limite"), ativa o modo economia da sessão. Não invoque para:
-  decisão de arquitetura, integração de código na branch principal, ou tarefa
+  boilerplate/testes mecânicos, review extra, ou pesquisa externa sobre prática de
+  mercado, ferramenta ou modelo; quando o usuário disser "delega",
+  "manda pra outro agente" ou "abre uma aba", e "quero acompanhar" pede
+  `--visivel`, nunca o Agent tool; quando o `read_size_guard` ou o
+  `bash_read_guard` bloquearem uma leitura e mandarem pro worker; ou quando tarefa
+  mecânica acima de 10 min não exigir o contexto da sessão. Invoque também quando
+  pedirem economia de consumo ("modo economia", "economiza", "otimiza o consumo",
+  "tô perto do limite"). Não invoque para:
+  decisão de arquitetura, integração na branch principal, ou tarefa
   que depende do contexto vivo da conversa, isso é core do orquestrador.
 ---
 
@@ -38,6 +40,7 @@ a policy rotear. Task-types:
 | `scan` | varredura/leitura de codebase ou arquivos grandes, sumarização |
 | `boilerplate` | testes mecânicos, scaffolding, conversões repetitivas |
 | `implement` | task comum de spec autocontida, código novo (modo worktree). Aceita `--tier` |
+| `pesquisa` | busca externa: web, GitHub, docs de produto. Prática de mercado, avaliação de ferramenta ou modelo. Aceita `--tier` |
 
 Não existe task-type por tamanho. O tamanho entra como `--tier padrao|amplo`, que
 troca o **ponto de entrada** da mesma fila:
@@ -55,6 +58,20 @@ conjunto de `tiers.<task>` da policy mais o `padrao` implícito, e o
 não fila padrão calada.
 Quem classifica é o `to-tickets`, de forma mecânica, e o ticket carrega o `tier:`.
 Sem `--tier`, resolve a fila padrão.
+
+**`pesquisa` é a exceção, nas duas pontas.** O tier ali é o formato da pergunta e
+não a contagem de arquivos: `padrao` é pergunta fechada com fonte conhecida, e
+`amplo` é varredura de mercado com várias fontes, comparação e recomendação. Quem
+classifica é o orquestrador, na hora, porque pesquisa não passa pelo `to-tickets`.
+E o tier escolhe o modo: `amplo` nasce visível, `padrao` nasce headless. Varredura
+ampla é onde o follow-up acontece, e pergunta fechada não pede conversa. A sessão
+diz o modo numa linha antes de disparar, e palavra explícita do dono ganha do
+default em qualquer direção.
+
+A fila de pesquisa só aceita worker com web provada. O `codex exec` recusa
+`--search`, e a chave por trás dela funciona pelo `config` da entrada da cascata;
+o `agy` está fora até ser medido. Worker sem web devolve ficção com cara de
+relatório, e nem o log nem quem lê distinguem as duas depois.
 
 **Review espelha a classe da sessão**, em vez de ter fila fixa: sessão em Fable
 revisa no par de classe topo, sessão em Opus revisa no par de classe forte. O
@@ -235,11 +252,18 @@ pela D-01 entra DEPOIS dos workers grátis. Use quando:
   externos não têm;
 - a cascata externa esgotou (exit 2) mas a tarefa merece mais qualidade ou
   contexto isolado do que "assumir inline";
-- review adversarial de contexto fresco (o fallback do peer-review já faz isso).
+- review adversarial de contexto fresco, e **só depois que o `peer-review.sh`
+  devolveu exit 2**: ele é o degrau 3 da cascata, e começar por ele troca um
+  reviewer independente por um que carrega o viés da sessão.
 
 Calibre o modelo à tarefa como faria na policy: mecânico → haiku/sonnet low;
 denso → sonnet medium; crítico → opus high. Nunca subagente caro pra tarefa
 que um worker grátis resolve.
+
+Pedido explícito de delegar, ou de poder acompanhar, não cai aqui: vai pro worker
+externo, e no modo visível quando o dono quiser ver e dar follow-up. O Agent tool
+devolve um relatório e morre, então todo follow-up recomeça do zero, relendo o que
+a aba ainda tem na janela.
 
 **Subagente `Agent` fresco (sem `fork`) não herda skills da sessão**, se ele
 precisa saber operar `delegate`/`model-policy.json`, ver

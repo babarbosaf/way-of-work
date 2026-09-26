@@ -1205,6 +1205,46 @@ grep -q 'exige --reference' "$DELEGATE"  \
   && ok "boilerplate segue portando a guarda de --reference (é o que o separa do scan)" \
   || fail "a guarda de --reference morreu: aí os dois task-types viram um só"
 
+echo "T: pesquisa é fila própria, e nenhuma entrada dela vai pra web sem ter web"
+jq -e '(.tasks.pesquisa | type) == "array" and (.tasks.pesquisa | length) > 0' "$DELEGATE_POLICY" >/dev/null \
+  && ok "tasks.pesquisa existe e não é vazia" \
+  || fail "tasks.pesquisa ausente: --task pesquisa morre em 'task-type desconhecido na policy'"
+jq -e '.tiers.pesquisa.amplo != null and .tiers.pesquisa.amplo != .tasks.pesquisa' "$DELEGATE_POLICY" >/dev/null \
+  && ok "tiers.pesquisa.amplo existe e difere do padrão" \
+  || fail "tier amplo de pesquisa ausente ou gêmeo do padrão: --tier amplo não trocaria nada"
+jq -e '.timeouts.pesquisa != null' "$DELEGATE_POLICY" >/dev/null \
+  && ok "timeouts.pesquisa declarado" \
+  || fail "pesquisa cairia no default de 120s, que é prazo medido pra outra coisa"
+# Worker sem web devolve ficção com cara de relatório, e nem o log nem o dono
+# distinguem as duas depois que a resposta chegou.
+semweb=$(jq -r '[.tasks.pesquisa[], .tiers.pesquisa.amplo[]]
+  | map(select(.backend != "claude" and (.config["tools.web_search"] != true)))
+  | .[] | "\(.backend)/\(.model)"' "$DELEGATE_POLICY")
+[[ -z "$semweb" ]] \
+  && ok "toda entrada de pesquisa tem web: claude nativo, ou tools.web_search no codex" \
+  || fail "entrada de pesquisa sem web: $semweb"
+
+echo "T: pesquisa recebe contrato de fontes, não o de arquivos tocados"
+out=$(MOCK_CODEX=eco run --task pesquisa -)
+grep -q 'Liste os arquivos tocados' <<<"$out" \
+  && fail "pesquisa recebeu o contrato de implementação: o worker vai rodar comando pra ter o que colar" \
+  || ok "pesquisa não pede arquivos tocados nem verificação"
+assert_contains "pesquisa pede a URL de cada fonte" "$out" "URL de cada fonte"
+# Sem a guarda de task, o footer de sempre sumiria de quem depende dele.
+out=$(MOCK_CODEX=eco run --task implement -)
+assert_contains "implement segue com o contrato de report de sempre" "$out" "Liste os arquivos tocados"
+
+echo "T: config da entrada da cascata vira -c chave=valor, e só na fila que a declara"
+jq '.tasks._web = [{"backend":"codex","model":"gpt-5.6-terra","effort":"medium",
+                    "config":{"tools.web_search":true}}]' \
+   "$DELEGATE_POLICY" > "$TMP/pol-web.json"
+out=$(DELEGATE_POLICY="$TMP/pol-web.json" run --task _web -)
+assert_contains "config da entrada chega ao worker" "$out" "-c tools.web_search=true"
+out=$(run --task review -)
+grep -q 'tools.web_search' <<<"$out" \
+  && fail "config de uma fila vazou pra review: navegar num review é tempo que ninguém pediu" \
+  || ok "fila sem config não ganha -c extra"
+
 echo "T: toda entrada de cascata roda no esforço sugerido do modelo dela"
 # Cobre tasks e tiers nos três backends. Modelo fora do suggested_effort (agy, que
 # carrega o esforço no próprio nome) passa: sem sugestão não há divergência.
